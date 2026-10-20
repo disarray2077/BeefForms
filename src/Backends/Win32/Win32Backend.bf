@@ -22,13 +22,13 @@ internal class Win32Backend : FormsBackend
 		Win32.InitCommonControlsEx(controls);
 	}
 
-	private static char8* GetWindowClass(Control control)
+	private static char16* GetWindowClass(Control control)
 	{
-		if (control is Form) return "BeefWinForm";
-		if (control is Button || control is GroupBox) return Win32.BUTTON_CLASS;
-		if (control is TextBoxBase) return Win32.EDIT_CLASS;
-		if (control is ProgressBar) return Win32.PROGRESS_CLASS;
-		return Win32.STATIC_CLASS;
+		if (control is Form) return (char16*)&Win32.FORM_CLASS;
+		if (control is Button || control is GroupBox) return (char16*)&Win32.BUTTON_CLASS;
+		if (control is TextBoxBase) return (char16*)&Win32.EDIT_CLASS;
+		if (control is ProgressBar) return (char16*)&Win32.PROGRESS_CLASS;
+		return (char16*)&Win32.STATIC_CLASS;
 	}
 
 	private static uint GetWindowStyle(Control control)
@@ -65,7 +65,7 @@ internal class Win32Backend : FormsBackend
 		{
 			Win32.WNDCLASSEX definition = .(
 				sizeof(Win32.WNDCLASSEX), 0, => WindowProc, 0, 0, Win32.GetModuleHandle(null),
-				null, Win32.LoadCursor(null, (int*)(void*)32512), (void*)16, null, "BeefWinForm", null);
+				null, Win32.LoadCursor(null, (int*)(void*)32512), (void*)16, null, (char16*)&Win32.FORM_CLASS, null);
 			Win32.RegisterClassEx(definition);
 			mRegistered = true;
 		}
@@ -75,7 +75,7 @@ internal class Win32Backend : FormsBackend
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
 		if (control is Form)
 			Win32.AdjustWindowRectEx(ref bounds, style, false, 0);
-		let handle = Win32.CreateWindowEx(0, GetWindowClass(control), control.Text.CStr(), style,
+		let handle = Win32.CreateWindowEx(0, GetWindowClass(control), control.Text.ToScopedNativeWChar!(), style,
 			control.Location.x, control.Location.y, bounds.right - bounds.left, bounds.bottom - bounds.top,
 			control.Parent?.Handle, null, Win32.GetModuleHandle(null), Internal.UnsafeCastToPtr(control));
 		if (handle == null)
@@ -89,6 +89,11 @@ internal class Win32Backend : FormsBackend
 
 	public override void DestroyControl(Control control)
 	{
+		if (mSurrogateControl == control)
+		{
+			mHighSurrogate = 0;
+			mSurrogateControl = null;
+		}
 		if (Control.IsAncestorOf(control, mHovered))
 		{
 			Control.UpdateMouseOver(mHovered, null);
@@ -126,7 +131,7 @@ internal class Win32Backend : FormsBackend
 					Win32.SetWindowPos(child.Handle, null, 0, 0, 0, 0,
 						Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOACTIVATE);
 		if (change == .Text || change == .All)
-			Win32.SetWindowText(control.Handle, control.Text.CStr());
+			Win32.SetWindowText(control.Handle, control.Text.ToScopedNativeWChar!());
 		if (change == .Font || change == .All)
 			Win32.SendMessage(control.Handle, Win32.WM_SETFONT, (uint*)Win32.GetStockObject(Win32.DEFAULT_GUI_FONT), (int*)(void*)1);
 		if (change == .Enabled || change == .All)

@@ -159,8 +159,8 @@ static class Win32
 		void* hIcon,
 		void* hCursor,
 		void* hbrBackground,
-		char8* lpszMenuName,
-		char8* lpszClassName,
+		char16* lpszMenuName,
+		char16* lpszClassName,
 		void* hIconSm
 	)
 	{
@@ -178,8 +178,8 @@ static class Win32
 		public int32 y;
 		public int32 x;
 		public int32 style;
-		public char8* lpszName;
-		public char8* lpszClass;
+		public char16* lpszName;
+		public char16* lpszClass;
 		public uint32 dwExStyle;
 	}
 
@@ -233,38 +233,38 @@ static class Win32
 	public static extern bool IsWindowVisible(void* window);
 	[Import("user32.dll"), CLink]
 	public static extern void* GetWindow(void* window, uint32 command);
-	[Import("user32.dll"), LinkName("GetMessageA")]
+	[Import("user32.dll"), LinkName("GetMessageW")]
 	public static extern int GetMessage(out MSG lpMsg, void* hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
 	[Import("user32.dll"), CLink]
 	public static extern bool TranslateMessage(in MSG lpMsg);
-	[Import("user32.dll"), LinkName("DispatchMessageA")]
+	[Import("user32.dll"), LinkName("DispatchMessageW")]
 	public static extern int* DispatchMessage(in MSG lpMsg);
 	[Import("user32.dll"), CLink]
 	public static extern void PostQuitMessage(int nExitCode);
-	[Import("user32.dll"), LinkName("RegisterClassExA")]
+	[Import("user32.dll"), LinkName("RegisterClassExW")]
 	public static extern uint16 RegisterClassEx(in WNDCLASSEX lpwcx);
-	[Import("user32.dll"), LinkName("CreateWindowExA")]
-	public static extern void* CreateWindowEx(uint dwExStyle, char8* lpClassName, char8* lpWindowName, uint dwStyle, int X, int Y, int nWidth, int nHeight, void* hWndParent, void* hMenu, void* hInstance, void* lpParam);
+	[Import("user32.dll"), LinkName("CreateWindowExW")]
+	public static extern void* CreateWindowEx(uint dwExStyle, char16* lpClassName, char16* lpWindowName, uint dwStyle, int X, int Y, int nWidth, int nHeight, void* hWndParent, void* hMenu, void* hInstance, void* lpParam);
 	[Import("user32.dll"), CLink]
 	public static extern bool DestroyWindow(void* hWnd);
-	[Import("user32.dll"), LinkName("DefWindowProcA")]
+	[Import("user32.dll"), LinkName("DefWindowProcW")]
 	public static extern LRESULT DefWindowProc(void* hWnd, uint32 uMsg, uint32* wParam, int32* lParam);
 	[Import("user32.dll"), CLink]
 	public static extern bool ShowWindow(void* hWnd, int nCmdShow);
-	[Import("kernel32.dll"), LinkName("GetModuleHandleA")]
-	public static extern void* GetModuleHandle(char8* lpModuleName);
-	[Import("user32.dll"), LinkName("LoadCursorA")]
+	[Import("kernel32.dll"), LinkName("GetModuleHandleW")]
+	public static extern void* GetModuleHandle(char16* lpModuleName);
+	[Import("user32.dll"), LinkName("LoadCursorW")]
 	public static extern void* LoadCursor(void* hInstance, int* lpCursorName);
-	[Import("user32.dll"), LinkName("SetWindowLongPtrA")]
+	[Import("user32.dll"), LinkName("SetWindowLongPtrW")]
 	public static extern void* SetWindowLongPtr(void* hWnd, int nIndex, void* dwNewLong);
-	[Import("user32.dll"), LinkName("GetWindowLongPtrA")]
+	[Import("user32.dll"), LinkName("GetWindowLongPtrW")]
 	public static extern void* GetWindowLongPtr(void* hWnd, int nIndex);
-	[Import("user32.dll"), LinkName("SetWindowTextA")]
-	public static extern bool SetWindowText(void* hWnd, char8* lpString);
-	[Import("user32.dll"), LinkName("GetWindowTextLengthA")]
+	[Import("user32.dll"), LinkName("SetWindowTextW")]
+	public static extern bool SetWindowText(void* hWnd, char16* lpString);
+	[Import("user32.dll"), LinkName("GetWindowTextLengthW")]
 	public static extern int32 GetWindowTextLength(void* hWnd);
-	[Import("user32.dll"), LinkName("GetWindowTextA")]
-	public static extern int32 GetWindowText(void* hWnd, char8* text, int32 maxCount);
+	[Import("user32.dll"), LinkName("GetWindowTextW")]
+	public static extern int32 GetWindowText(void* hWnd, char16* text, int32 maxCount);
 	[Import("user32.dll"), CLink]
 	public static extern bool SetWindowPos(void* hWnd, void* hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 	[Import("user32.dll"), CLink]
@@ -275,7 +275,7 @@ static class Win32
 	public static extern bool GetWindowRect(void* hWnd, out RECT lpRect);
 	[Import("gdi32.dll"), CLink]
 	public static extern void* GetStockObject(int fnObject);
-	[Import("user32.dll"), LinkName("SendMessageA")]
+	[Import("user32.dll"), LinkName("SendMessageW")]
 	public static extern int* SendMessage(void* hWnd, uint Msg, uint* wParam, int* lParam);
 	[Import("comctl32.dll"), CLink]
 	public static extern bool InitCommonControlsEx(in INITCOMMONCONTROLSEX picce);
@@ -301,19 +301,20 @@ static class Win32
 	public static extern void* SelectObject(void* hdc, void* h);
 	[Import("user32.dll"), CLink]
 	public static extern int FillRect(void* hDC, ref RECT lprc, void* hbr);
-	[Import("user32.dll"), LinkName("DrawTextA")]
-	public static extern int DrawText(void* hdc, char8* lpchText, int cchText, ref RECT lprc, uint format);
+	[Import("user32.dll"), LinkName("DrawTextW")]
+	public static extern int DrawText(void* hdc, char16* lpchText, int cchText, ref RECT lprc, uint format);
 	[Import("gdi32.dll"), CLink]
 	public static extern bool BitBlt(void* hdc, int x, int y, int cx, int cy, void* hdcSrc, int x1, int y1, uint rop);
 	[Import("gdi32.dll"), CLink]
 	public static extern int SetBkMode(void* hdc, int mode);
 
-	// String constants for class names
-	public static char8* PROGRESS_CLASS = "msctls_progress32";
-	public static char8* BUTTON_CLASS = "BUTTON";
-	public static char8* STATIC_CLASS = "STATIC";
-	public static char8* EDIT_CLASS = "EDIT";
-	public static char8* RICHEDIT_CLASS = "RichEdit20A";
+	// UTF-16 class names
+	public static char16[?] FORM_CLASS = "BeefWinForm".ToConstNativeW();
+	public static char16[?] PROGRESS_CLASS = "msctls_progress32".ToConstNativeW();
+	public static char16[?] BUTTON_CLASS = "BUTTON".ToConstNativeW();
+	public static char16[?] STATIC_CLASS = "STATIC".ToConstNativeW();
+	public static char16[?] EDIT_CLASS = "EDIT".ToConstNativeW();
+	public static char16[?] RICHEDIT_CLASS = "RichEdit20W".ToConstNativeW();
 }
 
 #endif

@@ -51,13 +51,7 @@ extension Win32Backend
 			if (notification == 0)
 				button.PerformClick();
 		if (control is TextBoxBase && notification == 0x300)
-		{
-			let length = Win32.GetWindowTextLength(control.Handle);
-			let text = scope String(length + 1);
-			text.Append('\0', length);
-			text.Length = Win32.GetWindowText(control.Handle, text.Ptr, length + 1);
-			control.NotifyText(text);
-		}
+			NotifyNativeText(control);
 	}
 
 	private static Keys KeyboardModifiers()
@@ -96,7 +90,10 @@ extension Win32Backend
 		switch (message)
 		{
 		case Win32.WM_SETFOCUS: control.NotifyFocus(true);
-		case Win32.WM_KILLFOCUS: control.NotifyFocus(false);
+		case Win32.WM_KILLFOCUS:
+			mHighSurrogate = 0;
+			mSurrogateControl = null;
+			control.NotifyFocus(false);
 		case Win32.WM_KEYDOWN, Win32.WM_SYSKEYDOWN, Win32.WM_KEYUP, Win32.WM_SYSKEYUP:
 			let down = message == Win32.WM_KEYDOWN || message == Win32.WM_SYSKEYDOWN;
 			let args = scope KeyEventArgs((Keys)(uint)(void*)wParam | KeyboardModifiers());
@@ -111,17 +108,7 @@ extension Win32Backend
 			}
 			return args.Handled || args.SuppressKeyPress;
 		case Win32.WM_CHAR:
-			if (mSuppressChars) return true;
-			let args = scope KeyPressEventArgs((char32)(uint)(void*)wParam);
-			control.DispatchInput(.KeyPress, args);
-			if (args.Handled) return true;
-			if (args.KeyChar >= ' ')
-			{
-				let text = scope String()..Append(args.KeyChar);
-				let input = scope TextInputEventArgs(text);
-				control.DispatchInput(.TextInput, input);
-				return input.Handled;
-			}
+			return HandleCharacter(control, (char16)(uint)(void*)wParam, lParam);
 		case Win32.WM_MOUSELEAVE:
 			if (mHovered == control)
 			{
