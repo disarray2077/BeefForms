@@ -15,10 +15,12 @@ extension SDLBackend
 	{
 		if (!control.IsEffectivelyEnabled || x < 0 || y < 0 || x >= control.Size.width || y >= control.Size.height)
 			return null;
+		if (x >= control.ViewportSize.width || y >= control.ViewportSize.height)
+			return control;
 		for (int i = control.Controls.Count - 1; i >= 0; i--)
 		{
 			let child = control.Controls[i];
-			if (let found = HitTest(child, x - child.Location.x, y - child.Location.y))
+			if (let found = HitTest(child, x - child.Location.x + control.ContentOffset.x, y - child.Location.y + control.ContentOffset.y))
 				return found;
 		}
 		return control;
@@ -29,8 +31,8 @@ extension SDLBackend
 		var result = Point((.)x, (.)y);
 		for (var current = control; current.Parent != null; current = current.Parent)
 		{
-			result.x -= current.Location.x;
-			result.y -= current.Location.y;
+			result.x -= current.Location.x - current.Parent.ContentOffset.x;
+			result.y -= current.Location.y - current.Parent.ContentOffset.y;
 		}
 		return result;
 	}

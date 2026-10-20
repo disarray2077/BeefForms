@@ -8,7 +8,7 @@ namespace System.Windows.Forms;
 
 internal enum ControlChange
 {
-	Paint, Text, Font, Bounds, Enabled, Value, ReadOnly, Selection, All
+	Paint, Text, Font, Bounds, Enabled, Value, ReadOnly, Selection, Scroll, All
 }
 
 public class Control : System.ComponentModel.Component
@@ -51,6 +51,11 @@ public class Control : System.ComponentModel.Component
 	public void* Handle => mHandle;
 	public bool IsHandleCreated => mCreated;
 	public Control Parent => mParent;
+	protected internal virtual System.Drawing.Point ContentOffset => .(0, 0);
+	protected internal virtual Size ViewportSize => ClientSize;
+	internal bool LayoutSuspended => mLayoutSuspended;
+	protected internal virtual void ChildBoundsChanged() {}
+
 	public virtual Size ClientSize { get => Size; set => Size = value; }
 	public bool IsEffectivelyEnabled => Enabled && (Parent == null || Parent.IsEffectivelyEnabled);
 
@@ -194,10 +199,15 @@ public class Control : System.ComponentModel.Component
 			OnSizeChanged(.Empty);
 	}
 
-	protected virtual void OnLocationChanged(EventArgs e) => LocationChanged.Invoke(this, e);
+	protected virtual void OnLocationChanged(EventArgs e)
+	{
+		Parent?.ChildBoundsChanged();
+		LocationChanged.Invoke(this, e);
+	}
 	protected virtual void OnSizeChanged(EventArgs e)
 	{
 		PerformLayout();
+		Parent?.ChildBoundsChanged();
 		SizeChanged.Invoke(this, e);
 	}
 

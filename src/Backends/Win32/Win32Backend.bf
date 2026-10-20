@@ -115,11 +115,15 @@ internal class Win32Backend : FormsBackend
 		{
 			let size = control.Size;
 			let location = control.Location;
+			let offset = control.Parent?.ContentOffset ?? .(0, 0);
 			if (let form = control as Form)
 				SetClientSize(form, size);
 			else
-				Win32.SetWindowPos(control.Handle, null, location.x, location.y, size.width, size.height, Win32.SWP_NOZORDER);
+				Win32.SetWindowPos(control.Handle, null, location.x - offset.x, location.y - offset.y, size.width, size.height, Win32.SWP_NOZORDER);
 		}
+		if (change == .Scroll || change == .All)
+			if (let scrollable = control as ScrollableControl)
+				UpdateScrolling(scrollable);
 		if (change == .Value || change == .All)
 			if (let progress = control as ProgressBar)
 				Win32.SendMessage(control.Handle, Win32.PBM_SETPOS, (uint*)(void*)progress.Value, null);

@@ -70,11 +70,13 @@ extension Control
 			return;
 		if (let mouse = args as MouseEventArgs)
 		{
-			mouse.X += Location.x;
-			mouse.Y += Location.y;
+			let offsetX = Location.x - Parent.ContentOffset.x;
+			let offsetY = Location.y - Parent.ContentOffset.y;
+			mouse.X += offsetX;
+			mouse.Y += offsetY;
 			Parent.DispatchInput(kind, args);
-			mouse.X -= Location.x;
-			mouse.Y -= Location.y;
+			mouse.X -= offsetX;
+			mouse.Y -= offsetY;
 		}
 		else
 			Parent.DispatchInput(kind, args);

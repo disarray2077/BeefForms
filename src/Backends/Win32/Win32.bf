@@ -3,7 +3,28 @@ namespace System;
 
 static class Win32
 {
+	[CRepr]
+	public struct SCROLLINFO
+	{
+		public uint32 cbSize, fMask;
+		public int32 nMin, nMax;
+		public uint32 nPage;
+		public int32 nPos, nTrackPos;
+		public this(uint32 size, uint32 mask, int32 minimum, int32 maximum, uint32 page, int32 position, int32 track)
+		{ cbSize = size; fMask = mask; nMin = minimum; nMax = maximum; nPage = page; nPos = position; nTrackPos = track; }
+	}
+	[Import("user32.dll"), CLink]
+	public static extern int32 SetScrollInfo(void* window, int32 bar, ref SCROLLINFO info, bool redraw);
+	[Import("user32.dll"), CLink]
+	public static extern bool GetScrollInfo(void* window, int32 bar, ref SCROLLINFO info);
+	[Import("user32.dll"), CLink]
+	public static extern bool ShowScrollBar(void* window, int32 bar, bool show);
+	[Import("user32.dll"), CLink]
+	public static extern int32 GetSystemMetrics(int32 index);
+
 	// Window Messages
+	public const uint WM_HSCROLL = 0x0114;
+	public const uint WM_VSCROLL = 0x0115;
 	public const uint WM_DESTROY = 0x0002;
 	public const uint WM_MOVE = 0x0003;
 	public const uint WM_CLOSE = 0x0010;

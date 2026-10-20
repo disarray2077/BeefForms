@@ -92,6 +92,7 @@ extension Win32Backend
 
 	private bool DispatchNativeInput(Control control, uint32 message, uint32* wParam, int32* lParam)
 	{
+		if (HandleScroll(control, message, wParam)) return true;
 		switch (message)
 		{
 		case Win32.WM_SETFOCUS: control.NotifyFocus(true);

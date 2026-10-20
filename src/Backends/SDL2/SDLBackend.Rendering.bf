@@ -58,12 +58,28 @@ extension SDLBackend
 		if (let panel = control as Panel)
 			panel.Paint.Invoke(panel, scope .());
 
+		let viewport = control.ViewportSize;
+		let childClip = Intersect(clip, .(bounds.X, bounds.Y, viewport.width, viewport.height));
 		for (let child in control.Controls)
 		{
 			var childSize = child.Size;
 			if (child.AutoSize && child is Label)
 				childSize = .(mRenderer.Measure(child, child.Text), mRenderer.LineHeight(child));
-			RenderControl(child, .(bounds.X + child.Location.x, bounds.Y + child.Location.y, childSize.width, childSize.height), clip);
+			RenderControl(child, .(bounds.X + child.Location.x - control.ContentOffset.x, bounds.Y + child.Location.y - control.ContentOffset.y, childSize.width, childSize.height), childClip);
+		}
+		if (let scrollable = control as ScrollableControl)
+		{
+			mRenderer.Clip(clip);
+			for (let horizontal in scope bool[](true, false))
+			{
+				var track = scrollable.ScrollTrack(horizontal);
+				if (track.Width == 0 || track.Height == 0) continue;
+				var thumb = scrollable.ScrollThumb(horizontal);
+				track.X += bounds.X; track.Y += bounds.Y;
+				thumb.X += bounds.X; thumb.Y += bounds.Y;
+				mRenderer.Fill(track, 0.88f, 0.89f, 0.90f);
+				mRenderer.Fill(thumb, 0.58f, 0.60f, 0.64f);
+			}
 		}
 	}
 
