@@ -85,6 +85,17 @@ static class Win32
 	public const uint EM_SETREADONLY = 0x00CF;
 	public const uint EM_SETSEL = 0x00B1;
 	public const uint EM_GETSEL = 0x00B0;
+	public const uint EM_REPLACESEL = 0x00C2;
+	public const uint EM_UNDO = 0x00C7;
+	public const uint EM_POSFROMCHAR = 0x00D6;
+	public const uint WM_SETTEXT = 0x000C;
+	public const uint WM_TIMER = 0x0113;
+	public const uint WM_CUT = 0x0300;
+	public const uint WM_PASTE = 0x0302;
+	public const uint WM_CLEAR = 0x0303;
+	public const uint WM_UNDO = 0x0304;
+	public const uint WM_IME_COMPOSITION = 0x010F;
+	public const uint WM_IME_ENDCOMPOSITION = 0x010E;
 
 	// Static Control Styles
 	public const uint SS_OWNERDRAW = 0x000D;
@@ -201,6 +212,8 @@ static class Win32
 	public static extern void* SetFocus(void* window);
 	[Import("user32.dll"), CLink]
 	public static extern void* GetFocus();
+	[Import("user32.dll"), CLink]
+	public static extern bool GetCaretPos(out POINT point);
 	[Import("user32.dll"), CLink]
 	public static extern void* SetCapture(void* window);
 	[Import("user32.dll"), CLink]

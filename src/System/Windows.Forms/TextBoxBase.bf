@@ -17,6 +17,7 @@ public class TextBoxBase : Control
 	public int SelectionStart => Math.Min(mCaret, mAnchor);
 	public int SelectionLength => Math.Abs(mCaret - mAnchor);
 	internal int Caret => mCaret;
+	internal int SelectionAnchor => mAnchor;
 	internal int32 ScrollX;
 	internal int32 ScrollY;
 	private int mCaret;
@@ -47,6 +48,12 @@ public class TextBoxBase : Control
 		if (!extend)
 			mAnchor = mCaret;
 		UpdateBackend(.Selection);
+	}
+
+	internal void NotifySelection(int anchor, int caret)
+	{
+		mAnchor = anchor;
+		mCaret = caret;
 	}
 
 	internal int AdjacentPosition(int position, bool forward)

@@ -38,6 +38,10 @@ extension Win32Backend
 				control.SetNativeHandle(null);
 				backend.mControls.Remove(window);
 			}
+			let result = Win32.DefSubclassProc(window, message, wParam, lParam);
+			if (let editor = control as TextBoxBase)
+				backend.SynchronizeSelectionAfterMessage(editor, message);
+			return result;
 		}
 		return Win32.DefSubclassProc(window, message, wParam, lParam);
 	}

@@ -20,6 +20,8 @@ extension Win32Backend
 		let buffer = scope char16[length + 1] (?);
 		let copied = Win32.GetWindowText(control.Handle, buffer.Ptr, (int32)buffer.Count);
 		let text = scope String(Span<char16>(buffer.Ptr, copied));
+		if (let editor = control as TextBoxBase)
+			SynchronizeNativeSelection(editor, text);
 		control.NotifyText(text);
 	}
 

@@ -130,7 +130,7 @@ internal class Win32Backend : FormsBackend
 				if (child.Handle != null)
 					Win32.SetWindowPos(child.Handle, null, 0, 0, 0, 0,
 						Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOACTIVATE);
-		if (change == .Text || change == .All)
+		if (change == .Text)
 			Win32.SetWindowText(control.Handle, control.Text.ToScopedNativeWChar!());
 		if (change == .Font || change == .All)
 			Win32.SendMessage(control.Handle, Win32.WM_SETFONT, (uint*)Win32.GetStockObject(Win32.DEFAULT_GUI_FONT), (int*)(void*)1);
@@ -156,9 +156,10 @@ internal class Win32Backend : FormsBackend
 		{
 			if (change == .ReadOnly || change == .All)
 				Win32.SendMessage(control.Handle, Win32.EM_SETREADONLY, (uint*)(void*)(int)(editor.ReadOnly ? 1 : 0), null);
-			if (change == .Selection)
-				Win32.SendMessage(control.Handle, Win32.EM_SETSEL, (uint*)(void*)editor.SelectionStart,
-					(int*)(void*)(editor.SelectionStart + editor.SelectionLength));
+			if (change == .Selection || change == .All)
+				Win32.SendMessage(control.Handle, Win32.EM_SETSEL,
+					(uint*)(void*)Utf16Offset(editor.Text, editor.SelectionAnchor),
+					(int*)(void*)Utf16Offset(editor.Text, editor.Caret));
 		}
 		Win32.InvalidateRect(control.Handle, null, true);
 	}

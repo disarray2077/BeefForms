@@ -66,7 +66,11 @@ class Win32TextTests
 		form.Show();
 		defer { form.Close(); Application.Backend.Run(form); }
 		int changes = 0;
-		editor.TextChanged.Add(new [&] (sender, args) => { changes++; });
+		editor.TextChanged.Add(new [&] (sender, args) =>
+		{
+			changes++;
+			Test.Assert(editor.SelectionStart == editor.Text.Length && editor.SelectionLength == 0);
+		});
 
 		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)0xE9, null);
 		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)0xD83D, null);

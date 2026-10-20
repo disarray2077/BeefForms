@@ -34,13 +34,16 @@ class Win32BackendTests
 		editor.Invalidate();
 		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)(int)'X', null);
 		Test.Assert(editor.Text == "aXbc");
+		Test.Assert(editor.SelectionStart == 2 && editor.SelectionLength == 0);
 		let selection = (uint)(void*)Win32.SendMessage(editor.Handle, Win32.EM_GETSEL, null, null);
 		Test.Assert((selection & 0xFFFF) == 2 && (selection >> 16) == 2);
 		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)(int)'Y', null);
 		Test.Assert(editor.Text == "aXbc");
+		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)8, null);
+		Test.Assert(editor.Text == "abc" && editor.SelectionStart == 1 && editor.SelectionLength == 0);
 		editor.ReadOnly = true;
 		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)(int)'Z', null);
-		Test.Assert(editor.Text == "aXbc");
+		Test.Assert(editor.Text == "abc");
 	}
 }
 #endif
