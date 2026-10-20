@@ -3,7 +3,6 @@ using System.Collections;
 using System.Drawing;
 using System.Windows.Forms;
 using SDL2;
-using BeefGL;
 
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
@@ -27,36 +26,62 @@ extension SDLBackend
 
 	private static Point PositionIn(Control control, int x, int y)
 	{
-		var current = control;
 		var result = Point((.)x, (.)y);
-		while (current.Parent != null)
+		for (var current = control; current.Parent != null; current = current.Parent)
 		{
 			result.x -= current.Location.x;
 			result.y -= current.Location.y;
-			current = current.Parent;
 		}
 		return result;
 	}
 
+	public override bool IsFocused(Control control) => mFocused == control;
+	public override bool HasCapture(Control control) => mCaptured == control;
+	public override void SetCapture(Control control, bool capture)
+	{
+		if (!capture && mCaptured != control)
+			return;
+		mCaptured = capture ? control : null;
+		SDL.CaptureMouse(capture ? .True : .False);
+	}
+
+	public override bool FocusControl(Control control)
+	{
+		if (!control.IsEffectivelyEnabled)
+			return false;
+		Focus(control);
+		return true;
+	}
+
 	private void Focus(Control control)
 	{
-		mFocused = (control is Button || control is TextBoxBase) ? control : null;
-		if (let editor = mFocused as TextBoxBase)
+		if (mFocused == control)
+			return;
+		mFocused?.NotifyFocus(false);
+		mFocused = control;
+		if (mFocused is TextBoxBase)
 		{
 			SDL.StartTextInput();
-			let point = PositionIn(editor, 0, 0);
-			SDL.Rect input = .(-point.x, -point.y, editor.Size.width, editor.Size.height);
+			let point = PositionIn(control, 0, 0);
+			SDL.Rect input = .(-point.x, -point.y, control.Size.width, control.Size.height);
 			SDL.SetTextInputRect(&input);
 		}
 		else
 			SDL.StopTextInput();
+		mFocused?.NotifyFocus(true);
+	}
+
+	private void Hover(Control control)
+	{
+		Control.UpdateMouseOver(mHovered, control);
+		mHovered = control;
 	}
 
 	private static void CollectFocusable(Control control, List<Control> controls)
 	{
 		if (!control.IsEffectivelyEnabled)
 			return;
-		if (control.TabIndex >= 0 && (control is Button || control is TextBoxBase))
+		if (control.TabIndex >= 0 && control.TabStop)
 			controls.Add(control);
 		for (let child in control.Controls)
 			CollectFocusable(child, controls);
@@ -75,6 +100,19 @@ extension SDLBackend
 		Focus(controls[next]);
 	}
 
+	private static MouseButtons MouseButton(uint8 button)
+	{
+		switch (button)
+		{
+		case 1: return .Left;
+		case 2: return .Middle;
+		case 3: return .Right;
+		case 4: return .XButton1;
+		case 5: return .XButton2;
+		default: return .None;
+		}
+	}
+
 	private void ProcessEvent(ref SDL.Event input)
 	{
 		switch (input.type)
@@ -88,54 +126,145 @@ extension SDLBackend
 			case .Moved:
 				SDL.GetWindowPosition(mWindow, var x, var y);
 				mForm.NotifyMove(.(x, y));
-			case .Focus_lost: mPressed = null; SDL.StopTextInput();
-			case .FocusGained: Focus(mFocused);
+			case .Focus_lost:
+				mPressed = null;
+				if (mCaptured != null) SetCapture(mCaptured, false);
+				Focus(null);
+			case .Leave: Hover(null);
 			default:
 			}
 		case .MouseMotion:
-			mHovered = HitTest(mForm, input.motion.x, input.motion.y);
-			if (let editor = mPressed as TextBoxBase)
+			Hover(HitTest(mForm, input.motion.x, input.motion.y));
+			let target = mCaptured ?? mHovered;
+			if (target != null)
 			{
-				let point = PositionIn(editor, input.motion.x, input.motion.y);
-				editor.SetCaret(mRenderer.HitText(editor, point.x, point.y), true);
+				let point = PositionIn(target, input.motion.x, input.motion.y);
+				let args = scope MouseEventArgs(.None, 0, point.x, point.y);
+				target.DispatchInput(.MouseMove, args);
+				if (!args.Handled)
+					if (let editor = mPressed as TextBoxBase)
+					{
+						let position = PositionIn(editor, input.motion.x, input.motion.y);
+						editor.SetCaret(mRenderer.HitText(editor, position.x, position.y), true);
+					}
 			}
 		case .MouseButtonDown:
-			if (input.button.button == 1)
+			let target = mCaptured ?? HitTest(mForm, input.button.x, input.button.y);
+			Hover(HitTest(mForm, input.button.x, input.button.y));
+			if (target == null) break;
+			let point = PositionIn(target, input.button.x, input.button.y);
+			let args = scope MouseEventArgs(MouseButton(input.button.button), input.button.clicks, point.x, point.y);
+			target.DispatchInput(.MouseDown, args);
+			if (args.Clicks >= 2 && !args.Handled)
+				target.DispatchInput(.MouseDoubleClick, args);
+			if (args.Button == .Left && !args.Handled)
 			{
-				mPressed = HitTest(mForm, input.button.x, input.button.y);
-				mHovered = mPressed;
-				Focus(mPressed);
-				SDL.CaptureMouse(.True);
-				if (let editor = mFocused as TextBoxBase)
+				mPressed = target;
+				Focus(target.TabStop ? target : null);
+				SetCapture(target, true);
+				if (let editor = target as TextBoxBase)
 				{
-					let point = PositionIn(editor, input.button.x, input.button.y);
-					if (input.button.clicks >= 2)
-						editor.SelectAll();
-					else
-						editor.SetCaret(mRenderer.HitText(editor, point.x, point.y), (SDL.GetModState() & .SHIFT) != 0);
+					if (args.Clicks >= 2) editor.SelectAll();
+					else editor.SetCaret(mRenderer.HitText(editor, point.x, point.y), (SDL.GetModState() & .SHIFT) != 0);
 				}
 			}
 		case .MouseButtonUp:
-			if (input.button.button == 1)
+			let hit = HitTest(mForm, input.button.x, input.button.y);
+			let target = mCaptured ?? hit;
+			if (target == null) break;
+			let point = PositionIn(target, input.button.x, input.button.y);
+			let args = scope MouseEventArgs(MouseButton(input.button.button), input.button.clicks, point.x, point.y);
+			target.DispatchInput(.MouseUp, args);
+			if (args.Button == .Left)
 			{
-				let target = HitTest(mForm, input.button.x, input.button.y);
 				let pressed = mPressed;
 				mPressed = null;
-				SDL.CaptureMouse(.False);
-				if (target == pressed)
-					if (let button = target as Button)
+				if (mCaptured != null) SetCapture(mCaptured, false);
+				if (!args.Handled && hit == pressed)
+					if (let button = hit as Button)
 						button.PerformClick();
 			}
+		case .MouseWheel:
+			let target = HitTest(mForm, input.wheel.mouseX, input.wheel.mouseY);
+			if (target != null)
+			{
+				let point = PositionIn(target, input.wheel.mouseX, input.wheel.mouseY);
+				let direction = input.wheel.direction == 1 ? -120 : 120;
+				let args = scope MouseEventArgs(.None, 0, point.x, point.y, (int32)(input.wheel.y * direction), (int32)(input.wheel.x * direction));
+				target.DispatchInput(.MouseWheel, args);
+			}
 		case .TextInput:
-			if (let editor = mFocused as TextBoxBase)
-				if (editor.IsEffectivelyEnabled)
-					editor.ReplaceSelection(scope String((char8*)&input.text.text));
-		case .KeyDown: KeyDown(input.key);
+			if (mSuppressTextInput) break;
+			let target = mFocused ?? mForm;
+			if (!target.IsEffectivelyEnabled) break;
+			let text = scope String((char8*)&input.text.text);
+			let args = scope TextInputEventArgs(text);
+			target.DispatchInput(.TextInput, args);
+			if (args.Handled) break;
+			let accepted = scope String();
+			for (let character in args.Text.DecodedChars)
+			{
+				let press = scope KeyPressEventArgs(character);
+				target.DispatchInput(.KeyPress, press);
+				if (!press.Handled) accepted.Append(press.KeyChar);
+			}
+			if (let editor = target as TextBoxBase)
+				if (!accepted.IsEmpty) editor.ReplaceSelection(accepted);
+		case .KeyDown:
+			let target = mFocused ?? mForm;
+			if (!target.IsEffectivelyEnabled) break;
+			let args = scope KeyEventArgs(TranslateKey(input.key));
+			target.DispatchInput(.KeyDown, args);
+			mSuppressTextInput = args.SuppressKeyPress;
+			if (!args.Handled && !args.SuppressKeyPress)
+				DefaultKeyDown(input.key);
+		case .KeyUp:
+			let target = mFocused ?? mForm;
+			if (!target.IsEffectivelyEnabled) break;
+			let args = scope KeyEventArgs(TranslateKey(input.key));
+			target.DispatchInput(.KeyUp, args);
+			mSuppressTextInput = false;
 		default:
 		}
 	}
 
-	private void KeyDown(SDL.KeyboardEvent key)
+	private static Keys TranslateKey(SDL.KeyboardEvent key)
+	{
+		let code = key.keysym.sym;
+		Keys result = .None;
+		if (code >= .A && code <= .Z)
+			result = (Keys)((int32)code - (int32)SDL.Keycode.A + (int32)Keys.A);
+		else if (code >= .Num0 && code <= .Num9)
+			result = (Keys)((int32)code);
+		else if (code >= .F1 && code <= .F12)
+			result = (Keys)((int32)code - (int32)SDL.Keycode.F1 + (int32)Keys.F1);
+		else
+			switch (code)
+			{
+			case .BACKSPACE: result = .Back;
+			case .TAB: result = .Tab;
+			case .RETURN: result = .Enter;
+			case .ESCAPE: result = .Escape;
+			case .SPACE: result = .Space;
+			case .DELETE: result = .Delete;
+			case .INSERT: result = .Insert;
+			case .HOME: result = .Home;
+			case .END: result = .End;
+			case .LEFT: result = .Left;
+			case .RIGHT: result = .Right;
+			case .UP: result = .Up;
+			case .DOWN: result = .Down;
+			case .PAGEUP: result = .PageUp;
+			case .PAGEDOWN: result = .PageDown;
+			default:
+			}
+		if ((key.keysym.mod & .SHIFT) != 0) result |= .Shift;
+		if ((key.keysym.mod & .CTRL) != 0) result |= .Control;
+		if ((key.keysym.mod & .ALT) != 0) result |= .Alt;
+		return result;
+	}
+
+	private void DefaultKeyDown(SDL.KeyboardEvent key)
 	{
 		let shift = (key.keysym.mod & .SHIFT) != 0;
 		let ctrl = (key.keysym.mod & .CTRL) != 0;
@@ -153,6 +282,8 @@ extension SDLBackend
 				button.PerformClick();
 			return;
 		}
+		if (!(mFocused is TextBoxBase))
+			return;
 		let editor = (TextBoxBase)mFocused;
 		if (ctrl)
 		{

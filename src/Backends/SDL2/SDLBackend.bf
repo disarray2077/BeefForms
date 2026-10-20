@@ -17,6 +17,8 @@ internal class SDLBackend : FormsBackend
 	private SDLRenderer mRenderer;
 	private Form mForm;
 	private Control mFocused, mPressed, mHovered;
+	private Control mCaptured;
+	private bool mSuppressTextInput;
 	private bool mInitialized, mRunning;
 	public int FrameLimit;
 	public String CapturePath;
@@ -78,9 +80,10 @@ internal class SDLBackend : FormsBackend
 
 	public override void DestroyControl(Control control)
 	{
-		if (mFocused == control) mFocused = null;
+		if (Control.IsAncestorOf(control, mFocused)) Focus(null);
+		if (Control.IsAncestorOf(control, mCaptured)) SetCapture(mCaptured, false);
 		if (mPressed == control) mPressed = null;
-		if (mHovered == control) mHovered = null;
+		if (Control.IsAncestorOf(control, mHovered)) Hover(null);
 		mRenderer?.Forget(control);
 		if (control == mForm)
 		{

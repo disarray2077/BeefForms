@@ -17,5 +17,9 @@ internal abstract class FormsBackend
 	public abstract void Show(Form form);
 	public abstract void Close(Form form);
 	public abstract void Run(Form form);
+	public abstract bool FocusControl(Control control);
+	public abstract bool IsFocused(Control control);
+	public abstract void SetCapture(Control control, bool capture);
+	public abstract bool HasCapture(Control control);
 	public virtual void EnableVisualStyles() {}
 }

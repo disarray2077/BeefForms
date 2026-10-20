@@ -13,6 +13,8 @@ internal class Win32Backend : FormsBackend
 {
 	private Dictionary<void*, Control> mControls = new .() ~ delete _;
 	private bool mRegistered;
+	private Control mHovered;
+	private bool mSuppressChars;
 
 	public override void EnableVisualStyles()
 	{
@@ -34,7 +36,7 @@ internal class Win32Backend : FormsBackend
 		if (control is Form)
 			return Win32.WS_OVERLAPPEDWINDOW | Win32.WS_CLIPCHILDREN;
 		uint style = Win32.WS_CHILD | Win32.WS_VISIBLE;
-		if (control.TabIndex >= 0)
+		if (control.TabIndex >= 0 && control.TabStop)
 			style |= Win32.WS_TABSTOP;
 		if (control is GroupBox)
 			style |= Win32.BS_GROUPBOX | Win32.WS_GROUP;
@@ -79,11 +81,18 @@ internal class Win32Backend : FormsBackend
 			Runtime.FatalError("Could not create the Windows control");
 		control.SetNativeHandle(handle);
 		mControls[handle] = control;
+		if (!(control is Form))
+			Win32.SetWindowSubclass(handle, => ChildWindowProc, 1, 0);
 		UpdateControl(control, .All);
 	}
 
 	public override void DestroyControl(Control control)
 	{
+		if (Control.IsAncestorOf(control, mHovered))
+		{
+			Control.UpdateMouseOver(mHovered, null);
+			mHovered = null;
+		}
 		if (control.Handle == null)
 			return;
 		let handle = control.Handle;
@@ -165,24 +174,12 @@ internal class Win32Backend : FormsBackend
 			form = control as Form;
 		if (form == null)
 			return Win32.DefWindowProc(window, message, wParam, lParam);
+		if (backend.DispatchNativeInput(form, message, wParam, lParam))
+			return 0;
 
 		switch (message)
 		{
-		case Win32.WM_COMMAND:
-			if (backend.mControls.TryGetValue((void*)lParam, let control))
-			{
-				if (let button = control as Button)
-					if (((uint)(void*)wParam >> 16) == 0)
-						button.PerformClick();
-				if (control is TextBoxBase && (((uint)(void*)wParam >> 16) == 0x300))
-				{
-					let length = Win32.GetWindowTextLength(control.Handle);
-					let text = scope String(length + 1);
-					text.Append('\0', length);
-					text.Length = Win32.GetWindowText(control.Handle, text.Ptr, length + 1);
-					control.NotifyText(text);
-				}
-			}
+		case Win32.WM_COMMAND: backend.HandleCommand(wParam, lParam);
 		case Win32.WM_SHOWWINDOW:
 			if (wParam != null)
 				form.NotifyLoad();

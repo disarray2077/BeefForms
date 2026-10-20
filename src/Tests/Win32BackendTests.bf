@@ -9,13 +9,21 @@ namespace BeefForms.Tests;
 #if BF_PLATFORM_WINDOWS
 class Win32BackendTests
 {
+	private class FilteredTextBox : TextBox
+	{
+		protected override void OnKeyPress(KeyPressEventArgs args)
+		{
+			base.OnKeyPress(args);
+			if (args.KeyChar == 'Y') args.Handled = true;
+		}
+	}
 	[Test]
 	public static void NativeTextEditingSurvivesRepaint()
 	{
 		Application.UseBackend(.Win32);
 		let form = scope Form();
 		form.ClientSize = .(300, 150);
-		let editor = new TextBox();
+		let editor = new FilteredTextBox();
 		editor.Size = .(200, 30);
 		editor.Text = "abc";
 		form.Controls.Add(editor);
@@ -28,8 +36,10 @@ class Win32BackendTests
 		Test.Assert(editor.Text == "aXbc");
 		let selection = (uint)(void*)Win32.SendMessage(editor.Handle, Win32.EM_GETSEL, null, null);
 		Test.Assert((selection & 0xFFFF) == 2 && (selection >> 16) == 2);
-		editor.ReadOnly = true;
 		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)(int)'Y', null);
+		Test.Assert(editor.Text == "aXbc");
+		editor.ReadOnly = true;
+		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)(int)'Z', null);
 		Test.Assert(editor.Text == "aXbc");
 	}
 }

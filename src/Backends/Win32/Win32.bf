@@ -15,6 +15,26 @@ static class Win32
 	public const uint WM_PAINT = 0x000F;
 	public const uint WM_SETFONT = 0x0030;
 	public const uint WM_CHAR = 0x0102;
+	public const uint WM_KEYDOWN = 0x0100;
+	public const uint WM_KEYUP = 0x0101;
+	public const uint WM_SYSKEYDOWN = 0x0104;
+	public const uint WM_SYSKEYUP = 0x0105;
+	public const uint WM_SETFOCUS = 0x0007;
+	public const uint WM_KILLFOCUS = 0x0008;
+	public const uint WM_MOUSEMOVE = 0x0200;
+	public const uint WM_LBUTTONDOWN = 0x0201;
+	public const uint WM_LBUTTONUP = 0x0202;
+	public const uint WM_LBUTTONDBLCLK = 0x0203;
+	public const uint WM_RBUTTONDOWN = 0x0204;
+	public const uint WM_RBUTTONUP = 0x0205;
+	public const uint WM_RBUTTONDBLCLK = 0x0206;
+	public const uint WM_MBUTTONDOWN = 0x0207;
+	public const uint WM_MBUTTONUP = 0x0208;
+	public const uint WM_MBUTTONDBLCLK = 0x0209;
+	public const uint WM_MOUSEWHEEL = 0x020A;
+	public const uint WM_MOUSEHWHEEL = 0x020E;
+	public const uint WM_MOUSELEAVE = 0x02A3;
+	public const uint WM_NCDESTROY = 0x0082;
 	public const uint WM_SHOWWINDOW = 0x0018;
 	public const uint WM_GETFONT = 0x0031;
 	public const uint WM_SIZE = 0x0005;
@@ -146,6 +166,31 @@ static class Win32
 
 	[CRepr]
 	public struct INITCOMMONCONTROLSEX : this(uint32 dwSize, uint32 dwICC) { }
+	[CRepr]
+	public struct TRACKMOUSEEVENT : this(uint32 cbSize, uint32 dwFlags, void* hwndTrack, uint32 dwHoverTime) {}
+	public function LRESULT SubclassProc(void* window, uint32 message, uint32* wParam, int32* lParam, uint id, uint data);
+	[Import("comctl32.dll"), CLink]
+	public static extern bool SetWindowSubclass(void* window, SubclassProc callback, uint id, uint data);
+	[Import("comctl32.dll"), CLink]
+	public static extern bool RemoveWindowSubclass(void* window, SubclassProc callback, uint id);
+	[Import("comctl32.dll"), CLink]
+	public static extern LRESULT DefSubclassProc(void* window, uint32 message, uint32* wParam, int32* lParam);
+	[Import("user32.dll"), CLink]
+	public static extern void* SetFocus(void* window);
+	[Import("user32.dll"), CLink]
+	public static extern void* GetFocus();
+	[Import("user32.dll"), CLink]
+	public static extern void* SetCapture(void* window);
+	[Import("user32.dll"), CLink]
+	public static extern void* GetCapture();
+	[Import("user32.dll"), CLink]
+	public static extern bool ReleaseCapture();
+	[Import("user32.dll"), CLink]
+	public static extern int16 GetKeyState(int32 key);
+	[Import("user32.dll"), CLink]
+	public static extern bool ScreenToClient(void* window, ref POINT point);
+	[Import("user32.dll"), CLink]
+	public static extern bool TrackMouseEvent(ref TRACKMOUSEEVENT tracking);
 
 	[CRepr]
 	public struct DRAWITEMSTRUCT
