@@ -141,7 +141,10 @@ public class Control : System.ComponentModel.Component
 	public ~this()
 	{
 		if (mCreated)
+		{
 			Application.Backend.DestroyControl(this);
+			Application.CreatedControlCount--;
+		}
 	}
 
 	public void Invalidate() => UpdateBackend(.Paint);
@@ -246,6 +249,7 @@ public class Control : System.ComponentModel.Component
 	{
 		if (mCreated)
 			return;
+		Application.CreatedControlCount++;
 		Application.Backend.CreateControl(this);
 		mCreated = true;
 		for (let child in Controls)

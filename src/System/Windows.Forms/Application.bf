@@ -19,11 +19,12 @@ public static class Application
 	internal static FormsBackend Backend = new SDLBackend() ~ delete _;
 #endif
 	private static bool sRunning;
+	internal static int CreatedControlCount;
 
 	public static void UseBackend(ApplicationBackend backend)
 	{
-		if (sRunning)
-			Runtime.FatalError("Choose the forms backend before calling Application.Run");
+		if (sRunning || CreatedControlCount != 0)
+			Runtime.FatalError("Dispose existing controls before changing the forms backend");
 		delete Backend;
 		switch (backend)
 		{
