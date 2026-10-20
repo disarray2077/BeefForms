@@ -1,5 +1,10 @@
 FileVersion = 1
 
+[Dependencies]
+corlib = "*"
+SDL2 = "*"
+BeefGL = {Git = "https://github.com/disarray2077/BeefGL"}
+
 [Project]
 Name = "BeefForms"
 StartupObject = "BeefForms.Program"

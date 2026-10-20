@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 namespace System;
 
 static class DpiHelper
@@ -73,3 +74,4 @@ static class DpiHelper
 	    return scaleFactor != 0 ? (int32)(value / scaleFactor) : 0;
 	}
 }
+#endif

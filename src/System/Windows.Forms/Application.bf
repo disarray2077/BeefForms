@@ -1,62 +1,49 @@
-using System.Collections;
+using BeefForms.Backends;
+
 using internal System.Windows.Forms;
+using internal BeefForms.Backends;
 
 namespace System.Windows.Forms;
 
-static class Application
+public enum ApplicationBackend
 {
-	// Maps HWND to Control instances for message dispatching
-	static Dictionary<void*, Control> sControlMap = new .() ~ delete _;
+	Win32,
+	SDL2OpenGL
+}
 
-	public static void RegisterControl(Control c)
+public static class Application
+{
+#if BF_PLATFORM_WINDOWS
+	internal static FormsBackend Backend = new Win32Backend() ~ delete _;
+#else
+	internal static FormsBackend Backend = new SDLBackend() ~ delete _;
+#endif
+	private static bool sRunning;
+
+	public static void UseBackend(ApplicationBackend backend)
 	{
-		if (c.Handle != null)
+		if (sRunning)
+			Runtime.FatalError("Choose the forms backend before calling Application.Run");
+		delete Backend;
+		switch (backend)
 		{
-			sControlMap[c.Handle] = c;
+		case .SDL2OpenGL: Backend = new SDLBackend();
+#if BF_PLATFORM_WINDOWS
+		case .Win32: Backend = new Win32Backend();
+#else
+		case .Win32: Runtime.FatalError("The Win32 backend requires Windows");
+#endif
 		}
 	}
 
-	public static void UnregisterControl(Control c)
-	{
-		if (c.Handle != null)
-		{
-			sControlMap.Remove(c.Handle);
-		}
-	}
-
-	public static Control GetControlFromHandle(void* hWnd)
-	{
-		if (sControlMap.TryGetValue(hWnd, var control))
-		{
-			return control;
-		}
-		return null;
-	}
-
-	public static void EnableVisualStyles()
-	{
-		// This is a simplified version. A full implementation requires manifests.
-		var icex = Win32.INITCOMMONCONTROLSEX(dwSize: sizeof(Win32.INITCOMMONCONTROLSEX), dwICC: Win32.ICC_PROGRESS_CLASS);
-		Win32.InitCommonControlsEx(icex);
-	}
-
-	public static void SetCompatibleTextRenderingDefault(bool defaultValue)
-	{
-		// Stub - not implemented
-	}
+	public static void EnableVisualStyles() => Backend.EnableVisualStyles();
+	public static void SetCompatibleTextRenderingDefault(bool defaultValue) {}
 
 	public static void Run(Form mainForm)
 	{
-		mainForm.CreateHandle();
+		sRunning = true;
+		defer { sRunning = false; delete mainForm; }
 		mainForm.Show();
-
-		Win32.MSG msg = ?;
-		while (Win32.GetMessage(out msg, null, 0, 0) > 0)
-		{
-			Win32.TranslateMessage(msg);
-			Win32.DispatchMessage(msg);
-		}
-
-		delete mainForm;
+		Backend.Run(mainForm);
 	}
 }

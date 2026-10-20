@@ -1,9 +1,11 @@
+#if BF_PLATFORM_WINDOWS
 namespace System;
 
 static class Win32
 {
 	// Window Messages
 	public const uint WM_DESTROY = 0x0002;
+	public const uint WM_MOVE = 0x0003;
 	public const uint WM_CLOSE = 0x0010;
 	public const uint WM_QUIT = 0x0012;
 	public const uint WM_COMMAND = 0x0111;
@@ -12,6 +14,7 @@ static class Win32
 	public const uint WM_DRAWITEM = 0x002B;
 	public const uint WM_PAINT = 0x000F;
 	public const uint WM_SETFONT = 0x0030;
+	public const uint WM_CHAR = 0x0102;
 	public const uint WM_SHOWWINDOW = 0x0018;
 	public const uint WM_GETFONT = 0x0031;
 	public const uint WM_SIZE = 0x0005;
@@ -37,6 +40,9 @@ static class Win32
 	public const uint ES_AUTOVSCROLL = 0x0040;
 	public const uint ES_AUTOHSCROLL = 0x0080;
 	public const uint ES_READONLY = 0x0800;
+	public const uint EM_SETREADONLY = 0x00CF;
+	public const uint EM_SETSEL = 0x00B1;
+	public const uint EM_GETSEL = 0x00B0;
 
 	// Static Control Styles
 	public const uint SS_OWNERDRAW = 0x000D;
@@ -184,6 +190,10 @@ static class Win32
 	public static extern void* GetWindowLongPtr(void* hWnd, int nIndex);
 	[Import("user32.dll"), LinkName("SetWindowTextA")]
 	public static extern bool SetWindowText(void* hWnd, char8* lpString);
+	[Import("user32.dll"), LinkName("GetWindowTextLengthA")]
+	public static extern int32 GetWindowTextLength(void* hWnd);
+	[Import("user32.dll"), LinkName("GetWindowTextA")]
+	public static extern int32 GetWindowText(void* hWnd, char8* text, int32 maxCount);
 	[Import("user32.dll"), CLink]
 	public static extern bool SetWindowPos(void* hWnd, void* hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 	[Import("user32.dll"), CLink]
@@ -234,3 +244,5 @@ static class Win32
 	public static char8* EDIT_CLASS = "EDIT";
 	public static char8* RICHEDIT_CLASS = "RichEdit20A";
 }
+
+#endif
