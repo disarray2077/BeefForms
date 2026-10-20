@@ -2,6 +2,7 @@ using System.Collections;
 using System.Drawing;
 
 using internal System.Windows.Forms;
+using internal System.Drawing;
 using internal BeefForms.Backends;
 
 namespace System.Windows.Forms;
@@ -43,7 +44,7 @@ public class Control : System.ComponentModel.Component
 	private void* mHandle;
 	private Control mParent;
 	private String mText = new .() ~ delete _;
-	private Font mFont ~ delete _;
+	private Font mFont ~ _?.Release();
 	private System.Drawing.Point mLocation;
 	private Size mSize;
 	private AnchorInfo mAnchorInfo;
@@ -88,7 +89,8 @@ public class Control : System.ComponentModel.Component
 		{
 			if (mFont == value)
 				return;
-			delete mFont;
+			value?.Retain();
+			mFont?.Release();
 			mFont = value;
 			UpdateBackend(.Font);
 		}

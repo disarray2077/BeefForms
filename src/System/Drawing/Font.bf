@@ -12,6 +12,8 @@ public enum GraphicsUnit
 
 public class Font
 {
+	private int mControlReferences;
+
 	public readonly String FamilyName ~ delete _;
 	public readonly float Size;
 	public readonly FontStyle Style;
@@ -26,4 +28,12 @@ public class Font
 	}
 	public this(String familyName, float emSize, FontStyle style) : this(familyName, emSize, style, .Point) {}
 	public this(String familyName, float emSize) : this(familyName, emSize, .Regular, .Point) {}
+
+	// Assigned fonts are shared by controls and released by the last owner.
+	internal void Retain() => mControlReferences++;
+	internal void Release()
+	{
+		if (--mControlReferences == 0)
+			delete this;
+	}
 }

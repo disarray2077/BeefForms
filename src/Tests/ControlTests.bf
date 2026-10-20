@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Windows.Forms;
 
 using internal System.Windows.Forms;
@@ -7,6 +8,37 @@ namespace BeefForms.Tests;
 
 class ControlTests
 {
+	private class TrackedFont : Font
+	{
+		private int* mDestroyed;
+		public this(int* destroyed) : base("Segoe UI", 9) { mDestroyed = destroyed; }
+		public ~this() { (*mDestroyed)++; }
+	}
+
+	[Test]
+	public static void AssignedFontsSurviveOtherOwners()
+	{
+		int destroyed = 0;
+		let first = new Control();
+		let second = new Control();
+		first.Font = new TrackedFont(&destroyed);
+		second.Font = first.Font;
+		first.Font = new TrackedFont(&destroyed);
+		Test.Assert(destroyed == 0 && second.Font.FamilyName == "Segoe UI");
+		delete first;
+		Test.Assert(destroyed == 1 && second.Font.Size == 9);
+		delete second;
+		Test.Assert(destroyed == 2);
+
+		let parent = scope Control();
+		parent.Font = new TrackedFont(&destroyed);
+		{
+			let child = scope Control();
+			child.Font = parent.Font;
+		}
+		Test.Assert(destroyed == 2 && parent.Font.Size == 9);
+	}
+
 	[Test]
 	public static void AnchorsFollowParentSize()
 	{
