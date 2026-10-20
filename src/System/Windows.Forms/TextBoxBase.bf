@@ -14,8 +14,24 @@ public class TextBoxBase : Control
 		get => mReadOnly;
 		set { mReadOnly = value; UpdateBackend(.ReadOnly); }
 	}
-	public int SelectionStart => Math.Min(mCaret, mAnchor);
-	public int SelectionLength => Math.Abs(mCaret - mAnchor);
+	public int SelectionStart
+	{
+		get => Math.Min(mCaret, mAnchor);
+		set
+		{
+			if (value < 0) Runtime.FatalError("SelectionStart must not be negative");
+			Select(value, SelectionLength);
+		}
+	}
+	public int SelectionLength
+	{
+		get => Math.Abs(mCaret - mAnchor);
+		set
+		{
+			if (value < 0) Runtime.FatalError("SelectionLength must not be negative");
+			Select(SelectionStart, value);
+		}
+	}
 	internal int Caret => mCaret;
 	internal int SelectionAnchor => mAnchor;
 	internal int32 ScrollX;
@@ -29,22 +45,24 @@ public class TextBoxBase : Control
 		set
 		{
 			base.Text = value;
-			mCaret = Math.Min(mCaret, Text.Length);
-			mAnchor = Math.Min(mAnchor, Text.Length);
+			mCaret = CharacterBoundary(mCaret);
+			mAnchor = CharacterBoundary(mAnchor);
+			UpdateBackend(.Selection);
 		}
 	}
 
 	public void Select(int start, int length)
 	{
-		mAnchor = Math.Clamp(start, 0, Text.Length);
-		mCaret = Math.Clamp(start + length, 0, Text.Length);
+		let position = Math.Clamp(start, 0, Text.Length);
+		mAnchor = CharacterBoundary(position);
+		mCaret = CharacterBoundary(position + Math.Clamp(length, -position, Text.Length - position));
 		UpdateBackend(.Selection);
 	}
 	public void SelectAll() => Select(0, Text.Length);
 
 	internal void SetCaret(int position, bool extend)
 	{
-		mCaret = Math.Clamp(position, 0, Text.Length);
+		mCaret = CharacterBoundary(position);
 		if (!extend)
 			mAnchor = mCaret;
 		UpdateBackend(.Selection);
@@ -54,6 +72,14 @@ public class TextBoxBase : Control
 	{
 		mAnchor = anchor;
 		mCaret = caret;
+	}
+
+	private int CharacterBoundary(int position)
+	{
+		var result = Math.Clamp(position, 0, Text.Length);
+		while (result > 0 && result < Text.Length && ((uint8)Text[result] & 0xC0) == 0x80)
+			result--;
+		return result;
 	}
 
 	internal int AdjacentPosition(int position, bool forward)

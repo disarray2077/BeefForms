@@ -19,6 +19,7 @@ extension Win32Backend
 	}
 	public override bool FocusControl(Control control)
 	{
+		if (!control.CanSelect) return false;
 		Win32.SetFocus(control.Handle);
 		return IsFocused(control);
 	}
@@ -39,6 +40,7 @@ extension Win32Backend
 				backend.mControls.Remove(window);
 			}
 			let result = Win32.DefSubclassProc(window, message, wParam, lParam);
+			if (message == Win32.WM_PAINT) control.NotifyPaint();
 			if (let editor = control as TextBoxBase)
 				backend.SynchronizeSelectionAfterMessage(editor, message);
 			return result;
@@ -71,21 +73,7 @@ extension Win32Backend
 	{
 		var root = focused;
 		while (root.Parent != null) root = root.Parent;
-		let controls = scope List<Control>();
-		CollectFocusable(root, controls);
-		controls.Sort(scope (a, b) => a.TabIndex <=> b.TabIndex);
-		if (controls.IsEmpty) return;
-		let index = controls.IndexOf(focused);
-		let next = index < 0 ? (backward ? controls.Count - 1 : 0)
-			: (index + controls.Count + (backward ? -1 : 1)) % controls.Count;
-		FocusControl(controls[next]);
-	}
-
-	private static void CollectFocusable(Control control, List<Control> controls)
-	{
-		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible) return;
-		if (control.TabStop && control.TabIndex >= 0) controls.Add(control);
-		for (let child in control.Controls) CollectFocusable(child, controls);
+		if (let next = Control.NextTabControl(root, focused, backward)) FocusControl(next);
 	}
 
 	private bool DispatchNativeInput(Control control, uint32 message, uint32* wParam, int32* lParam)
@@ -158,8 +146,7 @@ extension Win32Backend
 			control.DispatchInput(doubleClick ? .MouseDown : kind, args);
 			if (doubleClick && !args.Handled) control.DispatchInput(.MouseDoubleClick, args);
 			if (args.Handled) return true;
-			if ((kind == .MouseDown || doubleClick) && control.TabStop) FocusControl(control);
-			if (wheel && !(control is TextBoxBase)) return true;
+			if ((kind == .MouseDown || doubleClick) && control.CanSelect) FocusControl(control);
 		default:
 		}
 		return false;

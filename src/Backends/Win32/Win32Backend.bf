@@ -151,7 +151,10 @@ internal class Win32Backend : FormsBackend
 				UpdateScrolling(scrollable);
 		if (change == .Value || change == .All)
 			if (let progress = control as ProgressBar)
+			{
+				Win32.SendMessage(control.Handle, Win32.PBM_SETRANGE32, (uint*)(void*)progress.Minimum, (int*)(void*)progress.Maximum);
 				Win32.SendMessage(control.Handle, Win32.PBM_SETPOS, (uint*)(void*)progress.Value, null);
+			}
 		if (let editor = control as TextBoxBase)
 		{
 			if (change == .ReadOnly || change == .All)
@@ -210,9 +213,6 @@ internal class Win32Backend : FormsBackend
 		switch (message)
 		{
 		case Win32.WM_COMMAND: backend.HandleCommand(wParam, lParam);
-		case Win32.WM_SHOWWINDOW:
-			if (wParam != null)
-				form.NotifyLoad();
 		case Win32.WM_SIZE:
 			form.NotifyResize(backend.GetScrollClientSize(form));
 		case Win32.WM_MOVE:

@@ -19,6 +19,12 @@ extension SDLBackend
 			Math.Max(0, Math.Min(a.Y + a.Height, b.Y + b.Height) - y));
 	}
 
+	private static void InvalidateTree(Control control)
+	{
+		control.Invalidate();
+		for (let child in control.Controls) InvalidateTree(child);
+	}
+
 	private void RenderControl(Control control, Rectangle bounds, Rectangle parentClip)
 	{
 		if (!control.IsEffectivelyVisible) return;
@@ -41,7 +47,9 @@ extension SDLBackend
 		else if (let progress = control as ProgressBar)
 		{
 			mRenderer.Fill(bounds, 0.85f, 0.86f, 0.87f);
-			mRenderer.Fill(.(bounds.X + 2, bounds.Y + 2, Math.Max(0, (bounds.Width - 4) * (int32)Math.Clamp(progress.Value, 0, 100) / 100),
+			let range = progress.Maximum - progress.Minimum;
+			int32 width = range == 0 ? 0 : (int32)((int64)Math.Max(0, bounds.Width - 4) * (progress.Value - progress.Minimum) / range);
+			mRenderer.Fill(.(bounds.X + 2, bounds.Y + 2, width,
 				Math.Max(0, bounds.Height - 4)), 0.2f, 0.65f, 0.38f);
 			mRenderer.Border(bounds, 0.6f, 0.62f, 0.65f);
 		}
@@ -58,8 +66,7 @@ extension SDLBackend
 		else if (control.BorderStyle != .None)
 			mRenderer.Border(bounds, 0.7f, 0.7f, 0.72f);
 
-		if (let panel = control as Panel)
-			panel.Paint.Invoke(panel, scope .());
+		if (control.NeedsPaint) control.NotifyPaint();
 
 		let viewport = control.ViewportSize;
 		let childClip = Intersect(clip, .(bounds.X, bounds.Y, viewport.width, viewport.height));

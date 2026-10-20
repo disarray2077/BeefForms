@@ -98,6 +98,10 @@ class VisibilityTests
 		Test.Assert(!panel.VerticalScrollVisible && panel.ScrollPosition.y == 0);
 		child.Show();
 		Test.Assert(panel.VerticalScrollVisible);
+		panel.Hide();
+		panel.PerformLayout();
+		panel.Show();
+		Test.Assert(panel.VerticalScrollVisible);
 	}
 
 #if BF_PLATFORM_WINDOWS

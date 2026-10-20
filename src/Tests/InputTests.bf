@@ -46,7 +46,7 @@ class InputTests
 	}
 
 	[Test]
-	public static void MouseEventsBubbleInParentCoordinates()
+	public static void MouseEventsStayOnTheTargetControl()
 	{
 		let parent = scope Probe();
 		parent.Size = .(200, 100);
@@ -57,10 +57,10 @@ class InputTests
 		let args = scope MouseEventArgs(.Right, 1, 2, 3);
 		child.DispatchInput(.MouseDown, args);
 		Test.Assert(args.Source == child && args.X == 2 && args.Y == 3);
-		Test.Assert(parent.MouseCalls == 1 && parent.LastX == 32 && parent.LastY == 43);
+		Test.Assert(child.MouseCalls == 1 && parent.MouseCalls == 0);
 		child.ConsumeMouse = true;
 		child.DispatchInput(.MouseDown, args);
-		Test.Assert(parent.MouseCalls == 1 && args.Handled);
+		Test.Assert(child.MouseCalls == 2 && parent.MouseCalls == 0 && args.Handled);
 	}
 
 	[Test]

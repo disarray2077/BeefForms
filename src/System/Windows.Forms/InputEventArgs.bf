@@ -45,7 +45,12 @@ public class KeyEventArgs : InputEventArgs
 	public bool Shift => KeyData.HasFlag(.Shift);
 	public bool Control => KeyData.HasFlag(.Control);
 	public bool Alt => KeyData.HasFlag(.Alt);
-	public bool SuppressKeyPress;
+	private bool mSuppressKeyPress;
+	public bool SuppressKeyPress
+	{
+		get => mSuppressKeyPress;
+		set { mSuppressKeyPress = value; Handled = value; }
+	}
 	public this(Keys keyData) { KeyData = keyData; }
 }
 

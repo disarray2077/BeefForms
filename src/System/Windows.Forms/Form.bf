@@ -7,6 +7,16 @@ namespace System.Windows.Forms;
 
 public class Form : ContainerControl
 {
+	private bool mLoaded;
+	public bool KeyPreview { get; set; }
+
+	internal void NotifyLoad()
+	{
+		if (mLoaded) return;
+		mLoaded = true;
+		Load.Invoke(this, .Empty);
+	}
+
 	public override System.Drawing.Size ClientSize
 	{
 		get => IsHandleCreated ? Application.Backend.GetClientSize(this) : Size;
@@ -23,6 +33,7 @@ public class Form : ContainerControl
 	{
 		Visible = true;
 		CreateHandle();
+		NotifyLoad();
 		Application.Backend.Show(this);
 	}
 

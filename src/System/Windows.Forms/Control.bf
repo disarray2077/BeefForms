@@ -96,6 +96,7 @@ public class Control : System.ComponentModel.Component
 	private bool mEnabled = true;
 	private bool mAutoSize;
 	private bool mCreated;
+	internal bool NeedsPaint = true;
 
 	public ref Event<EventHandler> LocationChanged { get; set; } ~ _.Dispose();
 	public ref Event<EventHandler> SizeChanged { get; set; } ~ _.Dispose();
@@ -113,7 +114,7 @@ public class Control : System.ComponentModel.Component
 	protected internal virtual void ChildBoundsChanged() {}
 
 	public virtual Size ClientSize { get => Size; set => Size = value; }
-	public bool IsEffectivelyEnabled => Enabled && (Parent == null || Parent.IsEffectivelyEnabled);
+	public bool IsEffectivelyEnabled => Enabled;
 
 	public virtual String Text
 	{
@@ -173,7 +174,7 @@ public class Control : System.ComponentModel.Component
 
 	public bool Enabled
 	{
-		get => mEnabled;
+		get => mEnabled && (Parent == null || Parent.Enabled);
 		set { mEnabled = value; UpdateSubtree(.Enabled); }
 	}
 
@@ -202,8 +203,11 @@ public class Control : System.ComponentModel.Component
 
 	public void Invalidate() => UpdateBackend(.Paint);
 
+	protected internal virtual void NotifyPaint() => NeedsPaint = false;
+
 	internal void UpdateBackend(ControlChange change)
 	{
+		NeedsPaint = true;
 		if (mCreated)
 			Application.Backend.UpdateControl(this, change);
 	}
@@ -311,7 +315,6 @@ public class Control : System.ComponentModel.Component
 		mSize = size;
 		OnSizeChanged(.Empty);
 	}
-	internal void NotifyLoad() => Load.Invoke(this, .Empty);
 
 	protected internal virtual void CreateHandle()
 	{

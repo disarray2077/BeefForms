@@ -18,7 +18,8 @@ class Win32SelectionTests
 		let editor = new TextBox();
 		editor.Size = .(200, 30);
 		editor.Text = "aé😀z";
-		editor.Select(1, 6);
+		editor.SelectionStart = 1;
+		editor.SelectionLength = 6;
 		form.Controls.Add(editor);
 		form.Show();
 		defer { form.Close(); Application.Backend.Run(form); }

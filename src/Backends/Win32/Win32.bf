@@ -110,6 +110,9 @@ static class Win32
 
 	// Progress Bar Styles
 	public const uint PBM_SETPOS = 0x0402;
+	public const uint PBM_SETRANGE32 = 0x0406;
+	public const uint PBM_GETRANGE = 0x0407;
+	public const uint PBM_GETPOS = 0x0408;
 	public const uint PBS_SMOOTH = 0x01;
 
 	// DrawText flags

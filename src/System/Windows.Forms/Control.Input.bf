@@ -1,4 +1,5 @@
 using BeefForms.Backends;
+using System.Collections;
 
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
@@ -13,6 +14,8 @@ internal enum InputEventKind
 extension Control
 {
 	public bool TabStop { get; set; }
+	public bool CanSelect => CanSelectCore();
+	protected virtual bool CanSelectCore() => Visible && Enabled;
 	public bool Focused => IsHandleCreated && Application.Backend.IsFocused(this);
 	public bool IsMouseOver { get; private set; }
 	public bool Capture
@@ -24,7 +27,7 @@ extension Control
 				Application.Backend.SetCapture(this, value);
 		}
 	}
-	public bool Focus() => IsHandleCreated && IsEffectivelyEnabled && IsEffectivelyVisible && Application.Backend.FocusControl(this);
+	public bool Focus() => IsHandleCreated && CanSelect && Application.Backend.FocusControl(this);
 
 	public ref Event<MouseEventHandler> MouseDown { get; set; } ~ _.Dispose();
 	public ref Event<MouseEventHandler> MouseUp { get; set; } ~ _.Dispose();
@@ -73,6 +76,17 @@ extension Control
 	{
 		if (args.Source == null)
 			args.Source = this;
+		if (kind == .KeyDown || kind == .KeyUp || kind == .KeyPress)
+		{
+			var root = this;
+			while (root.Parent != null) root = root.Parent;
+			if (let form = root as Form)
+				if (form != this && form.KeyPreview)
+				{
+					form.DispatchInput(kind, args);
+					if (args.Handled) return;
+				}
+		}
 		switch (kind)
 		{
 		case .MouseDown: OnMouseDown((MouseEventArgs)args);
@@ -85,20 +99,50 @@ extension Control
 		case .KeyPress: OnKeyPress((KeyPressEventArgs)args);
 		case .TextInput: OnTextInput((TextInputEventArgs)args);
 		}
-		if (args.Handled || Parent == null)
-			return;
-		if (let mouse = args as MouseEventArgs)
+	}
+
+	// Unhandled wheel input is forwarded to parent windows in WinForms.
+	internal void DispatchMouseWheel(MouseEventArgs args)
+	{
+		DispatchInput(.MouseWheel, args);
+		if (args.Handled || Parent == null) return;
+		let x = Location.x - Parent.ContentOffset.x;
+		let y = Location.y - Parent.ContentOffset.y;
+		args.X += x;
+		args.Y += y;
+		Parent.DispatchMouseWheel(args);
+		args.X -= x;
+		args.Y -= y;
+	}
+
+	internal static Control NextTabControl(Control root, Control focused, bool backward)
+	{
+		let controls = scope List<Control>();
+		CollectTabControls(root, controls);
+		if (controls.IsEmpty) return null;
+		let index = controls.IndexOf(focused);
+		let next = index < 0 ? (backward ? controls.Count - 1 : 0)
+			: (index + controls.Count + (backward ? -1 : 1)) % controls.Count;
+		return controls[next];
+	}
+
+	private static void CollectTabControls(Control parent, List<Control> controls)
+	{
+		if (!parent.Visible || !parent.Enabled) return;
+		let children = scope List<Control>();
+		for (let child in parent.Controls) children.Add(child);
+		children.Sort(scope (a, b) =>
 		{
-			let offsetX = Location.x - Parent.ContentOffset.x;
-			let offsetY = Location.y - Parent.ContentOffset.y;
-			mouse.X += offsetX;
-			mouse.Y += offsetY;
-			Parent.DispatchInput(kind, args);
-			mouse.X -= offsetX;
-			mouse.Y -= offsetY;
+			let order = a.TabIndex <=> b.TabIndex;
+			// The last child is at the front of our sibling z-order.
+			return order != 0 ? order : parent.Controls.IndexOf(b) <=> parent.Controls.IndexOf(a);
+		});
+		for (let child in children)
+		{
+			if (!child.Visible || !child.Enabled) continue;
+			if (child.TabStop && child.TabIndex >= 0 && child.CanSelect) controls.Add(child);
+			CollectTabControls(child, controls);
 		}
-		else
-			Parent.DispatchInput(kind, args);
 	}
 
 	internal void NotifyFocus(bool focused)

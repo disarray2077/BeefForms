@@ -11,7 +11,7 @@ namespace BeefForms.Tests;
 class ScrollingTests
 {
 	[Test]
-	public static void ScrollRangeTracksContentAndBubblesAtTheLimit()
+	public static void ScrollRangeTracksContentAndForwardsWheelInputAtTheLimit()
 	{
 		let outer = scope Panel();
 		outer.Size = .(200, 100);
@@ -23,11 +23,11 @@ class ScrollingTests
 		outer.Controls.Add(inner);
 
 		let wheel = scope MouseEventArgs(.None, 0, 10, 10, -120);
-		inner.DispatchInput(.MouseWheel, wheel);
+		inner.DispatchMouseWheel(wheel);
 		Test.Assert(inner.ScrollPosition.y == 48 && outer.ScrollPosition.y == 0);
 		inner.ScrollPosition = .(0, int32.MaxValue);
 		wheel.Handled = false;
-		inner.DispatchInput(.MouseWheel, wheel);
+		inner.DispatchMouseWheel(wheel);
 		Test.Assert(outer.ScrollPosition.y == 48);
 		inner.AutoScrollMinSize = .(0, 0);
 		Test.Assert(inner.ScrollPosition.y == 0 && !inner.VerticalScrollVisible);
@@ -114,6 +114,9 @@ class ScrollingTests
 		Win32.GetWindowRect(child.Handle, var after);
 		Test.Assert(panel.ScrollPosition.y == 16 && after.top == before.top - 16);
 		Test.Assert(child.Location.y == 180);
+		let beforeWheel = panel.ScrollPosition.y;
+		Win32.SendMessage(child.Handle, Win32.WM_MOUSEWHEEL, (uint*)(void*)(-120 << 16), null);
+		Test.Assert(panel.ScrollPosition.y > beforeWheel);
 		panel.AutoScroll = false;
 		Test.Assert(panel.ScrollPosition.y == 0 && !panel.VerticalScrollVisible);
 	}

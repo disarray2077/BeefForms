@@ -72,7 +72,7 @@ public class ScrollableControl : Control
 		if (mAutoScroll)
 			for (let child in Controls)
 			{
-				if (!child.Visible) continue;
+				if (!child.LocallyVisible) continue;
 				mContentSize.width = Math.Max(mContentSize.width, child.Location.x + child.Size.width);
 				mContentSize.height = Math.Max(mContentSize.height, child.Location.y + child.Size.height);
 			}

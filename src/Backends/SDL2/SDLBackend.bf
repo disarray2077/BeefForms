@@ -147,7 +147,6 @@ internal class SDLBackend : FormsBackend
 		SDL.ShowWindow(mWindow);
 		SetActive(SDL.GetKeyboardFocus() == mWindow);
 		mRunning = true;
-		form.NotifyLoad();
 	}
 	public override void Close(Form form) => mRunning = false;
 

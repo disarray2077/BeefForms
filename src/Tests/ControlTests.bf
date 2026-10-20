@@ -72,4 +72,57 @@ class ControlTests
 		editor.ReplaceSelection("changed");
 		Test.Assert(editor.Text == "hello");
 	}
+
+	[Test]
+	public static void VisibilityAndEnabledInheritWithoutChangingLocalState()
+	{
+		let parent = scope Panel();
+		let button = new Button();
+		parent.Controls.Add(button);
+		int clicks = 0;
+		button.Click.Add(new [&] (sender, args) => { clicks++; });
+		parent.Visible = false;
+		Test.Assert(!button.Visible && !button.CanSelect);
+		button.PerformClick();
+		parent.Visible = true;
+		parent.Enabled = false;
+		Test.Assert(!button.Enabled);
+		button.PerformClick();
+		parent.Enabled = true;
+		button.TabStop = false;
+		button.PerformClick();
+		Test.Assert(button.Visible && button.Enabled && clicks == 1);
+		button.Visible = false;
+		button.Enabled = false;
+		parent.Hide();
+		parent.Show();
+		parent.Enabled = false;
+		parent.Enabled = true;
+		Test.Assert(!button.Visible && !button.Enabled);
+	}
+
+	[Test]
+	public static void SelectionSettersAndTextChangesKeepUTF8Boundaries()
+	{
+		let editor = scope TextBox();
+		editor.Text = "aé😀z";
+		editor.SelectionStart = 1;
+		editor.SelectionLength = 6;
+		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 6);
+		editor.ReplaceSelection("x");
+		Test.Assert(editor.Text == "axz");
+		editor.Text = "aé😀z";
+		editor.Select(2, 3);
+		editor.ReplaceSelection("x");
+		Test.Assert(editor.Text == "ax😀z");
+		editor.SetCaret(4, false);
+		editor.Text = "éé";
+		Test.Assert(editor.SelectionStart == 2);
+		editor.DeleteText(true);
+		Test.Assert(editor.Text == "é");
+		editor.SelectionStart = int.MaxValue;
+		editor.SelectionLength = int.MaxValue;
+		Test.Assert(editor.SelectionStart == editor.Text.Length && editor.SelectionLength == 0);
+	}
+
 }

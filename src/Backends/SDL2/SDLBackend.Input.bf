@@ -50,7 +50,7 @@ extension SDLBackend
 
 	public override bool FocusControl(Control control)
 	{
-		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible)
+		if (!control.CanSelect)
 			return false;
 		Focus(control);
 		return true;
@@ -111,27 +111,9 @@ extension SDLBackend
 		UpdateHover();
 	}
 
-	private static void CollectFocusable(Control control, List<Control> controls)
-	{
-		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible)
-			return;
-		if (control.TabIndex >= 0 && control.TabStop)
-			controls.Add(control);
-		for (let child in control.Controls)
-			CollectFocusable(child, controls);
-	}
-
 	private void AdvanceFocus(bool backward)
 	{
-		let controls = scope List<Control>();
-		CollectFocusable(mForm, controls);
-		controls.Sort(scope (a, b) => a.TabIndex <=> b.TabIndex);
-		if (controls.IsEmpty)
-			return;
-		let index = controls.IndexOf(mFocused);
-		let next = index < 0 ? (backward ? controls.Count - 1 : 0)
-			: (index + controls.Count + (backward ? -1 : 1)) % controls.Count;
-		Focus(controls[next]);
+		if (let next = Control.NextTabControl(mForm, mFocused, backward)) Focus(next);
 	}
 
 	private static MouseButtons MouseButton(uint8 button)
@@ -156,6 +138,7 @@ extension SDLBackend
 			switch (input.window.windowEvent)
 			{
 			case .Close: mRunning = false;
+			case .Exposed: InvalidateTree(mForm);
 			case .SizeChanged: mForm.NotifyResize(GetClientSize(mForm));
 			case .Moved:
 				SDL.GetWindowPosition(mWindow, var x, var y);
@@ -198,7 +181,7 @@ extension SDLBackend
 			if (args.Button == .Left && !args.Handled)
 			{
 				mPressed = target;
-				Focus(target.TabStop ? target : null);
+				Focus(target.CanSelect ? target : null);
 				if (mCaptured == null)
 				{
 					SetCapture(target, true);
@@ -243,7 +226,7 @@ extension SDLBackend
 				let point = PositionIn(target, x, y);
 				let direction = input.wheel.direction == 1 ? -120 : 120;
 				let args = scope MouseEventArgs(.None, 0, point.x, point.y, (int32)(input.wheel.y * direction), (int32)(input.wheel.x * direction));
-				target.DispatchInput(.MouseWheel, args);
+				target.DispatchMouseWheel(args);
 			}
 		case .TextInput:
 			if (!mActive || mSuppressTextInput) break;

@@ -8,7 +8,7 @@ extension Control
 
 	public bool Visible
 	{
-		get => mVisible;
+		get => mVisible && (Parent == null || Parent.Visible);
 		set
 		{
 			if (mVisible == value) return;
@@ -18,7 +18,8 @@ extension Control
 			VisibleChanged.Invoke(this, .Empty);
 		}
 	}
-	public bool IsEffectivelyVisible => Visible && (Parent == null || Parent.IsEffectivelyVisible);
+	public bool IsEffectivelyVisible => Visible;
+	internal bool LocallyVisible => mVisible;
 	public ref Event<EventHandler> VisibleChanged { get; set; } ~ _.Dispose();
 
 	public virtual void Show() => Visible = true;
