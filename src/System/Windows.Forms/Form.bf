@@ -19,8 +19,9 @@ public class Form : ContainerControl
 		}
 	}
 
-	public void Show()
+	public override void Show()
 	{
+		Visible = true;
 		CreateHandle();
 		Application.Backend.Show(this);
 	}

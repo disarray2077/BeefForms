@@ -13,7 +13,7 @@ extension SDLBackend
 {
 	private Control HitTest(Control control, int x, int y)
 	{
-		if (!control.IsEffectivelyEnabled || x < 0 || y < 0 || x >= control.Size.width || y >= control.Size.height)
+		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible || x < 0 || y < 0 || x >= control.Size.width || y >= control.Size.height)
 			return null;
 		if (x >= control.ViewportSize.width || y >= control.ViewportSize.height)
 			return control;
@@ -49,7 +49,7 @@ extension SDLBackend
 
 	public override bool FocusControl(Control control)
 	{
-		if (!control.IsEffectivelyEnabled)
+		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible)
 			return false;
 		Focus(control);
 		return true;
@@ -81,7 +81,7 @@ extension SDLBackend
 
 	private static void CollectFocusable(Control control, List<Control> controls)
 	{
-		if (!control.IsEffectivelyEnabled)
+		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible)
 			return;
 		if (control.TabIndex >= 0 && control.TabStop)
 			controls.Add(control);
@@ -157,6 +157,7 @@ extension SDLBackend
 			let point = PositionIn(target, input.button.x, input.button.y);
 			let args = scope MouseEventArgs(MouseButton(input.button.button), input.button.clicks, point.x, point.y);
 			target.DispatchInput(.MouseDown, args);
+			if (!target.IsEffectivelyVisible || !target.IsEffectivelyEnabled) break;
 			if (args.Clicks >= 2 && !args.Handled)
 				target.DispatchInput(.MouseDoubleClick, args);
 			if (args.Button == .Left && !args.Handled)
@@ -198,7 +199,7 @@ extension SDLBackend
 		case .TextInput:
 			if (mSuppressTextInput) break;
 			let target = mFocused ?? mForm;
-			if (!target.IsEffectivelyEnabled) break;
+			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			let text = scope String((char8*)&input.text.text);
 			let args = scope TextInputEventArgs(text);
 			target.DispatchInput(.TextInput, args);
@@ -214,7 +215,7 @@ extension SDLBackend
 				if (!accepted.IsEmpty) editor.ReplaceSelection(accepted);
 		case .KeyDown:
 			let target = mFocused ?? mForm;
-			if (!target.IsEffectivelyEnabled) break;
+			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			let args = scope KeyEventArgs(TranslateKey(input.key));
 			target.DispatchInput(.KeyDown, args);
 			mSuppressTextInput = args.SuppressKeyPress;
@@ -222,7 +223,7 @@ extension SDLBackend
 				DefaultKeyDown(input.key);
 		case .KeyUp:
 			let target = mFocused ?? mForm;
-			if (!target.IsEffectivelyEnabled) break;
+			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			let args = scope KeyEventArgs(TranslateKey(input.key));
 			target.DispatchInput(.KeyUp, args);
 			mSuppressTextInput = false;
@@ -276,7 +277,7 @@ extension SDLBackend
 			AdvanceFocus(shift);
 			return;
 		}
-		if (mFocused == null || !mFocused.IsEffectivelyEnabled)
+		if (mFocused == null || !mFocused.IsEffectivelyEnabled || !mFocused.IsEffectivelyVisible)
 			return;
 		if (let button = mFocused as Button)
 		{

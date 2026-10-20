@@ -21,12 +21,15 @@ extension SDLBackend
 
 	private void RenderControl(Control control, Rectangle bounds, Rectangle parentClip)
 	{
+		if (!control.IsEffectivelyVisible) return;
 		var clip = Intersect(bounds, parentClip);
 		if (clip.Width == 0 || clip.Height == 0)
 			return;
 		mRenderer.Clip(clip);
 		let enabled = control.IsEffectivelyEnabled;
 		let lineHeight = mRenderer.LineHeight(control);
+		if (control is ScrollableControl || control is GroupBox)
+			mRenderer.Fill(bounds, 0.94f, 0.94f, 0.95f);
 		if (control is Button)
 		{
 			let shade = !enabled ? 0.89f : control == mPressed && control == mHovered ? 0.73f : control == mHovered ? 0.85f : 0.91f;

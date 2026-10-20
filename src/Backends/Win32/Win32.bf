@@ -69,6 +69,7 @@ static class Win32
 	public const uint WS_BORDER = 0x00800000;
 	public const uint WS_VSCROLL = 0x00200000;
 	public const uint WS_HSCROLL = 0x00100000;
+	public const uint WS_CLIPSIBLINGS = 0x04000000;
 	public const uint WS_CLIPCHILDREN = 0x02000000;
 	public const uint WS_TABSTOP = 0x00010000;
 
@@ -228,6 +229,10 @@ static class Win32
 	}
 
 	// Functions
+	[Import("user32.dll"), CLink]
+	public static extern bool IsWindowVisible(void* window);
+	[Import("user32.dll"), CLink]
+	public static extern void* GetWindow(void* window, uint32 command);
 	[Import("user32.dll"), LinkName("GetMessageA")]
 	public static extern int GetMessage(out MSG lpMsg, void* hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
 	[Import("user32.dll"), CLink]

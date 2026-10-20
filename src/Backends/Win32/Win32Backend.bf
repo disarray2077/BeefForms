@@ -35,7 +35,8 @@ internal class Win32Backend : FormsBackend
 	{
 		if (control is Form)
 			return Win32.WS_OVERLAPPEDWINDOW | Win32.WS_CLIPCHILDREN;
-		uint style = Win32.WS_CHILD | Win32.WS_VISIBLE;
+		uint style = Win32.WS_CHILD | Win32.WS_CLIPCHILDREN | Win32.WS_CLIPSIBLINGS;
+		if (control.IsEffectivelyVisible) style |= Win32.WS_VISIBLE;
 		if (control.TabIndex >= 0 && control.TabStop)
 			style |= Win32.WS_TABSTOP;
 		if (control is GroupBox)
@@ -105,6 +106,25 @@ internal class Win32Backend : FormsBackend
 	{
 		if (control.Handle == null)
 			return;
+		if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)
+		{
+			if (mControls.TryGetValue(Win32.GetFocus(), let focused) && Control.IsAncestorOf(control, focused))
+				Win32.SetFocus(null);
+			if (mControls.TryGetValue(Win32.GetCapture(), let captured) && Control.IsAncestorOf(control, captured))
+				Win32.ReleaseCapture();
+			if (Control.IsAncestorOf(control, mHovered))
+			{
+				Control.UpdateMouseOver(mHovered, null);
+				mHovered = null;
+			}
+		}
+		if (change == .Visibility || (change == .All && !(control is Form)))
+			Win32.ShowWindow(control.Handle, control.IsEffectivelyVisible ? Win32.SW_SHOW : Win32.SW_HIDE);
+		if (change == .ZOrder && control.Parent != null)
+			for (let child in control.Parent.Controls)
+				if (child.Handle != null)
+					Win32.SetWindowPos(child.Handle, null, 0, 0, 0, 0,
+						Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOACTIVATE);
 		if (change == .Text || change == .All)
 			Win32.SetWindowText(control.Handle, control.Text.CStr());
 		if (change == .Font || change == .All)

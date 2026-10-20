@@ -95,8 +95,20 @@ internal class SDLBackend : FormsBackend
 
 	public override void UpdateControl(Control control, ControlChange change)
 	{
+		if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)
+		{
+			if (Control.IsAncestorOf(control, mFocused)) Focus(null);
+			if (Control.IsAncestorOf(control, mCaptured)) SetCapture(mCaptured, false);
+			if (Control.IsAncestorOf(control, mPressed)) mPressed = null;
+			if (Control.IsAncestorOf(control, mHovered)) Hover(null);
+		}
 		if (control == mForm && mWindow != null)
 		{
+			if (change == .Visibility)
+			{
+				if (control.Visible) SDL.ShowWindow(mWindow);
+				else SDL.HideWindow(mWindow);
+			}
 			if (change == .Text)
 				SDL.SetWindowTitle(mWindow, control.Text);
 			if (change == .Bounds)

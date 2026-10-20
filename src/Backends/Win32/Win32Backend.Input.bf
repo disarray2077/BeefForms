@@ -85,7 +85,7 @@ extension Win32Backend
 
 	private static void CollectFocusable(Control control, List<Control> controls)
 	{
-		if (!control.IsEffectivelyEnabled) return;
+		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible) return;
 		if (control.TabStop && control.TabIndex >= 0) controls.Add(control);
 		for (let child in control.Controls) CollectFocusable(child, controls);
 	}

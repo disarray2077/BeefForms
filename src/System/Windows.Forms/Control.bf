@@ -8,7 +8,7 @@ namespace System.Windows.Forms;
 
 internal enum ControlChange
 {
-	Paint, Text, Font, Bounds, Enabled, Value, ReadOnly, Selection, Scroll, All
+	Paint, Text, Font, Bounds, Enabled, Value, ReadOnly, Selection, Scroll, Visibility, ZOrder, All
 }
 
 public class Control : System.ComponentModel.Component
@@ -27,6 +27,15 @@ public class Control : System.ComponentModel.Component
 			if (mOwner.IsHandleCreated)
 				value.CreateHandle();
 			mOwner.PerformLayout();
+		}
+		internal void SetZOrder(Control value, bool front)
+		{
+			let index = IndexOf(value);
+			if (index < 0 || index == (front ? Count - 1 : 0)) return;
+			base.RemoveAt(index);
+			if (front) base.Add(value);
+			else base.Insert(0, value);
+			value.UpdateBackend(.ZOrder);
 		}
 	}
 
@@ -116,7 +125,7 @@ public class Control : System.ComponentModel.Component
 	public bool Enabled
 	{
 		get => mEnabled;
-		set { mEnabled = value; UpdateBackend(.Enabled); }
+		set { mEnabled = value; UpdateSubtree(.Enabled); }
 	}
 
 	public String Name { get; set; }

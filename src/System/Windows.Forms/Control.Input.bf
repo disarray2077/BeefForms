@@ -18,9 +18,13 @@ extension Control
 	public bool Capture
 	{
 		get => IsHandleCreated && Application.Backend.HasCapture(this);
-		set { if (IsHandleCreated) Application.Backend.SetCapture(this, value); }
+		set
+		{
+			if (IsHandleCreated && (!value || (IsEffectivelyVisible && IsEffectivelyEnabled)))
+				Application.Backend.SetCapture(this, value);
+		}
 	}
-	public bool Focus() => IsHandleCreated && IsEffectivelyEnabled && Application.Backend.FocusControl(this);
+	public bool Focus() => IsHandleCreated && IsEffectivelyEnabled && IsEffectivelyVisible && Application.Backend.FocusControl(this);
 
 	public ref Event<MouseEventHandler> MouseDown { get; set; } ~ _.Dispose();
 	public ref Event<MouseEventHandler> MouseUp { get; set; } ~ _.Dispose();
