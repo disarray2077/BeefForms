@@ -37,13 +37,14 @@ extension SDLBackend
 		return result;
 	}
 
-	public override bool IsFocused(Control control) => mFocused == control;
+	public override bool IsFocused(Control control) => mActive && mFocused == control;
 	public override bool HasCapture(Control control) => mCaptured == control;
 	public override void SetCapture(Control control, bool capture)
 	{
 		if (!capture && mCaptured != control)
 			return;
 		mCaptured = capture ? control : null;
+		mAutomaticCapture = false;
 		SDL.CaptureMouse(capture ? .True : .False);
 	}
 
@@ -57,20 +58,38 @@ extension SDLBackend
 
 	private void Focus(Control control)
 	{
-		if (mFocused == control)
-			return;
-		mFocused?.NotifyFocus(false);
+		if (mFocused == control) return;
+		if (mActive) mFocused?.NotifyFocus(false);
 		mFocused = control;
-		if (mFocused is TextBoxBase)
+		UpdateTextInput();
+		if (mActive) mFocused?.NotifyFocus(true);
+	}
+
+	private void SetActive(bool active)
+	{
+		if (!active)
+		{
+			mSuppressTextInput = false;
+			mPressed = null;
+			if (mCaptured != null) SetCapture(mCaptured, false);
+		}
+		if (mActive == active) return;
+		mActive = active;
+		UpdateTextInput();
+		mFocused?.NotifyFocus(active);
+	}
+
+	private void UpdateTextInput()
+	{
+		if (mActive && mFocused is TextBoxBase)
 		{
 			SDL.StartTextInput();
-			let point = PositionIn(control, 0, 0);
-			SDL.Rect input = .(-point.x, -point.y, control.Size.width, control.Size.height);
+			let point = PositionIn(mFocused, 0, 0);
+			SDL.Rect input = .(-point.x, -point.y, mFocused.Size.width, mFocused.Size.height);
 			SDL.SetTextInputRect(&input);
 		}
 		else
 			SDL.StopTextInput();
-		mFocused?.NotifyFocus(true);
 	}
 
 	private void Hover(Control control)
@@ -128,10 +147,8 @@ extension SDLBackend
 			case .Moved:
 				SDL.GetWindowPosition(mWindow, var x, var y);
 				mForm.NotifyMove(.(x, y));
-			case .Focus_lost:
-				mPressed = null;
-				if (mCaptured != null) SetCapture(mCaptured, false);
-				Focus(null);
+			case .Focus_lost: SetActive(false);
+			case .FocusGained: SetActive(true);
 			case .Leave: Hover(null);
 			default:
 			}
@@ -164,7 +181,11 @@ extension SDLBackend
 			{
 				mPressed = target;
 				Focus(target.TabStop ? target : null);
-				SetCapture(target, true);
+				if (mCaptured == null)
+				{
+					SetCapture(target, true);
+					mAutomaticCapture = true;
+				}
 				if (let editor = target as TextBoxBase)
 				{
 					if (args.Clicks >= 2) editor.SelectAll();
@@ -182,38 +203,39 @@ extension SDLBackend
 			{
 				let pressed = mPressed;
 				mPressed = null;
-				if (mCaptured != null) SetCapture(mCaptured, false);
+				if (mAutomaticCapture && mCaptured == pressed) SetCapture(mCaptured, false);
 				if (!args.Handled && hit == pressed)
 					if (let button = hit as Button)
 						button.PerformClick();
 			}
 		case .MouseWheel:
-			let target = HitTest(mForm, input.wheel.mouseX, input.wheel.mouseY);
+			int32 x, y;
+			if (mWheelHasPosition)
+			{
+				x = input.wheel.mouseX;
+				y = input.wheel.mouseY;
+			}
+			else
+				SDL.GetMouseState(out x, out y);
+			let target = HitTest(mForm, x, y);
 			if (target != null)
 			{
-				let point = PositionIn(target, input.wheel.mouseX, input.wheel.mouseY);
+				let point = PositionIn(target, x, y);
 				let direction = input.wheel.direction == 1 ? -120 : 120;
 				let args = scope MouseEventArgs(.None, 0, point.x, point.y, (int32)(input.wheel.y * direction), (int32)(input.wheel.x * direction));
 				target.DispatchInput(.MouseWheel, args);
 			}
 		case .TextInput:
-			if (mSuppressTextInput) break;
+			if (!mActive || mSuppressTextInput) break;
 			let target = mFocused ?? mForm;
 			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			let text = scope String((char8*)&input.text.text);
-			let args = scope TextInputEventArgs(text);
-			target.DispatchInput(.TextInput, args);
-			if (args.Handled) break;
 			let accepted = scope String();
-			for (let character in args.Text.DecodedChars)
-			{
-				let press = scope KeyPressEventArgs(character);
-				target.DispatchInput(.KeyPress, press);
-				if (!press.Handled) accepted.Append(press.KeyChar);
-			}
+			target.FilterTextInput(text, accepted);
 			if (let editor = target as TextBoxBase)
 				if (!accepted.IsEmpty) editor.ReplaceSelection(accepted);
 		case .KeyDown:
+			if (!mActive) break;
 			let target = mFocused ?? mForm;
 			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			let args = scope KeyEventArgs(TranslateKey(input.key));
@@ -222,6 +244,7 @@ extension SDLBackend
 			if (!args.Handled && !args.SuppressKeyPress)
 				DefaultKeyDown(input.key);
 		case .KeyUp:
+			if (!mActive) break;
 			let target = mFocused ?? mForm;
 			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			let args = scope KeyEventArgs(TranslateKey(input.key));

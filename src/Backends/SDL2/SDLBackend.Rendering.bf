@@ -34,7 +34,7 @@ extension SDLBackend
 		{
 			let shade = !enabled ? 0.89f : control == mPressed && control == mHovered ? 0.73f : control == mHovered ? 0.85f : 0.91f;
 			mRenderer.Fill(bounds, shade, shade, shade + 0.02f);
-			mRenderer.Border(bounds, control == mFocused ? 0.2f : 0.6f, 0.5f, 0.7f);
+			mRenderer.Border(bounds, IsFocused(control) ? 0.2f : 0.6f, 0.5f, 0.7f);
 			let textWidth = mRenderer.Measure(control, control.Text);
 			mRenderer.Text(control, bounds.X + (bounds.Width - textWidth) / 2, bounds.Y + (bounds.Height - lineHeight) / 2);
 		}
@@ -89,11 +89,11 @@ extension SDLBackend
 	private void RenderEditor(TextBoxBase editor, Rectangle bounds, Rectangle parentClip)
 	{
 		mRenderer.Fill(bounds, editor.ReadOnly ? 0.96f : 1, editor.ReadOnly ? 0.96f : 1, 1);
-		mRenderer.Border(bounds, editor == mFocused ? 0.2f : 0.65f, 0.5f, 0.7f);
+		mRenderer.Border(bounds, IsFocused(editor) ? 0.2f : 0.65f, 0.5f, 0.7f);
 		let clip = Intersect(parentClip, .(bounds.X + 2, bounds.Y + 2, Math.Max(0, bounds.Width - 4), Math.Max(0, bounds.Height - 4)));
 		mRenderer.Clip(clip);
 		let caret = mRenderer.TextPosition(editor, editor.Caret);
-		if (editor == mFocused)
+		if (IsFocused(editor))
 		{
 			editor.ScrollX = Math.Max(0, Math.Max(caret.x - bounds.Width + 10, Math.Min(editor.ScrollX, caret.x)));
 			editor.ScrollY = Math.Max(0, Math.Max(caret.y + mRenderer.LineHeight(editor) - bounds.Height + 8, Math.Min(editor.ScrollY, caret.y)));

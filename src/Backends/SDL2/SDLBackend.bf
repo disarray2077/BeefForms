@@ -18,6 +18,9 @@ internal class SDLBackend : FormsBackend
 	private Form mForm;
 	private Control mFocused, mPressed, mHovered;
 	private Control mCaptured;
+	private bool mAutomaticCapture;
+	private bool mActive;
+	private bool mWheelHasPosition;
 	private bool mSuppressTextInput;
 	private bool mInitialized, mRunning;
 	public int FrameLimit;
@@ -44,6 +47,8 @@ internal class SDLBackend : FormsBackend
 			if (SDL.InitSubSystem(.Video) != 0 || SDLTTF.Init() != 0)
 				Runtime.FatalError(scope $"Could not initialize SDL: {StringView(SDL.GetError())}");
 			mInitialized = true;
+			SDL.GetVersion(var version);
+			mWheelHasPosition = version.major > 2 || version.minor >= 26;
 		}
 		mForm = (Form)control;
 		SDL.GL_SetAttribute(.GL_CONTEXT_MAJOR_VERSION, 3);
@@ -76,6 +81,8 @@ internal class SDLBackend : FormsBackend
 		mContext = default;
 		SDL.DestroyWindow(mWindow);
 		mWindow = null;
+		mActive = false;
+		mSuppressTextInput = false;
 	}
 
 	public override void DestroyControl(Control control)
@@ -132,6 +139,7 @@ internal class SDLBackend : FormsBackend
 	public override void Show(Form form)
 	{
 		SDL.ShowWindow(mWindow);
+		SetActive(SDL.GetKeyboardFocus() == mWindow);
 		mRunning = true;
 		form.NotifyLoad();
 	}

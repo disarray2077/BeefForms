@@ -75,7 +75,7 @@ class InputTests
 		form.Controls.Add(probe);
 		form.Show();
 		let backend = (SDLBackend)Application.Backend;
-		backend.ProcessEvents();
+		SDLTestInput.Activate(backend);
 		Test.Assert(probe.Focus() && probe.Focused);
 		probe.Capture = true;
 		SDL.Event input = .();
@@ -114,7 +114,7 @@ class InputTests
 		form.Controls.Add(editor);
 		form.Show();
 		let backend = (SDLBackend)Application.Backend;
-		backend.ProcessEvents();
+		SDLTestInput.Activate(backend);
 		editor.Focus();
 		SDL.Event input = .();
 		input.type = .TextInput;

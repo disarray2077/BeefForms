@@ -64,7 +64,7 @@ internal class Win32Backend : FormsBackend
 		if (!mRegistered)
 		{
 			Win32.WNDCLASSEX definition = .(
-				sizeof(Win32.WNDCLASSEX), 0, => WindowProc, 0, 0, Win32.GetModuleHandle(null),
+				sizeof(Win32.WNDCLASSEX), Win32.CS_DBLCLKS, => WindowProc, 0, 0, Win32.GetModuleHandle(null),
 				null, Win32.LoadCursor(null, (int*)(void*)32512), (void*)16, null, (char16*)&Win32.FORM_CLASS, null);
 			Win32.RegisterClassEx(definition);
 			mRegistered = true;

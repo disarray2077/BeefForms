@@ -62,6 +62,7 @@ static class Win32
 	public const uint WM_USER = 0x0400;
 
 	// Window Styles
+	public const uint CS_DBLCLKS = 0x0008;
 	public const uint WS_GROUP = 0x00020000;
 	public const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
 	public const uint WS_CHILD = 0x40000000;
@@ -133,6 +134,7 @@ static class Win32
 	public const int GWLP_WNDPROC = -4;
 	public const int GWL_STYLE = -16;
 	public const int GWL_EXSTYLE = -20;
+	public const int GCL_STYLE = -26;
 
 	// Stock Objects
 	public const int DEFAULT_GUI_FONT = 17;
@@ -246,6 +248,8 @@ static class Win32
 	public static extern bool IsWindowVisible(void* window);
 	[Import("user32.dll"), CLink]
 	public static extern void* GetWindow(void* window, uint32 command);
+	[Import("user32.dll"), LinkName("GetClassLongW")]
+	public static extern uint32 GetClassLong(void* window, int32 index);
 	[Import("user32.dll"), LinkName("GetMessageW")]
 	public static extern int GetMessage(out MSG lpMsg, void* hWnd, uint wMsgFilterMin, uint wMsgFilterMax);
 	[Import("user32.dll"), CLink]

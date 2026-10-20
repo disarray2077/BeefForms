@@ -151,11 +151,14 @@ extension Win32Backend
 				Win32.TrackMouseEvent(ref tracking);
 			}
 			let delta = wheel ? (int16)(((uint)(void*)wParam >> 16) & 0xFFFF) : 0;
-			let args = scope MouseEventArgs(button, kind == .MouseDoubleClick ? 2 : 1, point.x, point.y,
+			let doubleClick = kind == .MouseDoubleClick;
+			int32 clicks = doubleClick ? 2 : ((kind == .MouseMove || wheel) ? 0 : 1);
+			let args = scope MouseEventArgs(button, clicks, point.x, point.y,
 				message == Win32.WM_MOUSEWHEEL ? delta : 0, message == Win32.WM_MOUSEHWHEEL ? delta : 0);
-			control.DispatchInput(kind, args);
+			control.DispatchInput(doubleClick ? .MouseDown : kind, args);
+			if (doubleClick && !args.Handled) control.DispatchInput(.MouseDoubleClick, args);
 			if (args.Handled) return true;
-			if (kind == .MouseDown && control.TabStop) FocusControl(control);
+			if ((kind == .MouseDown || doubleClick) && control.TabStop) FocusControl(control);
 			if (wheel && !(control is TextBoxBase)) return true;
 		default:
 		}

@@ -93,6 +93,7 @@ class SDLBackendTests
 			form.Show();
 			let backend = (SDLBackend)Application.Backend;
 			backend.FrameLimit = 2;
+			SDLTestInput.Activate(backend);
 			PushClick(20, 20);
 			PushClick(240, 80);
 			PushClick(20, 110);

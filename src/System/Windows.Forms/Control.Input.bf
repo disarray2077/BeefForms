@@ -37,7 +37,9 @@ extension Control
 	public ref Event<EventHandler> MouseLeave { get; set; } ~ _.Dispose();
 	public ref Event<EventHandler> GotFocus { get; set; } ~ _.Dispose();
 	public ref Event<EventHandler> LostFocus { get; set; } ~ _.Dispose();
+	/// Filters text characters after TextInput, before default editing.
 	public ref Event<KeyPressEventHandler> KeyPress { get; set; } ~ _.Dispose();
+	/// Runs before KeyPress. Handling this event cancels input; edits to Text are passed to KeyPress.
 	public ref Event<TextInputEventHandler> TextInput { get; set; } ~ _.Dispose();
 
 	protected virtual void OnMouseDown(MouseEventArgs args) => MouseDown.Invoke(this, args);
@@ -53,6 +55,19 @@ extension Control
 	protected virtual void OnLostFocus(EventArgs args) => LostFocus.Invoke(this, args);
 	protected virtual void OnKeyPress(KeyPressEventArgs args) => KeyPress.Invoke(this, args);
 	protected virtual void OnTextInput(TextInputEventArgs args) => TextInput.Invoke(this, args);
+
+	internal void FilterTextInput(StringView text, String accepted)
+	{
+		let args = scope TextInputEventArgs(text);
+		DispatchInput(.TextInput, args);
+		if (args.Handled) return;
+		for (let character in args.Text.DecodedChars)
+		{
+			let press = scope KeyPressEventArgs(character);
+			DispatchInput(.KeyPress, press);
+			if (!press.Handled) accepted.Append(press.KeyChar);
+		}
+	}
 
 	internal void DispatchInput(InputEventKind kind, InputEventArgs args)
 	{

@@ -11,11 +11,11 @@ extension Win32Backend
 {
 	private char16 mHighSurrogate;
 	private Control mSurrogateControl;
-	private bool mCompletingSurrogate;
+	private bool mInsertingText;
 
 	private void NotifyNativeText(Control control)
 	{
-		if (mCompletingSurrogate) return;
+		if (mInsertingText) return;
 		let length = Win32.GetWindowTextLength(control.Handle);
 		let buffer = scope char16[length + 1] (?);
 		let copied = Win32.GetWindowText(control.Handle, buffer.Ptr, (int32)buffer.Count);
@@ -25,19 +25,28 @@ extension Win32Backend
 		control.NotifyText(text);
 	}
 
-	private bool DispatchCharacter(Control control, char32 character)
+	private void ApplyCharacter(Control control, char32 character, int32* lParam)
 	{
-		let args = scope KeyPressEventArgs(character);
-		control.DispatchInput(.KeyPress, args);
-		if (args.Handled) return true;
-		if (character >= ' ')
+		let accepted = scope String();
+		if (character < ' ')
+		{
+			let press = scope KeyPressEventArgs(character);
+			control.DispatchInput(.KeyPress, press);
+			if (!press.Handled) accepted.Append(press.KeyChar);
+		}
+		else
 		{
 			let text = scope String()..Append(character);
-			let input = scope TextInputEventArgs(text);
-			control.DispatchInput(.TextInput, input);
-			return input.Handled;
+			control.FilterTextInput(text, accepted);
 		}
-		return false;
+		if (accepted.IsEmpty) return;
+		// Publish one text change after the accepted text has reached the native editor.
+		mInsertingText = true;
+		let units = accepted.ToScopedNativeWChar!();
+		for (var cursor = units; *cursor != 0; cursor++)
+			DefaultCharacter(control, *cursor, lParam);
+		mInsertingText = false;
+		if (control is TextBoxBase) NotifyNativeText(control);
 	}
 
 	private static void DefaultCharacter(Control control, char16 character, int32* lParam)
@@ -65,16 +74,11 @@ extension Win32Backend
 		if (character >= '\u{DC00}' && character <= '\u{DFFF}' && high != 0 && pending == control)
 		{
 			let scalar = (char32)(0x10000 + ((uint32)(high - '\u{D800}') << 10) + (uint32)(character - '\u{DC00}'));
-			if (DispatchCharacter(control, scalar)) return true;
-			// Publish text only after both UTF-16 code units have reached the native editor.
-			mCompletingSurrogate = true;
-			DefaultCharacter(control, high, lParam);
-			DefaultCharacter(control, character, lParam);
-			mCompletingSurrogate = false;
-			if (control is TextBoxBase) NotifyNativeText(control);
+			ApplyCharacter(control, scalar, lParam);
 			return true;
 		}
-		return DispatchCharacter(control, character);
+		ApplyCharacter(control, character, lParam);
+		return true;
 	}
 }
 #endif

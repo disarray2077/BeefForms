@@ -34,7 +34,7 @@ class VisibilityTests
 		form.Controls.Add(panel);
 		form.Show();
 		let backend = (SDLBackend)Application.Backend;
-		backend.ProcessEvents();
+		SDLTestInput.Activate(backend);
 		function void() click = () =>
 		{
 			SDL.Event input = .();
