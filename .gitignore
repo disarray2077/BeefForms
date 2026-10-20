@@ -1,0 +1,5 @@
+/build/
+/recovery/
+BeefSpace_User.toml
+BeefProj_User.toml
+__pycache__/

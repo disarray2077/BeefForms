@@ -1,0 +1,8 @@
+FileVersion = 1
+
+[Project]
+Name = "BeefForms"
+StartupObject = "BeefForms.Program"
+
+[Platform.Windows]
+ManifestFile = "win32.manifest"
