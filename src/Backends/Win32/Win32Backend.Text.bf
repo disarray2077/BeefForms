@@ -1,5 +1,6 @@
 using System;
 using System.Windows.Forms;
+using System.Drawing;
 
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
@@ -9,6 +10,18 @@ namespace BeefForms.Backends;
 #if BF_PLATFORM_WINDOWS
 extension Win32Backend
 {
+	public override Size MeasureText(Control control)
+	{
+		let context = Win32.GetDC(control.Handle);
+		defer Win32.ReleaseDC(control.Handle, context);
+		let font = (void*)Win32.SendMessage(control.Handle, Win32.WM_GETFONT, null, null);
+		let previous = Win32.SelectObject(context, font);
+		defer Win32.SelectObject(context, previous);
+		Win32.RECT bounds = .(0, 0, 0, 0);
+		Win32.DrawText(context, control.Text.ToScopedNativeWChar!(), -1, ref bounds, Win32.DT_CALCRECT);
+		return .(bounds.right, bounds.bottom);
+	}
+
 	private char16 mHighSurrogate;
 	private Control mSurrogateControl;
 	private bool mInsertingText;

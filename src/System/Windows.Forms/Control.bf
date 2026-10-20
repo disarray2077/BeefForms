@@ -14,29 +14,73 @@ internal enum ControlChange
 
 public class Control : System.ComponentModel.Component
 {
-	public class ControlCollection : List<Control>
+	public class ControlCollection : IEnumerable<Control>
 	{
 		private Control mOwner;
+		private List<Control> mItems = new .() ~ delete _;
 
 		public this(Control owner) { mOwner = owner; }
+		public int Count => mItems.Count;
+		public bool IsEmpty => mItems.IsEmpty;
+		public Control this[int index] => mItems[index];
+		public int IndexOf(Control value) => mItems.IndexOf(value);
+		public bool Contains(Control value) => mItems.Contains(value);
 
-		public new void Add(Control value)
+		public void Add(Control value) => Insert(Count, value);
+		public void Insert(int index, Control value)
 		{
+			if (value.Parent == mOwner) return;
+			value.Parent?.Controls.Remove(value);
+			mItems.Insert(index, value);
 			value.mParent = mOwner;
-			base.Add(value);
 			value.UpdateAnchorDistances();
-			if (mOwner.IsHandleCreated)
-				value.CreateHandle();
+			if (mOwner.IsHandleCreated) value.CreateHandle();
+			mOwner.PerformLayout();
+			value.UpdateBackend(.ZOrder);
+		}
+		public bool Remove(Control value)
+		{
+			let index = IndexOf(value);
+			if (index < 0) return false;
+			RemoveAt(index);
+			return true;
+		}
+		public void RemoveAt(int index)
+		{
+			let value = mItems[index];
+			mItems.RemoveAt(index);
+			value.DestroyHandle();
+			value.mParent = null;
+			mOwner.PerformLayout();
+		}
+		public void Clear()
+		{
+			while (Count > 0)
+			{
+				let value = mItems.Back;
+				mItems.RemoveAt(Count - 1);
+				value.DestroyHandle();
+				value.mParent = null;
+			}
 			mOwner.PerformLayout();
 		}
 		internal void SetZOrder(Control value, bool front)
 		{
 			let index = IndexOf(value);
 			if (index < 0 || index == (front ? Count - 1 : 0)) return;
-			base.RemoveAt(index);
-			if (front) base.Add(value);
-			else base.Insert(0, value);
+			mItems.RemoveAt(index);
+			mItems.Insert(front ? Count : 0, value);
 			value.UpdateBackend(.ZOrder);
+		}
+
+		public Enumerator GetEnumerator() => .(this);
+		public struct Enumerator : IEnumerator<Control>
+		{
+			private ControlCollection mCollection;
+			private int mIndex;
+			public this(ControlCollection collection) { mCollection = collection; mIndex = 0; }
+			public Result<Control> GetNext() mut => mIndex < mCollection.Count ? .Ok(mCollection[mIndex++]) : .Err;
+			public void Remove() mut { mCollection.RemoveAt(--mIndex); }
 		}
 	}
 
@@ -50,6 +94,7 @@ public class Control : System.ComponentModel.Component
 	private AnchorInfo mAnchorInfo;
 	private bool mLayoutSuspended;
 	private bool mEnabled = true;
+	private bool mAutoSize;
 	private bool mCreated;
 
 	public ref Event<EventHandler> LocationChanged { get; set; } ~ _.Dispose();
@@ -63,6 +108,7 @@ public class Control : System.ComponentModel.Component
 	public Control Parent => mParent;
 	protected internal virtual System.Drawing.Point ContentOffset => .(0, 0);
 	protected internal virtual Size ViewportSize => ClientSize;
+	protected internal virtual Size LayoutSize => ClientSize;
 	internal bool LayoutSuspended => mLayoutSuspended;
 	protected internal virtual void ChildBoundsChanged() {}
 
@@ -78,6 +124,7 @@ public class Control : System.ComponentModel.Component
 				return;
 			mText.Set(value ?? String.Empty);
 			UpdateBackend(.Text);
+			UpdateAutoSize();
 			TextChanged.Invoke(this, .Empty);
 		}
 	}
@@ -92,7 +139,7 @@ public class Control : System.ComponentModel.Component
 			value?.Retain();
 			mFont?.Release();
 			mFont = value;
-			UpdateBackend(.Font);
+			UpdateFont();
 		}
 	}
 
@@ -133,18 +180,24 @@ public class Control : System.ComponentModel.Component
 	public String Name { get; set; }
 	public int TabIndex { get; set; }
 	public AnchorStyles Anchor { get; set; } = .Top | .Left;
-	public bool AutoSize { get; set; }
+	public bool AutoSize
+	{
+		get => mAutoSize;
+		set { mAutoSize = value; UpdateAutoSize(); }
+	}
 	public readonly ControlCollection Controls ~ DeleteContainerAndItems!(_);
 	public virtual BorderStyle BorderStyle { get; set; }
 
 	public this() { Controls = new .(this); }
-	public ~this()
+	public ~this() { DestroyHandle(); }
+
+	internal void DestroyHandle()
 	{
-		if (mCreated)
-		{
-			Application.Backend.DestroyControl(this);
-			Application.CreatedControlCount--;
-		}
+		if (!mCreated) return;
+		mCreated = false;
+		for (let child in Controls) child.DestroyHandle();
+		Application.Backend.DestroyControl(this);
+		Application.CreatedControlCount--;
 	}
 
 	public void Invalidate() => UpdateBackend(.Paint);
@@ -153,6 +206,20 @@ public class Control : System.ComponentModel.Component
 	{
 		if (mCreated)
 			Application.Backend.UpdateControl(this, change);
+	}
+
+	private void UpdateAutoSize()
+	{
+		if (mCreated && AutoSize && this is Label)
+			Size = Application.Backend.MeasureText(this);
+	}
+
+	private void UpdateFont()
+	{
+		UpdateBackend(.Font);
+		UpdateAutoSize();
+		for (let child in Controls)
+			if (child.mFont == null) child.UpdateFont();
 	}
 
 	public virtual void SuspendLayout() => mLayoutSuspended = true;
@@ -168,7 +235,7 @@ public class Control : System.ComponentModel.Component
 		if (mLayoutSuspended)
 			return;
 		for (let child in Controls)
-			child.ApplyAnchoring(ClientSize);
+			child.ApplyAnchoring(LayoutSize);
 		Layout.Invoke(this, .Empty);
 	}
 
@@ -176,7 +243,7 @@ public class Control : System.ComponentModel.Component
 	{
 		if (mParent == null)
 			return;
-		let size = mParent.ClientSize;
+		let size = mParent.LayoutSize;
 		mAnchorInfo = .(mLocation.x, mLocation.y,
 			size.width - mLocation.x - mSize.width, size.height - mLocation.y - mSize.height);
 	}
@@ -236,6 +303,7 @@ public class Control : System.ComponentModel.Component
 		if (mText == text)
 			return;
 		mText.Set(text);
+		UpdateAutoSize();
 		TextChanged.Invoke(this, .Empty);
 	}
 	internal void NotifyResize(Size size)
@@ -252,6 +320,7 @@ public class Control : System.ComponentModel.Component
 		Application.CreatedControlCount++;
 		Application.Backend.CreateControl(this);
 		mCreated = true;
+		UpdateAutoSize();
 		for (let child in Controls)
 			child.CreateHandle();
 		PerformLayout();

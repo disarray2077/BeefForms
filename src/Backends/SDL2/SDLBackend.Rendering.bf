@@ -65,9 +65,7 @@ extension SDLBackend
 		let childClip = Intersect(clip, .(bounds.X, bounds.Y, viewport.width, viewport.height));
 		for (let child in control.Controls)
 		{
-			var childSize = child.Size;
-			if (child.AutoSize && child is Label)
-				childSize = .(mRenderer.Measure(child, child.Text), mRenderer.LineHeight(child));
+			let childSize = child.Size;
 			RenderControl(child, .(bounds.X + child.Location.x - control.ContentOffset.x, bounds.Y + child.Location.y - control.ContentOffset.y, childSize.width, childSize.height), childClip);
 		}
 		if (let scrollable = control as ScrollableControl)

@@ -214,8 +214,7 @@ internal class Win32Backend : FormsBackend
 			if (wParam != null)
 				form.NotifyLoad();
 		case Win32.WM_SIZE:
-			let packed = (uint)(void*)lParam;
-			form.NotifyResize(.((int32)(packed & 0xFFFF), (int32)((packed >> 16) & 0xFFFF)));
+			form.NotifyResize(backend.GetScrollClientSize(form));
 		case Win32.WM_MOVE:
 			Win32.GetWindowRect(window, var bounds);
 			form.NotifyMove(.(bounds.left, bounds.top));

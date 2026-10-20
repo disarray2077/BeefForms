@@ -21,6 +21,12 @@ static class Win32
 	public static extern bool ShowScrollBar(void* window, int32 bar, bool show);
 	[Import("user32.dll"), CLink]
 	public static extern int32 GetSystemMetrics(int32 index);
+	[Import("user32.dll"), CLink]
+	public static extern uint32 GetDpiForWindow(void* window);
+	[Import("user32.dll"), CLink]
+	public static extern int32 GetSystemMetricsForDpi(int32 index, uint32 dpi);
+	public const int32 SM_CXVSCROLL = 2;
+	public const int32 SM_CYHSCROLL = 3;
 
 	// Window Messages
 	public const uint WM_HSCROLL = 0x0114;
@@ -248,6 +254,8 @@ static class Win32
 	public static extern bool IsWindowVisible(void* window);
 	[Import("user32.dll"), CLink]
 	public static extern void* GetWindow(void* window, uint32 command);
+	[Import("user32.dll"), CLink]
+	public static extern void* GetParent(void* window);
 	[Import("user32.dll"), LinkName("GetClassLongW")]
 	public static extern uint32 GetClassLong(void* window, int32 index);
 	[Import("user32.dll"), LinkName("GetMessageW")]

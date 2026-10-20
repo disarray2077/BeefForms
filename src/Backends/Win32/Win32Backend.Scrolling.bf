@@ -9,7 +9,25 @@ namespace BeefForms.Backends;
 #if BF_PLATFORM_WINDOWS
 extension Win32Backend
 {
-	public override int32 ScrollBarSize => Win32.GetSystemMetrics(2);
+	public override Size GetScrollBarSize(Control control)
+	{
+		if (control.Handle == null)
+			return .(Win32.GetSystemMetrics(Win32.SM_CXVSCROLL), Win32.GetSystemMetrics(Win32.SM_CYHSCROLL));
+		let dpi = Win32.GetDpiForWindow(control.Handle);
+		return .(Win32.GetSystemMetricsForDpi(Win32.SM_CXVSCROLL, dpi),
+			Win32.GetSystemMetricsForDpi(Win32.SM_CYHSCROLL, dpi));
+	}
+
+	public override Size GetScrollClientSize(Control control)
+	{
+		if (control.Handle == null) return control.Size;
+		Win32.GetClientRect(control.Handle, var client);
+		let style = (uint)(void*)Win32.GetWindowLongPtr(control.Handle, Win32.GWL_STYLE);
+		let bars = GetScrollBarSize(control);
+		// Layout uses the client area before scrollbars; ViewportSize subtracts them once.
+		return .(client.right + ((style & Win32.WS_VSCROLL) != 0 ? bars.width : 0),
+			client.bottom + ((style & Win32.WS_HSCROLL) != 0 ? bars.height : 0));
+	}
 
 	private void UpdateScrolling(ScrollableControl control)
 	{

@@ -94,8 +94,21 @@ extension SDLBackend
 
 	private void Hover(Control control)
 	{
-		Control.UpdateMouseOver(mHovered, control);
+		let previous = mHovered;
 		mHovered = control;
+		Control.UpdateMouseOver(previous, control);
+	}
+
+	private void UpdateHover()
+	{
+		Hover(mPointerInside && mForm != null ? HitTest(mForm, mPointerPosition.x, mPointerPosition.y) : null);
+	}
+
+	private void UpdateHover(int32 x, int32 y)
+	{
+		mPointerPosition = .(x, y);
+		mPointerInside = true;
+		UpdateHover();
 	}
 
 	private static void CollectFocusable(Control control, List<Control> controls)
@@ -149,11 +162,16 @@ extension SDLBackend
 				mForm.NotifyMove(.(x, y));
 			case .Focus_lost: SetActive(false);
 			case .FocusGained: SetActive(true);
-			case .Leave: Hover(null);
+			case .Enter:
+				SDL.GetMouseState(var x, var y);
+				UpdateHover(x, y);
+			case .Leave:
+				mPointerInside = false;
+				Hover(null);
 			default:
 			}
 		case .MouseMotion:
-			Hover(HitTest(mForm, input.motion.x, input.motion.y));
+			UpdateHover(input.motion.x, input.motion.y);
 			let target = mCaptured ?? mHovered;
 			if (target != null)
 			{
@@ -168,8 +186,8 @@ extension SDLBackend
 					}
 			}
 		case .MouseButtonDown:
-			let target = mCaptured ?? HitTest(mForm, input.button.x, input.button.y);
-			Hover(HitTest(mForm, input.button.x, input.button.y));
+			UpdateHover(input.button.x, input.button.y);
+			let target = mCaptured ?? mHovered;
 			if (target == null) break;
 			let point = PositionIn(target, input.button.x, input.button.y);
 			let args = scope MouseEventArgs(MouseButton(input.button.button), input.button.clicks, point.x, point.y);
@@ -193,7 +211,8 @@ extension SDLBackend
 				}
 			}
 		case .MouseButtonUp:
-			let hit = HitTest(mForm, input.button.x, input.button.y);
+			UpdateHover(input.button.x, input.button.y);
+			let hit = mHovered;
 			let target = mCaptured ?? hit;
 			if (target == null) break;
 			let point = PositionIn(target, input.button.x, input.button.y);
@@ -217,7 +236,8 @@ extension SDLBackend
 			}
 			else
 				SDL.GetMouseState(out x, out y);
-			let target = HitTest(mForm, x, y);
+			UpdateHover(x, y);
+			let target = mHovered;
 			if (target != null)
 			{
 				let point = PositionIn(target, x, y);

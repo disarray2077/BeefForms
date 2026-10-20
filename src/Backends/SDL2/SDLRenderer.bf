@@ -156,6 +156,12 @@ internal class SDLRenderer
 
 	public int32 LineHeight(Control control) => SDLTTF.FontLineSkip(GetFont(control));
 
+	public Size MeasureText(Control control)
+	{
+		let texture = GetText(control);
+		return .(texture.Width, texture.Height);
+	}
+
 	public int32 Measure(Control control, StringView text)
 	{
 		int32 width = 0, height = 0;
@@ -223,6 +229,8 @@ internal class SDLRenderer
 		}
 		texture.Text.Set(control.Text);
 		texture.FontKey = key;
+		texture.Width = 0;
+		texture.Height = 0;
 		if (control.Text.IsEmpty)
 			return texture;
 		let surface = SDLTTF.RenderUTF8_Blended_Wrapped(GetFont(control), control.Text, .(255, 255, 255, 255), 0);

@@ -44,9 +44,17 @@ public class ScrollableControl : Control
 	public bool VerticalScrollVisible => mVerticalScroll;
 	internal Size ScrollContentSize => mContentSize;
 	protected internal override System.Drawing.Point ContentOffset => mScrollPosition;
-	protected internal override Size ViewportSize => .(
-		Math.Max(0, ClientSize.width - (mVerticalScroll ? Application.Backend.ScrollBarSize : 0)),
-		Math.Max(0, ClientSize.height - (mHorizontalScroll ? Application.Backend.ScrollBarSize : 0)));
+	protected internal override Size LayoutSize => Application.Backend.GetScrollClientSize(this);
+	protected internal override Size ViewportSize
+	{
+		get
+		{
+			let size = LayoutSize;
+			let bars = Application.Backend.GetScrollBarSize(this);
+			return .(Math.Max(0, size.width - (mVerticalScroll ? bars.width : 0)),
+				Math.Max(0, size.height - (mHorizontalScroll ? bars.height : 0)));
+		}
+	}
 
 	public override void PerformLayout()
 	{
@@ -84,10 +92,10 @@ public class ScrollableControl : Control
 	internal Rectangle ScrollTrack(bool horizontal)
 	{
 		let viewport = ViewportSize;
-		let thickness = Application.Backend.ScrollBarSize;
+		let bars = Application.Backend.GetScrollBarSize(this);
 		if (horizontal)
-			return mHorizontalScroll ? .(0, viewport.height, viewport.width, thickness) : default;
-		return mVerticalScroll ? .(viewport.width, 0, thickness, viewport.height) : default;
+			return mHorizontalScroll ? .(0, viewport.height, viewport.width, bars.height) : default;
+		return mVerticalScroll ? .(viewport.width, 0, bars.width, viewport.height) : default;
 	}
 	internal Rectangle ScrollThumb(bool horizontal)
 	{

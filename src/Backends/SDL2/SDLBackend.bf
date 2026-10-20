@@ -17,6 +17,8 @@ internal class SDLBackend : FormsBackend
 	private SDLRenderer mRenderer;
 	private Form mForm;
 	private Control mFocused, mPressed, mHovered;
+	private Point mPointerPosition;
+	private bool mPointerInside;
 	private Control mCaptured;
 	private bool mAutomaticCapture;
 	private bool mActive;
@@ -81,6 +83,7 @@ internal class SDLBackend : FormsBackend
 		mContext = default;
 		SDL.DestroyWindow(mWindow);
 		mWindow = null;
+		mPointerInside = false;
 		mActive = false;
 		mSuppressTextInput = false;
 	}
@@ -128,6 +131,8 @@ internal class SDLBackend : FormsBackend
 					SDL.SetWindowPosition(mWindow, control.Location.x, control.Location.y);
 			}
 		}
+		if (change == .Scroll || change == .Bounds || change == .Visibility || change == .Enabled || change == .ZOrder)
+			UpdateHover();
 	}
 
 	public override Size GetClientSize(Form form)
@@ -135,6 +140,7 @@ internal class SDLBackend : FormsBackend
 		SDL.GetWindowSize(mWindow, var width, var height);
 		return .(width, height);
 	}
+	public override Size MeasureText(Control control) => mRenderer.MeasureText(control);
 	public override void SetClientSize(Form form, Size size) => SDL.SetWindowSize(mWindow, size.width, size.height);
 	public override void Show(Form form)
 	{

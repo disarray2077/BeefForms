@@ -21,6 +21,10 @@ internal abstract class FormsBackend
 	public abstract bool IsFocused(Control control);
 	public abstract void SetCapture(Control control, bool capture);
 	public abstract bool HasCapture(Control control);
-	public virtual int32 ScrollBarSize => 16;
+	public abstract Size MeasureText(Control control);
+	/// Client area available before scrollbars are applied.
+	public virtual Size GetScrollClientSize(Control control) => control.ClientSize;
+	/// Vertical scrollbar width and horizontal scrollbar height.
+	public virtual Size GetScrollBarSize(Control control) => .(16, 16);
 	public virtual void EnableVisualStyles() {}
 }
