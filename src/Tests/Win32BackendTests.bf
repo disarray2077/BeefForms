@@ -9,6 +9,35 @@ namespace BeefForms.Tests;
 #if BF_PLATFORM_WINDOWS
 class Win32BackendTests
 {
+	[Test]
+	public static void NativeTextBoxBordersMatchTheirStyleAndUpdateTheClientArea()
+	{
+		Application.UseBackend(.Win32);
+		let form = scope Form();
+		form.ClientSize = .(300, 150);
+		let editor = new TextBox();
+		editor.Size = .(200, 30);
+		form.Controls.Add(editor);
+		Test.Assert(editor.BorderStyle == .Fixed3D);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		function uint(Control, int32) nativeStyle = (control, index) => (uint)(void*)Win32.GetWindowLongPtr(control.Handle, index);
+		Test.Assert((nativeStyle(editor, Win32.GWL_EXSTYLE) & Win32.WS_EX_CLIENTEDGE) != 0);
+		Test.Assert((nativeStyle(editor, Win32.GWL_STYLE) & Win32.WS_BORDER) == 0);
+		Win32.GetClientRect(editor.Handle, var initialClient);
+
+		editor.BorderStyle = .FixedSingle;
+		Test.Assert((nativeStyle(editor, Win32.GWL_STYLE) & Win32.WS_BORDER) != 0);
+		Test.Assert((nativeStyle(editor, Win32.GWL_EXSTYLE) & Win32.WS_EX_CLIENTEDGE) == 0);
+		editor.BorderStyle = .None;
+		Test.Assert((nativeStyle(editor, Win32.GWL_STYLE) & Win32.WS_BORDER) == 0);
+		Win32.GetClientRect(editor.Handle, var borderlessClient);
+		Test.Assert(borderlessClient.right == editor.Size.width && borderlessClient.right > initialClient.right);
+		editor.BorderStyle = .Fixed3D;
+		Win32.GetClientRect(editor.Handle, var restoredClient);
+		Test.Assert(restoredClient.right == initialClient.right);
+	}
+
 	private class FilteredTextBox : TextBox
 	{
 		protected override void OnKeyPress(KeyPressEventArgs args)

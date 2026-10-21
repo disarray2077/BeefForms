@@ -20,8 +20,10 @@ extension Win32Backend
 		// EM_GETSEL sorts the endpoints; the visible caret identifies the active end.
 		if (start != end && IsFocused(editor) && Win32.GetCaretPos(var caret))
 		{
-			let position = (uint)(void*)Win32.SendMessage(editor.Handle, Win32.EM_POSFROMCHAR, (uint*)(void*)(uint)nativeStart, null);
-			caretAtStart = (int16)(position & 0xFFFF) == caret.x && (int16)((position >> 16) & 0xFFFF) == caret.y;
+			// Let the edit control account for its border and text margins when locating the caret.
+			let point = (int*)(void*)(int)(((uint32)(uint16)caret.y << 16) | (uint16)caret.x);
+			let position = (uint)(void*)Win32.SendMessage(editor.Handle, Win32.EM_CHARFROMPOS, null, point);
+			caretAtStart = (position & 0xFFFF) == nativeStart;
 		}
 		editor.NotifySelection(caretAtStart ? end : start, caretAtStart ? start : end);
 	}

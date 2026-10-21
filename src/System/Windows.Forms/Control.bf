@@ -9,7 +9,7 @@ namespace System.Windows.Forms;
 
 internal enum ControlChange
 {
-	Paint, Text, Font, Bounds, Enabled, Value, Appearance, Constraints, ReadOnly, Selection, Scroll, Visibility, ZOrder, All
+	Paint, Text, Font, Bounds, Enabled, Value, Appearance, Border, Constraints, ReadOnly, Selection, Scroll, Visibility, ZOrder, All
 }
 
 public class Control : System.ComponentModel.Component
@@ -95,6 +95,7 @@ public class Control : System.ComponentModel.Component
 	private bool mLayoutSuspended;
 	private bool mEnabled = true;
 	private bool mAutoSize;
+	private BorderStyle mBorderStyle;
 	private bool mCreated;
 	internal bool NeedsPaint = true;
 
@@ -187,7 +188,17 @@ public class Control : System.ComponentModel.Component
 		set { mAutoSize = value; UpdateAutoSize(); }
 	}
 	public readonly ControlCollection Controls ~ DeleteContainerAndItems!(_);
-	public virtual BorderStyle BorderStyle { get; set; }
+	public virtual BorderStyle BorderStyle
+	{
+		get => mBorderStyle;
+		set
+		{
+			if (mBorderStyle == value) return;
+			mBorderStyle = value;
+			UpdateBackend(.Border);
+			PerformLayout();
+		}
+	}
 
 	public this() { Controls = new .(this); }
 	public ~this() { DestroyHandle(); }

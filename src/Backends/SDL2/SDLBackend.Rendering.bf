@@ -102,7 +102,8 @@ extension SDLBackend
 	private void RenderEditor(TextBoxBase editor, Rectangle bounds, Rectangle parentClip)
 	{
 		mRenderer.Fill(bounds, editor.ReadOnly ? 0.96f : 1, editor.ReadOnly ? 0.96f : 1, 1);
-		mRenderer.Border(bounds, IsFocused(editor) ? 0.2f : 0.65f, 0.5f, 0.7f);
+		if (editor.BorderStyle != .None)
+			mRenderer.Border(bounds, IsFocused(editor) ? 0.2f : 0.65f, 0.5f, 0.7f);
 		let clip = Intersect(parentClip, .(bounds.X + 2, bounds.Y + 2, Math.Max(0, bounds.Width - 4), Math.Max(0, bounds.Height - 4)));
 		mRenderer.Clip(clip);
 		let caret = mRenderer.TextPosition(editor, editor.Caret);

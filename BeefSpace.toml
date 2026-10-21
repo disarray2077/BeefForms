@@ -1,6 +1,9 @@
 FileVersion = 1
-Projects = {BeefForms = {Path = "."}}
-Unlocked = ["corlib"]
+Unlocked = ["corlib", "SDL2"]
+ExtraPlatforms = ["Linux64"]
 
 [Workspace]
 StartupProject = "BeefForms"
+
+[Projects]
+BeefForms = {Path = "."}

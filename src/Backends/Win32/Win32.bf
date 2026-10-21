@@ -85,6 +85,7 @@ static class Win32
 	public const uint CS_DBLCLKS = 0x0008;
 	public const uint WS_GROUP = 0x00020000;
 	public const uint WS_EX_CONTROLPARENT = 0x00010000;
+	public const uint WS_EX_CLIENTEDGE = 0x00000200;
 	public const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
 	public const uint WS_CHILD = 0x40000000;
 	public const uint WS_VISIBLE = 0x10000000;
@@ -113,6 +114,7 @@ static class Win32
 	public const uint EM_REPLACESEL = 0x00C2;
 	public const uint EM_UNDO = 0x00C7;
 	public const uint EM_POSFROMCHAR = 0x00D6;
+	public const uint EM_CHARFROMPOS = 0x00D7;
 	public const uint WM_SETTEXT = 0x000C;
 	public const uint WM_TIMER = 0x0113;
 	public const uint WM_CUT = 0x0300;
@@ -150,6 +152,7 @@ static class Win32
 	public const uint SWP_NOMOVE = 0x0002;
 	public const uint SWP_NOZORDER = 0x0004;
 	public const uint SWP_NOACTIVATE = 0x0010;
+	public const uint SWP_FRAMECHANGED = 0x0020;
 
 	public const uint RDW_INVALIDATE = 0x0001;
 	public const uint RDW_ERASE = 0x0004;

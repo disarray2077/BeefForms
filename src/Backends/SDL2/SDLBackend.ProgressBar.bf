@@ -25,11 +25,8 @@ extension SDLBackend
 		{
 			let range = progress.Maximum - progress.Minimum;
 			int32 width = range == 0 ? 0 : (int32)((int64)track.Width * (progress.Value - progress.Minimum) / range);
-			if (progress.Style == .Continuous)
-				mRenderer.Fill(.(track.X, track.Y, width, track.Height), 0.2f, 0.65f, 0.38f);
-			else
-				for (int32 x = 0; x < width; x += 10)
-					mRenderer.Fill(.(track.X + x, track.Y, Math.Min(8, width - x), track.Height), 0.2f, 0.65f, 0.38f);
+			// Themed Win32 progress bars use a solid fill for both determinate styles.
+			mRenderer.Fill(.(track.X, track.Y, width, track.Height), 0.2f, 0.65f, 0.38f);
 		}
 		mRenderer.Clip(clip);
 		mRenderer.Border(bounds, 0.6f, 0.62f, 0.65f);

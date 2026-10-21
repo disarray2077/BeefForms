@@ -55,12 +55,32 @@ internal class Win32Backend : FormsBackend
 			if (textBox.ReadOnly)
 				style |= Win32.ES_READONLY;
 		}
-		if (control.BorderStyle != .None)
+		if (control.BorderStyle == .FixedSingle)
 			style |= Win32.WS_BORDER;
 		if (let scrollable = control as ScrollableControl)
 			if (scrollable.AutoScroll)
 				style |= Win32.WS_HSCROLL | Win32.WS_VSCROLL;
 		return style;
+	}
+
+	private static uint GetWindowExtendedStyle(Control control)
+	{
+		uint style = (control is GroupBox) ? Win32.WS_EX_CONTROLPARENT : 0;
+		if (!(control is Form) && control.BorderStyle == .Fixed3D)
+			style |= Win32.WS_EX_CLIENTEDGE;
+		return style;
+	}
+
+	private void UpdateBorderStyle(Control control)
+	{
+		let style = (uint)(void*)Win32.GetWindowLongPtr(control.Handle, Win32.GWL_STYLE);
+		let extendedStyle = (uint)(void*)Win32.GetWindowLongPtr(control.Handle, Win32.GWL_EXSTYLE);
+		Win32.SetWindowLongPtr(control.Handle, Win32.GWL_STYLE,
+			(void*)((style & ~Win32.WS_BORDER) | (GetWindowStyle(control) & Win32.WS_BORDER)));
+		Win32.SetWindowLongPtr(control.Handle, Win32.GWL_EXSTYLE,
+			(void*)((extendedStyle & ~Win32.WS_EX_CLIENTEDGE) | (GetWindowExtendedStyle(control) & Win32.WS_EX_CLIENTEDGE)));
+		Win32.SetWindowPos(control.Handle, null, 0, 0, 0, 0,
+			Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE | Win32.SWP_FRAMECHANGED);
 	}
 
 	public override void CreateControl(Control control)
@@ -79,7 +99,7 @@ internal class Win32Backend : FormsBackend
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
 		if (control is Form)
 			Win32.AdjustWindowRectEx(ref bounds, style, 0, 0);
-		let extendedStyle = (control is GroupBox) ? Win32.WS_EX_CONTROLPARENT : 0;
+		let extendedStyle = GetWindowExtendedStyle(control);
 		let handle = Win32.CreateWindowEx(extendedStyle, GetWindowClass(control), control.Text.ToScopedNativeWChar!(), style,
 			control.Location.x, control.Location.y, bounds.right - bounds.left, bounds.bottom - bounds.top,
 			control.Parent?.Handle, null, Win32.GetModuleHandle(null), Internal.UnsafeCastToPtr(control));
@@ -141,6 +161,8 @@ internal class Win32Backend : FormsBackend
 			Win32.SendMessage(control.Handle, Win32.WM_SETFONT, (uint*)Win32.GetStockObject(Win32.DEFAULT_GUI_FONT), (int*)(void*)1);
 		if (change == .Enabled || change == .All)
 			Win32.EnableWindow(control.Handle, control.IsEffectivelyEnabled ? 1 : 0);
+		if (change == .Border && !(control is Form))
+			UpdateBorderStyle(control);
 		if (change == .Bounds || change == .Constraints || change == .All)
 		{
 			let size = control.Size;

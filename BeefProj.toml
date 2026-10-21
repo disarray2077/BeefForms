@@ -1,13 +1,13 @@
 FileVersion = 1
 
+[Project]
+Name = "BeefForms"
+StartupObject = "BeefForms.Program"
+
 [Dependencies]
 corlib = "*"
 SDL2 = "*"
 BeefGL = {Git = "https://github.com/disarray2077/BeefGL"}
-
-[Project]
-Name = "BeefForms"
-StartupObject = "BeefForms.Program"
 
 [Platform.Windows]
 ManifestFile = "win32.manifest"

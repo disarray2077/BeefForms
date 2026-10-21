@@ -9,7 +9,7 @@ namespace System.Windows.Forms;
 
 public class TextBoxBase : Control
 {
-	public this() { TabStop = true; }
+	public this() { TabStop = true; BorderStyle = .Fixed3D; }
 	private bool mReadOnly;
 	public bool ReadOnly
 	{
