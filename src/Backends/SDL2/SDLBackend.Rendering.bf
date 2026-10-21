@@ -20,7 +20,7 @@ extension SDLBackend
 		let backend = (SDLBackend)Internal.UnsafeCastToObject(userData);
 		// Windows keeps pumping expose events inside its modal resize loop.
 		// Event watches can also run on other threads; OpenGL must stay on its owner thread.
-		if (Thread.CurrentThreadId == backend.mRenderThreadId && backend.mRunning && !backend.mRendering &&
+		if (Thread.CurrentThreadId == backend.mRenderThreadId && backend.mRunning && !backend.mRendering && backend.CanRender &&
 			input.window.windowID == SDL.GetWindowID(backend.mWindow))
 		{
 			InvalidateTree(backend.mForm);
@@ -29,10 +29,33 @@ extension SDLBackend
 		return 0;
 	}
 
+	private bool CanRender => mWindow != null && mForm.IsEffectivelyVisible &&
+		(SDL.GetWindowFlags(mWindow) & (uint32)(SDL.WindowFlags.Hidden | .Minimized)) == 0;
+
+	private int32 GetRedrawTimeout()
+	{
+		if (!CanRender) return -1;
+		if (mRedrawRequested) return 0;
+		if (mNextAnimationTick == uint64.MaxValue) return -1;
+		let now = SDL.GetTicks64();
+		return now >= mNextAnimationTick ? 0 : (int32)Math.Min(mNextAnimationTick - now, (uint64)int32.MaxValue);
+	}
+
+	private bool RenderIfNeeded(bool force = false, bool capture = false)
+	{
+		if (!CanRender || (!force && GetRedrawTimeout() != 0)) return false;
+		RenderFrame(capture);
+		return true;
+	}
+
 	private void RenderFrame(bool capture = false)
 	{
 		mRendering = true;
 		defer { mRendering = false; }
+		// Clear before drawing so invalidation from layout or Paint schedules another frame.
+		mRedrawRequested = false;
+		mFrameTicks = SDL.GetTicks64();
+		mNextAnimationTick = uint64.MaxValue;
 		mForm.NotifyResize(GetFormSize());
 		if (!mRunning) return;
 		mRenderer.Begin(mWindow);
@@ -164,9 +187,14 @@ extension SDLBackend
 					start = lineEnd + 1;
 				}
 			}
-			if (!editor.ReadOnly && SDL.GetTicks() % 1000 < 550)
-				mRenderer.Fill(.(bounds.X + 4 + caret.x - editor.ScrollX, bounds.Y + 4 + caret.y - editor.ScrollY,
-					1, mRenderer.LineHeight(editor)), 0.1f, 0.1f, 0.1f);
+			if (!editor.ReadOnly)
+			{
+				let phase = mFrameTicks % 1000;
+				mNextAnimationTick = Math.Min(mNextAnimationTick, mFrameTicks + (phase < 550 ? 550 - phase : 1000 - phase));
+				if (phase < 550)
+					mRenderer.Fill(.(bounds.X + 4 + caret.x - editor.ScrollX, bounds.Y + 4 + caret.y - editor.ScrollY,
+						1, mRenderer.LineHeight(editor)), 0.1f, 0.1f, 0.1f);
+			}
 		}
 		mRenderer.Text(editor, bounds.X + 4 - editor.ScrollX, bounds.Y + 4 - editor.ScrollY);
 	}

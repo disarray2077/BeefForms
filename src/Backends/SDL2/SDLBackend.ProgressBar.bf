@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Drawing;
 using System.Windows.Forms;
 using SDL2;
@@ -7,6 +8,16 @@ namespace BeefForms.Backends;
 
 extension SDLBackend
 {
+	private Dictionary<ProgressBar, uint64> mMarqueeStarts = new .() ~ delete _;
+
+	private void UpdateMarquee(ProgressBar progress)
+	{
+		if (progress.Style == .Marquee && progress.MarqueeAnimationSpeed > 0)
+			mMarqueeStarts[progress] = SDL.GetTicks64();
+		else
+			mMarqueeStarts.Remove(progress);
+	}
+
 	private void RenderProgressBar(ProgressBar progress, Rectangle bounds, Rectangle clip)
 	{
 		mRenderer.Fill(bounds, 230f / 255, 230f / 255, 230f / 255);
@@ -14,10 +25,17 @@ extension SDLBackend
 		mRenderer.Clip(Intersect(clip, track));
 		if (progress.Style == .Marquee)
 		{
-			if (progress.MarqueeAnimationSpeed > 0 && track.Width > 0)
+			if (progress.MarqueeAnimationSpeed > 0 && track.Width > 0 && track.Height > 0)
 			{
 				let segment = Math.Max(8, track.Width / 4);
-				let offset = (int)(SDL.GetTicks() / (uint32)progress.MarqueeAnimationSpeed) % (track.Width + segment) - segment;
+				let interval = (uint64)progress.MarqueeAnimationSpeed;
+				let started = mMarqueeStarts[progress];
+				let elapsed = Math.Max(mFrameTicks, started) - started;
+				let step = elapsed / interval;
+				mNextAnimationTick = Math.Min(mNextAnimationTick, started + (step + 1) * interval);
+				// Match the native marquee's six-pixel movement per timer tick.
+				let position = (step + 1) * 6;
+				let offset = (int)(position % (uint64)(track.Width + segment)) - segment;
 				mRenderer.Fill(.((int32)(track.X + offset), track.Y, (int32)segment, track.Height), 0, 128f / 255, 0);
 			}
 		}

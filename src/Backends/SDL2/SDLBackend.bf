@@ -28,6 +28,9 @@ internal class SDLBackend : FormsBackend
 	private bool mInitialized, mRunning;
 	private bool mRendering;
 	private int mRenderThreadId;
+	private bool mRedrawRequested;
+	private SDL.EventType mRedrawEvent;
+	private uint64 mFrameTicks, mNextAnimationTick = uint64.MaxValue;
 	public int FrameLimit;
 	public String CapturePath;
 
@@ -43,8 +46,12 @@ internal class SDLBackend : FormsBackend
 
 	public override void CreateControl(Control control)
 	{
+		RequestRedraw();
 		if (!(control is Form))
+		{
+			if (let progress = control as ProgressBar) UpdateMarquee(progress);
 			return;
+		}
 		if (mWindow != null)
 			Runtime.FatalError("The SDL backend currently supports one top-level form");
 		if (!mInitialized)
@@ -52,6 +59,7 @@ internal class SDLBackend : FormsBackend
 			if (SDL.InitSubSystem(.Video) != 0 || SDLTTF.Init() != 0)
 				Runtime.FatalError(scope $"Could not initialize SDL: {StringView(SDL.GetError())}");
 			mInitialized = true;
+			mRedrawEvent = (.)SDL.RegisterEvents(1);
 			SDL.GetVersion(var version);
 			mWheelHasPosition = version.major > 2 || version.minor >= 26;
 		}
@@ -101,6 +109,8 @@ internal class SDLBackend : FormsBackend
 
 	public override void DestroyControl(Control control)
 	{
+		RequestRedraw();
+		if (let progress = control as ProgressBar) mMarqueeStarts.Remove(progress);
 		if (Control.IsAncestorOf(control, mFocused)) Focus(null);
 		if (Control.IsAncestorOf(control, mCaptured)) SetCapture(mCaptured, false);
 		if (mPressed == control) mPressed = null;
@@ -116,6 +126,9 @@ internal class SDLBackend : FormsBackend
 
 	public override void UpdateControl(Control control, ControlChange change)
 	{
+		RequestRedraw();
+		if (change == .Appearance || change == .All)
+			if (let progress = control as ProgressBar) UpdateMarquee(progress);
 		if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)
 		{
 			if (Control.IsAncestorOf(control, mFocused)) Focus(null);
@@ -188,8 +201,27 @@ internal class SDLBackend : FormsBackend
 		ApplyMinimumSize(form);
 		SetActive(SDL.GetKeyboardFocus() == mWindow);
 		mRunning = true;
+		RequestRedraw();
 	}
-	public override void Close(Form form) => mRunning = false;
+	public override void Close(Form form)
+	{
+		mRunning = false;
+		WakeEventLoop();
+	}
+
+	private void WakeEventLoop()
+	{
+		SDL.Event input = .();
+		input.type = mRedrawEvent;
+		SDL.PushEvent(ref input);
+	}
+
+	private void RequestRedraw()
+	{
+		if (mRedrawRequested) return;
+		mRedrawRequested = true;
+		if (mRunning) WakeEventLoop();
+	}
 
 	public override void Run(Form form)
 	{
@@ -202,11 +234,20 @@ internal class SDLBackend : FormsBackend
 			ProcessEvents();
 			if (!mRunning)
 				break;
-			RenderFrame(CapturePath != null && (FrameLimit == 0 || frames + 1 == FrameLimit));
-			if (FrameLimit > 0 && ++frames >= FrameLimit)
-				mRunning = false;
-			SDL.Delay(1);
+			let capture = CapturePath != null && (FrameLimit == 0 || frames + 1 == FrameLimit);
+			// An explicit frame limit keeps capture and smoke-test runs finite, even for static forms.
+			let rendered = RenderIfNeeded(FrameLimit > 0 || capture, capture);
+			if (!mRunning) break;
+			if (rendered && FrameLimit > 0 && ++frames >= FrameLimit)
+				break;
+			if (rendered && FrameLimit > 0) continue;
+			let timeout = GetRedrawTimeout();
+			if (timeout == 0) continue;
+			SDL.Event input = ?;
+			if (SDL.WaitEventTimeout(out input, timeout) != 0 && mWindow != null)
+				ProcessEvent(ref input);
 		}
+		mRunning = false;
 	}
 
 	internal void ProcessEvents()

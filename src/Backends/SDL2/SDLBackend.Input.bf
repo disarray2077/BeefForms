@@ -64,6 +64,7 @@ extension SDLBackend
 		if (mFocused == control) return;
 		if (mActive) mFocused?.NotifyFocus(false);
 		mFocused = control;
+		RequestRedraw();
 		UpdateTextInput();
 		if (mActive) mFocused?.NotifyFocus(true);
 	}
@@ -78,6 +79,7 @@ extension SDLBackend
 		}
 		if (mActive == active) return;
 		mActive = active;
+		RequestRedraw();
 		UpdateTextInput();
 		mFocused?.NotifyFocus(active);
 	}
@@ -98,7 +100,9 @@ extension SDLBackend
 	private void Hover(Control control)
 	{
 		let previous = mHovered;
+		if (previous == control) return;
 		mHovered = control;
+		RequestRedraw();
 		Control.UpdateMouseOver(previous, control);
 	}
 
@@ -142,7 +146,10 @@ extension SDLBackend
 			{
 			case .Close: mForm.Close();
 			case .Exposed: InvalidateTree(mForm);
-			case .SizeChanged: mForm.NotifyResize(GetFormSize());
+			case .SizeChanged:
+				mForm.NotifyResize(GetFormSize());
+				RequestRedraw();
+			case .Shown, .Hidden, .Minimized, .Restored: RequestRedraw();
 			case .Moved:
 				SDL.GetWindowPosition(mWindow, var x, var y);
 				mForm.NotifyMove(.(x, y));
@@ -184,6 +191,7 @@ extension SDLBackend
 			if (args.Button == .Left && !args.Handled)
 			{
 				mPressed = target;
+				RequestRedraw();
 				if (target.CanSelect) Focus(target);
 				if (mCaptured == null)
 				{
@@ -208,6 +216,7 @@ extension SDLBackend
 			{
 				let pressed = mPressed;
 				mPressed = null;
+				if (pressed != null) RequestRedraw();
 				if (mAutomaticCapture && mCaptured == pressed) SetCapture(mCaptured, false);
 				if (!args.Handled && hit == pressed)
 					if (let button = hit as ButtonBase)
