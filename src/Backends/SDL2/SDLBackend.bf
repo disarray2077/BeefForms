@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using System.Drawing;
 using System.Windows.Forms;
 using SDL2;
@@ -25,6 +26,8 @@ internal class SDLBackend : FormsBackend
 	private bool mWheelHasPosition;
 	private bool mSuppressTextInput;
 	private bool mInitialized, mRunning;
+	private bool mRendering;
+	private int mRenderThreadId;
 	public int FrameLimit;
 	public String CapturePath;
 
@@ -190,21 +193,16 @@ internal class SDLBackend : FormsBackend
 
 	public override void Run(Form form)
 	{
+		mRenderThreadId = Thread.CurrentThreadId;
+		SDL.AddEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
+		defer SDL.DelEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
 		int frames = 0;
 		while (mRunning)
 		{
 			ProcessEvents();
 			if (!mRunning)
 				break;
-			mRenderer.Begin(mWindow);
-			let size = GetClientSize(form);
-			RenderControl(form, .(0, 0, size.width, size.height), .(0, 0, size.width, size.height));
-			if (CapturePath != null && (FrameLimit == 0 || frames + 1 == FrameLimit))
-			{
-				mRenderer.Capture(CapturePath);
-				CapturePath = null;
-			}
-			SDL.GL_SwapWindow(mWindow);
+			RenderFrame(CapturePath != null && (FrameLimit == 0 || frames + 1 == FrameLimit));
 			if (FrameLimit > 0 && ++frames >= FrameLimit)
 				mRunning = false;
 			SDL.Delay(1);

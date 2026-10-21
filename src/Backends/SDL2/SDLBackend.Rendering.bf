@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Threading;
 using System.Drawing;
 using System.Windows.Forms;
 using SDL2;
@@ -12,6 +13,39 @@ namespace BeefForms.Backends;
 
 extension SDLBackend
 {
+	private static int32 WatchWindowEvents(void* userData, SDL.Event* input)
+	{
+		if (input.type != .WindowEvent || input.window.windowEvent != .Exposed)
+			return 0;
+		let backend = (SDLBackend)Internal.UnsafeCastToObject(userData);
+		// Windows keeps pumping expose events inside its modal resize loop.
+		// Event watches can also run on other threads; OpenGL must stay on its owner thread.
+		if (Thread.CurrentThreadId == backend.mRenderThreadId && backend.mRunning && !backend.mRendering &&
+			input.window.windowID == SDL.GetWindowID(backend.mWindow))
+		{
+			InvalidateTree(backend.mForm);
+			backend.RenderFrame();
+		}
+		return 0;
+	}
+
+	private void RenderFrame(bool capture = false)
+	{
+		mRendering = true;
+		defer { mRendering = false; }
+		mForm.NotifyResize(GetFormSize());
+		if (!mRunning) return;
+		mRenderer.Begin(mWindow);
+		let size = GetClientSize(mForm);
+		RenderControl(mForm, .(0, 0, size.width, size.height), .(0, 0, size.width, size.height));
+		if (capture)
+		{
+			mRenderer.Capture(CapturePath);
+			CapturePath = null;
+		}
+		SDL.GL_SwapWindow(mWindow);
+	}
+
 	private static Rectangle Intersect(Rectangle a, Rectangle b)
 	{
 		let x = Math.Max(a.X, b.X), y = Math.Max(a.Y, b.Y);
