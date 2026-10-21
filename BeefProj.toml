@@ -2,13 +2,9 @@ FileVersion = 1
 
 [Project]
 Name = "BeefForms"
-StartupObject = "BeefForms.Program"
+TargetType = "BeefLib"
 
 [Dependencies]
 corlib = "*"
 SDL2 = "*"
 BeefGL = {Git = "https://github.com/disarray2077/BeefGL"}
-
-[Platform.Windows]
-IconFile = "Resources/BeefForms.ico"
-ManifestFile = "win32.manifest"

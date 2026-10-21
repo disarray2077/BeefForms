@@ -2,7 +2,7 @@ using System;
 using System.Windows.Forms;
 using System.Drawing;
 
-namespace BeefForms;
+namespace BeefForms.Sample;
 
 class DownloaderMockForm : Form
 {

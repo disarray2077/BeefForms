@@ -4,7 +4,7 @@ using BeefForms.Backends;
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
 
-namespace BeefForms
+namespace BeefForms.Sample
 {
 	class Program
 	{

@@ -3,7 +3,27 @@ Unlocked = ["corlib", "SDL2"]
 ExtraPlatforms = ["Linux64"]
 
 [Workspace]
-StartupProject = "BeefForms"
+StartupProject = "BeefForms.Sample"
 
 [Projects]
 BeefForms = {Path = "."}
+"BeefForms.Sample" = {Path = "Sample"}
+"BeefForms.Tests" = {Path = "Tests"}
+
+[Configs.Debug.Win64]
+ConfigSelections = {"BeefForms.Tests" = {Enabled = false}}
+
+[Configs.Debug.Linux64]
+ConfigSelections = {"BeefForms.Tests" = {Enabled = false}}
+
+[Configs.Release.Win64]
+ConfigSelections = {"BeefForms.Tests" = {Enabled = false}}
+
+[Configs.Release.Linux64]
+ConfigSelections = {"BeefForms.Tests" = {Enabled = false}}
+
+[Configs.Test.Win64]
+ConfigSelections = {"BeefForms.Sample" = {Enabled = false}}
+
+[Configs.Test.Linux64]
+ConfigSelections = {"BeefForms.Sample" = {Enabled = false}}

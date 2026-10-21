@@ -1,0 +1,14 @@
+FileVersion = 1
+
+[Project]
+Name = "BeefForms.Tests"
+TargetType = "BeefTest"
+
+[Dependencies]
+corlib = "*"
+BeefForms = "*"
+SDL2 = "*"
+BeefGL = "*"
+
+[Platform.Windows]
+ManifestFile = "../win32.manifest"
