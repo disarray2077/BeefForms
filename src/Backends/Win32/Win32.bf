@@ -34,6 +34,7 @@ static class Win32
 	public const uint WM_DESTROY = 0x0002;
 	public const uint WM_MOVE = 0x0003;
 	public const uint WM_CLOSE = 0x0010;
+	public const uint WM_GETMINMAXINFO = 0x0024;
 	public const uint WM_QUIT = 0x0012;
 	public const uint WM_COMMAND = 0x0111;
 	public const uint WM_NCCREATE = 0x0081;
@@ -181,6 +182,11 @@ static class Win32
 	}
 	[CRepr]
 	public struct POINT { public int32 x, y; }
+	[CRepr]
+	public struct MINMAXINFO
+	{
+		public POINT reserved, maxSize, maxPosition, minTrackSize, maxTrackSize;
+	}
 
 	[CRepr]
 	public struct MSG
@@ -327,7 +333,7 @@ static class Win32
 	[Import("user32.dll"), CLink]
 	public static extern bool SetWindowPos(void* hWnd, void* hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 	[Import("user32.dll"), CLink]
-	public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, bool bMenu, uint dwExStyle);
+	public static extern bool AdjustWindowRectEx(ref RECT lpRect, uint dwStyle, BOOL bMenu, uint dwExStyle);
 	[Import("user32.dll"), CLink]
 	public static extern bool GetClientRect(void* hWnd, out RECT lpRect);
 	[Import("user32.dll"), CLink]

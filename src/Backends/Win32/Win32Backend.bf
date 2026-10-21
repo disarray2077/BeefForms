@@ -78,7 +78,7 @@ internal class Win32Backend : FormsBackend
 		let size = control.Size;
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
 		if (control is Form)
-			Win32.AdjustWindowRectEx(ref bounds, style, false, 0);
+			Win32.AdjustWindowRectEx(ref bounds, style, 0, 0);
 		let extendedStyle = (control is GroupBox) ? Win32.WS_EX_CONTROLPARENT : 0;
 		let handle = Win32.CreateWindowEx(extendedStyle, GetWindowClass(control), control.Text.ToScopedNativeWChar!(), style,
 			control.Location.x, control.Location.y, bounds.right - bounds.left, bounds.bottom - bounds.top,
@@ -141,7 +141,7 @@ internal class Win32Backend : FormsBackend
 			Win32.SendMessage(control.Handle, Win32.WM_SETFONT, (uint*)Win32.GetStockObject(Win32.DEFAULT_GUI_FONT), (int*)(void*)1);
 		if (change == .Enabled || change == .All)
 			Win32.EnableWindow(control.Handle, control.IsEffectivelyEnabled ? 1 : 0);
-		if (change == .Bounds || change == .All)
+		if (change == .Bounds || change == .Constraints || change == .All)
 		{
 			let size = control.Size;
 			let location = control.Location;
@@ -180,9 +180,9 @@ internal class Win32Backend : FormsBackend
 	public override void SetClientSize(Form form, Size size)
 	{
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
-		Win32.AdjustWindowRectEx(ref bounds, GetWindowStyle(form), false, 0);
+		Win32.AdjustWindowRectEx(ref bounds, GetWindowStyle(form), 0, 0);
 		Win32.SetWindowPos(form.Handle, null, form.Location.x, form.Location.y,
-			bounds.right - bounds.left, bounds.bottom - bounds.top, Win32.SWP_NOZORDER);
+			Math.Max(bounds.right - bounds.left, form.MinimumSize.width), Math.Max(bounds.bottom - bounds.top, form.MinimumSize.height), Win32.SWP_NOZORDER);
 	}
 
 	public override void Show(Form form) => Win32.ShowWindow(form.Handle, Win32.SW_SHOW);
@@ -217,13 +217,18 @@ internal class Win32Backend : FormsBackend
 		switch (message)
 		{
 		case Win32.WM_COMMAND: backend.HandleCommand(wParam, lParam);
+		case Win32.WM_GETMINMAXINFO:
+			let limits = (Win32.MINMAXINFO*)lParam;
+			limits.minTrackSize.x = Math.Max(limits.minTrackSize.x, form.MinimumSize.width);
+			limits.minTrackSize.y = Math.Max(limits.minTrackSize.y, form.MinimumSize.height);
+			return 0;
 		case Win32.WM_SIZE:
 			form.NotifyResize(backend.GetScrollClientSize(form));
 		case Win32.WM_MOVE:
 			Win32.GetWindowRect(window, var bounds);
 			form.NotifyMove(.(bounds.left, bounds.top));
 		case Win32.WM_CLOSE:
-			backend.Close(form);
+			form.Close();
 			return 0;
 		case Win32.WM_DESTROY:
 			form.SetNativeHandle(null);

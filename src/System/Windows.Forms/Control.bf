@@ -9,7 +9,7 @@ namespace System.Windows.Forms;
 
 internal enum ControlChange
 {
-	Paint, Text, Font, Bounds, Enabled, Value, Appearance, ReadOnly, Selection, Scroll, Visibility, ZOrder, All
+	Paint, Text, Font, Bounds, Enabled, Value, Appearance, Constraints, ReadOnly, Selection, Scroll, Visibility, ZOrder, All
 }
 
 public class Control : System.ComponentModel.Component

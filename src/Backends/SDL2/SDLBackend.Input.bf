@@ -133,11 +133,11 @@ extension SDLBackend
 	{
 		switch (input.type)
 		{
-		case .Quit: mRunning = false;
+		case .Quit: mForm.Close();
 		case .WindowEvent:
 			switch (input.window.windowEvent)
 			{
-			case .Close: mRunning = false;
+			case .Close: mForm.Close();
 			case .Exposed: InvalidateTree(mForm);
 			case .SizeChanged: mForm.NotifyResize(GetClientSize(mForm));
 			case .Moved:

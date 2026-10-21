@@ -70,6 +70,7 @@ internal class SDLBackend : FormsBackend
 		control.SetNativeHandle(mWindow);
 		SDL.GetWindowPosition(mWindow, var x, var y);
 		control.NotifyMove(.(x, y));
+		ApplyMinimumSize(mForm);
 	}
 
 	private void DestroyWindow()
@@ -121,11 +122,10 @@ internal class SDLBackend : FormsBackend
 			}
 			if (change == .Text)
 				SDL.SetWindowTitle(mWindow, control.Text);
-			if (change == .Bounds)
+			if (change == .Bounds || change == .Constraints)
 			{
-				SDL.GetWindowSize(mWindow, var width, var height);
-				if (width != control.Size.width || height != control.Size.height)
-					SDL.SetWindowSize(mWindow, control.Size.width, control.Size.height);
+				ApplyMinimumSize(mForm);
+				SetClientSize(mForm, control.Size);
 				SDL.GetWindowPosition(mWindow, var x, var y);
 				if (x != control.Location.x || y != control.Location.y)
 					SDL.SetWindowPosition(mWindow, control.Location.x, control.Location.y);
@@ -141,10 +141,27 @@ internal class SDLBackend : FormsBackend
 		return .(width, height);
 	}
 	public override Size MeasureText(Control control) => mRenderer.MeasureText(control);
-	public override void SetClientSize(Form form, Size size) => SDL.SetWindowSize(mWindow, size.width, size.height);
+	private Size GetMinimumClientSize(Form form)
+	{
+		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
+		return .(Math.Max(0, form.MinimumSize.width - left - right), Math.Max(0, form.MinimumSize.height - top - bottom));
+	}
+	private void ApplyMinimumSize(Form form)
+	{
+		let minimum = GetMinimumClientSize(form);
+		SDL.SetWindowMinimumSize(mWindow, minimum.width, minimum.height);
+		let size = GetClientSize(form);
+		SetClientSize(form, size);
+	}
+	public override void SetClientSize(Form form, Size size)
+	{
+		let minimum = GetMinimumClientSize(form);
+		SDL.SetWindowSize(mWindow, Math.Max(1, Math.Max(size.width, minimum.width)), Math.Max(1, Math.Max(size.height, minimum.height)));
+	}
 	public override void Show(Form form)
 	{
 		SDL.ShowWindow(mWindow);
+		ApplyMinimumSize(form);
 		SetActive(SDL.GetKeyboardFocus() == mWindow);
 		mRunning = true;
 	}
@@ -176,7 +193,7 @@ internal class SDLBackend : FormsBackend
 	internal void ProcessEvents()
 	{
 		SDL.Event input = ?;
-		while (SDL.PollEvent(out input) != 0)
+		while (mWindow != null && SDL.PollEvent(out input) != 0)
 			ProcessEvent(ref input);
 	}
 

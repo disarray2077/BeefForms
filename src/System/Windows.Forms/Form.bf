@@ -7,7 +7,22 @@ namespace System.Windows.Forms;
 
 public class Form : ContainerControl
 {
-	private bool mLoaded;
+	private bool mLoaded, mClosing, mClosed;
+	private System.Drawing.Size mMinimumSize;
+	public System.Drawing.Size MinimumSize
+	{
+		get => mMinimumSize;
+		set
+		{
+			if (value.width < 0 || value.height < 0) Runtime.FatalError("MinimumSize must not be negative");
+			mMinimumSize = value;
+			UpdateBackend(.Constraints);
+		}
+	}
+	public ref Event<FormClosingEventHandler> FormClosing { get; set; } ~ _.Dispose();
+	public ref Event<FormClosedEventHandler> FormClosed { get; set; } ~ _.Dispose();
+	protected virtual void OnFormClosing(FormClosingEventArgs args) => FormClosing.Invoke(this, args);
+	protected virtual void OnFormClosed(FormClosedEventArgs args) => FormClosed.Invoke(this, args);
 	public bool KeyPreview { get; set; }
 
 	internal void NotifyLoad()
@@ -31,11 +46,24 @@ public class Form : ContainerControl
 
 	public override void Show()
 	{
+		if (mClosed) Runtime.FatalError("Cannot show a closed form");
 		Visible = true;
 		CreateHandle();
 		NotifyLoad();
-		Application.Backend.Show(this);
+		if (!mClosed) Application.Backend.Show(this);
 	}
 
-	public void Close() => Application.Backend.Close(this);
+	public void Close()
+	{
+		if (mClosing || mClosed) return;
+		mClosing = true;
+		defer { mClosing = false; }
+		let args = scope FormClosingEventArgs(.UserClosing);
+		OnFormClosing(args);
+		if (args.Cancel) return;
+		mClosed = true;
+		if (IsHandleCreated) Application.Backend.Close(this);
+		DestroyHandle();
+		OnFormClosed(scope .(.UserClosing));
+	}
 }
