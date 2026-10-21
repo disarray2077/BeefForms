@@ -20,6 +20,11 @@ static class Win32
 	[Import("user32.dll"), CLink]
 	public static extern BOOL ShowScrollBar(void* window, int32 bar, BOOL show);
 	[Import("user32.dll"), CLink]
+	public static extern int32 ScrollWindowEx(void* window, int32 dx, int32 dy, RECT* scroll, RECT* clip, void* updateRegion, RECT* update, uint flags);
+	public const uint SW_SCROLLCHILDREN = 0x0001;
+	public const uint SW_INVALIDATE = 0x0002;
+	public const uint SW_ERASE = 0x0004;
+	[Import("user32.dll"), CLink]
 	public static extern int32 GetSystemMetrics(int32 index);
 	[Import("user32.dll"), CLink]
 	public static extern uint32 GetDpiForWindow(void* window);
@@ -43,8 +48,12 @@ static class Win32
 	public const uint WM_PAINT = 0x000F;
 	public const uint WM_ERASEBKGND = 0x0014;
 	public const uint WM_NCHITTEST = 0x0084;
+	public const uint WM_NCLBUTTONDOWN = 0x00A1;
+	public const uint WM_NCLBUTTONDBLCLK = 0x00A3;
 	public const int HTTRANSPARENT = -1;
 	public const int HTCLIENT = 1;
+	public const int HTHSCROLL = 6;
+	public const int HTVSCROLL = 7;
 	public const uint WM_SETFONT = 0x0030;
 	public const uint WM_CHAR = 0x0102;
 	public const uint WM_KEYDOWN = 0x0100;
@@ -141,6 +150,11 @@ static class Win32
 	public const uint SWP_NOMOVE = 0x0002;
 	public const uint SWP_NOZORDER = 0x0004;
 	public const uint SWP_NOACTIVATE = 0x0010;
+
+	public const uint RDW_INVALIDATE = 0x0001;
+	public const uint RDW_ERASE = 0x0004;
+	public const uint RDW_ALLCHILDREN = 0x0080;
+	public const uint RDW_UPDATENOW = 0x0100;
 
 	public const uint SRCCOPY = 0x00CC0020;
 
@@ -342,12 +356,16 @@ static class Win32
 	public static extern void* GetStockObject(int fnObject);
 	[Import("user32.dll"), LinkName("SendMessageW")]
 	public static extern int* SendMessage(void* hWnd, uint Msg, uint* wParam, int* lParam);
+	[Import("user32.dll"), LinkName("PostMessageW")]
+	public static extern BOOL PostMessage(void* hWnd, uint Msg, uint* wParam, int* lParam);
 	[Import("comctl32.dll"), CLink]
 	public static extern bool InitCommonControlsEx(in INITCOMMONCONTROLSEX picce);
 	[Import("user32.dll"), CLink]
 	public static extern bool InvalidateRect(void* hWnd, RECT* lpRect, bool bErase);
 	[Import("user32.dll"), CLink]
 	public static extern bool UpdateWindow(void* hWnd);
+	[Import("user32.dll"), CLink]
+	public static extern BOOL RedrawWindow(void* window, RECT* bounds, void* region, uint flags);
 	[Import("user32.dll"), CLink]
 	public static extern BOOL EnableWindow(void* hWnd, BOOL bEnable);
 	[Import("user32.dll"), CLink]

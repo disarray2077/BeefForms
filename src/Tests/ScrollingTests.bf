@@ -92,6 +92,90 @@ class ScrollingTests
 	}
 
 #if BF_PLATFORM_WINDOWS
+	private class PaintTrackingProgressBar : ProgressBar
+	{
+		public int PaintCount;
+		protected internal override void NotifyPaint()
+		{
+			base.NotifyPaint();
+			PaintCount++;
+		}
+	}
+
+	[Test]
+	public static void NativeScrollingPreservesVisibleMarqueeContents()
+	{
+		Application.UseBackend(.Win32);
+		let form = scope Form();
+		form.ClientSize = .(300, 200);
+		let panel = new Panel();
+		panel.Size = .(200, 140);
+		panel.AutoScroll = true;
+		panel.AutoScrollMinSize = .(100, 400);
+		let row = new Panel();
+		row.Location = .(5, 60);
+		row.Size = .(150, 70);
+		let progress = new PaintTrackingProgressBar();
+		progress.Size = .(120, 20);
+		progress.Style = .Marquee;
+		progress.MarqueeAnimationSpeed = 60000;
+		row.Controls.Add(progress);
+		panel.Controls.Add(row);
+		form.Controls.Add(panel);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		Win32.RedrawWindow(form.Handle, null, null, Win32.RDW_INVALIDATE | Win32.RDW_ERASE | Win32.RDW_ALLCHILDREN | Win32.RDW_UPDATENOW);
+
+		let paints = progress.PaintCount;
+		Win32.GetWindowRect(progress.Handle, var before);
+		panel.ScrollPosition = .(0, 16);
+		Win32.RedrawWindow(panel.Handle, null, null, Win32.RDW_ALLCHILDREN | Win32.RDW_UPDATENOW);
+		Win32.GetWindowRect(progress.Handle, var after);
+		Test.Assert(after.top == before.top - 16 && progress.PaintCount == paints);
+	}
+
+	[Test]
+	public static void NativePanelsReceiveMouseInputAcrossTheirClientAndScrollbars()
+	{
+		Application.UseBackend(.Win32);
+		let form = scope Form();
+		form.ClientSize = .(300, 200);
+		let panel = new Panel();
+		panel.Size = .(160, 120);
+		panel.AutoScroll = true;
+		panel.AutoScrollMinSize = .(400, 500);
+		let label = new Label();
+		label.Text = "Download";
+		label.Location = .(10, 10);
+		label.Size = .(80, 20);
+		panel.Controls.Add(label);
+		form.Controls.Add(panel);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+
+		function int*(int32 x, int32 y) packedPoint = (x, y) => (int*)(void*)(int)((y << 16) | (x & 0xFFFF));
+		Win32.GetWindowRect(panel.Handle, var bounds);
+		let clientPoint = packedPoint(bounds.left + 5, bounds.top + 5);
+		let verticalPoint = packedPoint(bounds.right - 8, bounds.bottom - 40);
+		let horizontalPoint = packedPoint(bounds.right - 40, bounds.bottom - 8);
+		Test.Assert((int)(void*)Win32.SendMessage(panel.Handle, Win32.WM_NCHITTEST, null, clientPoint) == Win32.HTCLIENT);
+		Test.Assert((int)(void*)Win32.SendMessage(panel.Handle, Win32.WM_NCHITTEST, null, verticalPoint) == Win32.HTVSCROLL);
+		Test.Assert((int)(void*)Win32.SendMessage(panel.Handle, Win32.WM_NCHITTEST, null, horizontalPoint) == Win32.HTHSCROLL);
+		Win32.GetWindowRect(label.Handle, out bounds);
+		Test.Assert((int)(void*)Win32.SendMessage(label.Handle, Win32.WM_NCHITTEST, null, packedPoint(bounds.left + 5, bounds.top + 5)) == Win32.HTCLIENT);
+
+		Win32.SendMessage(label.Handle, Win32.WM_MOUSEWHEEL, (uint*)(void*)(-120 << 16), clientPoint);
+		Test.Assert(panel.ScrollPosition.y > 0);
+		panel.ScrollPosition = .(0, 0);
+		// Release the press inside DefWindowProc's native scrollbar tracking loop.
+		Win32.PostMessage(panel.Handle, Win32.WM_LBUTTONUP, null, clientPoint);
+		Win32.SendMessage(panel.Handle, Win32.WM_NCLBUTTONDOWN, (uint*)(void*)Win32.HTVSCROLL, verticalPoint);
+		Test.Assert(panel.ScrollPosition.y > 0);
+		Win32.PostMessage(panel.Handle, Win32.WM_LBUTTONUP, null, clientPoint);
+		Win32.SendMessage(panel.Handle, Win32.WM_NCLBUTTONDOWN, (uint*)(void*)Win32.HTHSCROLL, horizontalPoint);
+		Test.Assert(panel.ScrollPosition.x > 0);
+	}
+
 	[Test]
 	public static void NativePanelsShowScrollbarsOnlyForEnabledOverflow()
 	{
@@ -153,6 +237,8 @@ class ScrollingTests
 		Test.Assert(panel.ScrollPosition.y > beforeWheel);
 		panel.AutoScroll = false;
 		Test.Assert(panel.ScrollPosition.y == 0 && !panel.VerticalScrollVisible);
+		Win32.GetWindowRect(child.Handle, out after);
+		Test.Assert(after.top == before.top);
 	}
 #endif
 }

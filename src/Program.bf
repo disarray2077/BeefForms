@@ -27,7 +27,7 @@ namespace BeefForms
 				}
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(defaultValue: false);
-			Application.Run(new Form());
+			Application.Run(new DownloaderMockForm());
 			return 0;
 		}
 	}

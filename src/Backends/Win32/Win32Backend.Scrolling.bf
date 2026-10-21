@@ -33,9 +33,14 @@ extension Win32Backend
 	{
 		let viewport = control.ViewportSize;
 		let content = control.ScrollContentSize;
+		Point delta = .(0, 0);
 		for (let horizontal in scope bool[](true, false))
 		{
-			Win32.SCROLLINFO info = .(
+			Win32.SCROLLINFO info = .(sizeof(Win32.SCROLLINFO), 4, 0, 0, 0, 0, 0);
+			Win32.GetScrollInfo(control.Handle, horizontal ? 0 : 1, ref info);
+			if (horizontal) delta.x = info.nPos - control.ScrollPosition.x;
+			else delta.y = info.nPos - control.ScrollPosition.y;
+			info = .(
 				sizeof(Win32.SCROLLINFO), 7, 0,
 				Math.Max(0, (horizontal ? content.width : content.height) - 1),
 				(uint32)(horizontal ? viewport.width : viewport.height),
@@ -44,8 +49,13 @@ extension Win32Backend
 			Win32.ShowScrollBar(control.Handle, horizontal ? 0 : 1,
 				(horizontal ? control.HorizontalScrollVisible : control.VerticalScrollVisible) ? 1 : 0);
 		}
-		for (let child in control.Controls)
-			UpdateControl(child, .Bounds);
+		if (delta.x != 0 || delta.y != 0)
+		{
+			// Preserve visible pixels and move native children; only exposed areas need repainting.
+			Win32.GetClientRect(control.Handle, var clip);
+			Win32.ScrollWindowEx(control.Handle, delta.x, delta.y, null, &clip, null, null,
+				Win32.SW_INVALIDATE | Win32.SW_ERASE | Win32.SW_SCROLLCHILDREN);
+		}
 	}
 
 	private bool HandleScroll(Control control, uint32 message, uint32* wParam)

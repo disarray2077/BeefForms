@@ -54,10 +54,13 @@ extension Win32Backend
 			// BUTTON's press handling would give the frame keyboard focus.
 			if (control is GroupBox && (message == Win32.WM_LBUTTONDOWN || message == Win32.WM_LBUTTONDBLCLK))
 				return Win32.DefWindowProc(window, message, wParam, lParam);
+			// Let Windows track non-client scrollbars instead of the STATIC/BUTTON class's click handling.
+			if (control is ScrollableControl && (message == Win32.WM_NCLBUTTONDOWN || message == Win32.WM_NCLBUTTONDBLCLK))
+				return Win32.DefWindowProc(window, message, wParam, lParam);
 			let result = Win32.DefSubclassProc(window, message, wParam, lParam);
-			// Treat the frame's interior as part of our container rather than a sibling behind it.
-			if (control is GroupBox && message == Win32.WM_NCHITTEST && result == Win32.HTTRANSPARENT)
-				return Win32.HTCLIENT;
+			// STATIC and group boxes are mouse-transparent; preserve client and scrollbar hit testing.
+			if (message == Win32.WM_NCHITTEST && result == Win32.HTTRANSPARENT)
+				return Win32.DefWindowProc(window, message, wParam, lParam);
 			if (message == Win32.WM_PAINT) control.NotifyPaint();
 			if (let editor = control as TextBoxBase)
 				backend.SynchronizeSelectionAfterMessage(editor, message);
