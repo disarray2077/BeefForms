@@ -60,14 +60,7 @@ extension SDLBackend
 			mRenderer.Text(control, bounds.X + (bounds.Width - textWidth) / 2, bounds.Y + (bounds.Height - lineHeight) / 2);
 		}
 		else if (let progress = control as ProgressBar)
-		{
-			mRenderer.Fill(bounds, 0.85f, 0.86f, 0.87f);
-			let range = progress.Maximum - progress.Minimum;
-			int32 width = range == 0 ? 0 : (int32)((int64)Math.Max(0, bounds.Width - 4) * (progress.Value - progress.Minimum) / range);
-			mRenderer.Fill(.(bounds.X + 2, bounds.Y + 2, width,
-				Math.Max(0, bounds.Height - 4)), 0.2f, 0.65f, 0.38f);
-			mRenderer.Border(bounds, 0.6f, 0.62f, 0.65f);
-		}
+			RenderProgressBar(progress, bounds, clip);
 		else if (let editor = control as TextBoxBase)
 			RenderEditor(editor, bounds, clip);
 		else if (control is GroupBox)

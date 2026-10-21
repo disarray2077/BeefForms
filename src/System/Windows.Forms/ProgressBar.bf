@@ -2,11 +2,30 @@ using internal System.Windows.Forms;
 
 namespace System.Windows.Forms;
 
+public enum ProgressBarStyle { Blocks, Continuous, Marquee }
+
 public class ProgressBar : Control
 {
 	protected override bool CanSelectCore() => false;
 	private int mValue, mMinimum;
 	private int mMaximum = 100;
+	private ProgressBarStyle mStyle;
+	private int32 mMarqueeAnimationSpeed = 100;
+	public ProgressBarStyle Style
+	{
+		get => mStyle;
+		set { mStyle = value; UpdateBackend(.Appearance); }
+	}
+	public int32 MarqueeAnimationSpeed
+	{
+		get => mMarqueeAnimationSpeed;
+		set
+		{
+			if (value < 0) Runtime.FatalError("MarqueeAnimationSpeed must not be negative");
+			mMarqueeAnimationSpeed = value;
+			UpdateBackend(.Appearance);
+		}
+	}
 
 	public int Minimum
 	{

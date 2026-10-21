@@ -42,8 +42,11 @@ internal class Win32Backend : FormsBackend
 		if (control is GroupBox)
 			style |= Win32.BS_GROUPBOX | Win32.WS_GROUP;
 		if (control is CheckBox) style |= Win32.BS_CHECKBOX;
-		if (control is ProgressBar)
-			style |= Win32.PBS_SMOOTH;
+		if (let progress = control as ProgressBar)
+		{
+			if (progress.Style == .Continuous) style |= Win32.PBS_SMOOTH;
+			if (progress.Style == .Marquee) style |= Win32.PBS_MARQUEE;
+		}
 		if (let textBox = control as TextBoxBase)
 		{
 			style |= Win32.ES_AUTOHSCROLL;
@@ -151,12 +154,8 @@ internal class Win32Backend : FormsBackend
 		if (change == .Scroll || change == .All)
 			if (let scrollable = control as ScrollableControl)
 				UpdateScrolling(scrollable);
-		if (change == .Value || change == .All)
-			if (let progress = control as ProgressBar)
-			{
-				Win32.SendMessage(control.Handle, Win32.PBM_SETRANGE32, (uint*)(void*)progress.Minimum, (int*)(void*)progress.Maximum);
-				Win32.SendMessage(control.Handle, Win32.PBM_SETPOS, (uint*)(void*)progress.Value, null);
-			}
+		if (change == .Value || change == .Appearance || change == .All)
+			if (let progress = control as ProgressBar) UpdateProgressBar(progress, change);
 		if (change == .Value || change == .All)
 			if (let checkBox = control as CheckBox)
 				Win32.SendMessage(control.Handle, Win32.BM_SETCHECK, (uint*)(void*)(int)(checkBox.Checked ? 1 : 0), null);

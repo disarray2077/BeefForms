@@ -122,6 +122,8 @@ static class Win32
 	public const uint PBM_GETRANGE = 0x0407;
 	public const uint PBM_GETPOS = 0x0408;
 	public const uint PBS_SMOOTH = 0x01;
+	public const uint PBS_MARQUEE = 0x08;
+	public const uint PBM_SETMARQUEE = 0x040A;
 
 	// DrawText flags
 	public const uint DT_LEFT = 0x00000000;
