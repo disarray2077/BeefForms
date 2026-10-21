@@ -211,6 +211,15 @@ internal class Win32Backend : FormsBackend
 		Win32.InvalidateRect(control.Handle, null, true);
 	}
 
+	public override System.Drawing.Rectangle GetScreenWorkingArea()
+	{
+		Win32.GetCursorPos(var point);
+		Win32.MONITORINFO info = .();
+		info.cbSize = sizeof(Win32.MONITORINFO);
+		Win32.GetMonitorInfo(Win32.MonitorFromPoint(point, Win32.MONITOR_DEFAULTTONEAREST), ref info);
+		return .(info.rcWork.left, info.rcWork.top, info.rcWork.right - info.rcWork.left, info.rcWork.bottom - info.rcWork.top);
+	}
+
 	public override Size GetClientSize(Form form)
 	{
 		if (form.Handle == null)

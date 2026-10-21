@@ -32,6 +32,7 @@ public class Form : ContainerControl
 	protected virtual void OnFormClosing(FormClosingEventArgs args) => FormClosing.Invoke(this, args);
 	protected virtual void OnFormClosed(FormClosedEventArgs args) => FormClosed.Invoke(this, args);
 	public bool KeyPreview { get; set; }
+	public FormStartPosition StartPosition { get; set; } = .Manual;
 
 	internal void NotifyLoad()
 	{
@@ -60,7 +61,14 @@ public class Form : ContainerControl
 	{
 		if (mClosed) Runtime.FatalError("Cannot show a closed form");
 		Visible = true;
+		let created = IsHandleCreated;
 		CreateHandle();
+		if (!created && StartPosition == .CenterScreen)
+		{
+			let area = Application.Backend.GetScreenWorkingArea();
+			Location = .(area.X + Math.Max(0, area.Width - Size.width) / 2,
+				area.Y + Math.Max(0, area.Height - Size.height) / 2);
+		}
 		NotifyLoad();
 		if (!mClosed) Application.Backend.Show(this);
 	}

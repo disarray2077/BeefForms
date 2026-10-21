@@ -13,6 +13,7 @@ internal abstract class FormsBackend
 	public abstract void DestroyControl(Control control);
 	public abstract void UpdateControl(Control control, ControlChange change);
 	public abstract Size GetClientSize(Form form);
+	public abstract Rectangle GetScreenWorkingArea();
 	public abstract void SetClientSize(Form form, Size size);
 	public abstract void Show(Form form);
 	public abstract void Close(Form form);

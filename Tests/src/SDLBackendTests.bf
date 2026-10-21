@@ -142,7 +142,8 @@ class SDLBackendTests
 			Test.Assert(form.Clicks == 3 && form.Progress.Value == 75);
 			Test.Assert(form.Input.Size.width == 300 && form.Group.Location.x == 320);
 			SDL.GetWindowPosition((SDL.Window*)form.Handle, var actualX, var actualY);
-			Test.Assert(form.Location.x == actualX && form.Location.y == actualY);
+			SDL.GetWindowBordersSize((SDL.Window*)form.Handle, var top, var left, var bottom, var right);
+			Test.Assert(form.Location.x == actualX - left && form.Location.y == actualY - top);
 			Test.Assert(GL.glGetError() == GL.GL_NO_ERROR);
 		}
 #if BF_PLATFORM_WINDOWS

@@ -32,6 +32,52 @@ class FormWindowTests
 	public static void NativeWindowAndClientSizesAreDistinct() => VerifyWindowSize(.Win32);
 #endif
 
+	private static void VerifyStartPosition(ApplicationBackend backend, FormStartPosition position)
+	{
+		Application.UseBackend(backend);
+		let form = scope Form();
+		form.ClientSize = .(320, 180);
+		form.Location = .(80, 90);
+		form.StartPosition = position;
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		if (position == .CenterScreen)
+		{
+			let area = Application.Backend.GetScreenWorkingArea();
+			Test.Assert(form.Location.x == area.X + (area.Width - form.Size.width) / 2);
+			Test.Assert(form.Location.y == area.Y + (area.Height - form.Size.height) / 2);
+		}
+		else
+			Test.Assert(form.Location.x == 80 && form.Location.y == 90);
+#if BF_PLATFORM_WINDOWS
+		if (backend == .Win32)
+		{
+			Win32.GetWindowRect(form.Handle, var bounds);
+			Test.Assert(bounds.left == form.Location.x && bounds.top == form.Location.y);
+		}
+		else
+#endif
+		{
+			SDL.GetWindowPosition((SDL.Window*)form.Handle, var x, var y);
+			SDL.GetWindowBordersSize((SDL.Window*)form.Handle, var top, var left, var bottom, var right);
+			Test.Assert(x - left == form.Location.x && y - top == form.Location.y);
+		}
+		form.Location = .(100, 120);
+		form.Hide();
+		form.Show();
+		Test.Assert(form.Location.x == 100 && form.Location.y == 120);
+	}
+	[Test]
+	public static void SDLFormsCenterTheirOuterBounds() => VerifyStartPosition(.SDL2OpenGL, .CenterScreen);
+	[Test]
+	public static void SDLFormsHonorManualInitialPositions() => VerifyStartPosition(.SDL2OpenGL, .Manual);
+#if BF_PLATFORM_WINDOWS
+	[Test]
+	public static void NativeFormsCenterTheirOuterBounds() => VerifyStartPosition(.Win32, .CenterScreen);
+	[Test]
+	public static void NativeFormsHonorManualInitialPositions() => VerifyStartPosition(.Win32, .Manual);
+#endif
+
 	private static void VerifyTextBoxHeight(ApplicationBackend backend)
 	{
 		Application.UseBackend(backend);

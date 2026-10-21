@@ -16,6 +16,7 @@ class DownloaderMockForm : Form
 	public this()
 	{
 		Text = "Beef Async Downloader";
+		StartPosition = .CenterScreen;
 		ClientSize = .(800, 520);
 		MinimumSize = .(640, 360);
 

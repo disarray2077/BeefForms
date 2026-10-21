@@ -150,9 +150,7 @@ extension SDLBackend
 				mForm.NotifyResize(GetFormSize());
 				RequestRedraw();
 			case .Shown, .Hidden, .Minimized, .Restored: RequestRedraw();
-			case .Moved:
-				SDL.GetWindowPosition(mWindow, var x, var y);
-				mForm.NotifyMove(.(x, y));
+			case .Moved: mForm.NotifyMove(GetFormLocation());
 			case .Focus_lost: SetActive(false);
 			case .FocusGained: SetActive(true);
 			case .Enter:

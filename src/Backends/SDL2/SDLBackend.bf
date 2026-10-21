@@ -69,7 +69,7 @@ internal class SDLBackend : FormsBackend
 		SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 3);
 		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_CORE);
 		SDL.GL_SetAttribute(.GL_DOUBLEBUFFER, 1);
-		mWindow = SDL.CreateWindow(control.Text, (.)SDL.WindowPos.Centered, (.)SDL.WindowPos.Centered,
+		mWindow = SDL.CreateWindow(control.Text, (.)control.Location.x, (.)control.Location.y,
 			Math.Max(1, size.width), Math.Max(1, size.height), .OpenGL | .Resizable | .AllowHighDPI | .Hidden);
 		if (mWindow == null)
 			Runtime.FatalError(scope $"Could not create SDL window: {StringView(SDL.GetError())}");
@@ -86,8 +86,8 @@ internal class SDLBackend : FormsBackend
 		control.SetNativeHandle(mWindow);
 		if (!mForm.HasInitialClientSize) SetFormSize(mForm, size);
 		control.NotifyResize(GetFormSize());
-		SDL.GetWindowPosition(mWindow, var x, var y);
-		control.NotifyMove(.(x, y));
+		SetFormLocation(control.Location);
+		control.NotifyMove(GetFormLocation());
 		ApplyMinimumSize(mForm);
 	}
 
@@ -149,9 +149,9 @@ internal class SDLBackend : FormsBackend
 			if (change == .Bounds)
 			{
 				SetFormSize(mForm, control.Size);
-				SDL.GetWindowPosition(mWindow, var x, var y);
-				if (x != control.Location.x || y != control.Location.y)
-					SDL.SetWindowPosition(mWindow, control.Location.x, control.Location.y);
+				let location = GetFormLocation();
+				if (location.x != control.Location.x || location.y != control.Location.y)
+					SetFormLocation(control.Location);
 			}
 		}
 		if (change == .Scroll || change == .Bounds || change == .Visibility || change == .Enabled || change == .ZOrder)
@@ -163,6 +163,25 @@ internal class SDLBackend : FormsBackend
 		if (mWindow == null) return form.Size;
 		SDL.GetWindowSize(mWindow, var width, var height);
 		return .(width, height);
+	}
+	public override Rectangle GetScreenWorkingArea()
+	{
+		SDL.GetGlobalMouseState(var x, var y);
+		SDL.Point point = .(x, y);
+		let display = Math.Max(0, SDL.GetPointDisplayIndex(&point));
+		SDL.GetDisplayUsableBounds(display, var area);
+		return .(area.x, area.y, area.w, area.h);
+	}
+	private Point GetFormLocation()
+	{
+		SDL.GetWindowPosition(mWindow, var x, var y);
+		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
+		return .(x - left, y - top);
+	}
+	private void SetFormLocation(Point location)
+	{
+		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
+		SDL.SetWindowPosition(mWindow, location.x + left, location.y + top);
 	}
 	private Size GetFormSize()
 	{

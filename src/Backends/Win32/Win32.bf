@@ -62,6 +62,21 @@ static class Win32
 	[Import("user32.dll"), CLink]
 	public static extern BOOL DestroyIcon(void* icon);
 
+	[CRepr]
+	public struct MONITORINFO
+	{
+		public uint32 cbSize;
+		public RECT rcMonitor, rcWork;
+		public uint32 dwFlags;
+	}
+	public const uint32 MONITOR_DEFAULTTONEAREST = 2;
+	[Import("user32.dll"), CLink]
+	public static extern BOOL GetCursorPos(out POINT point);
+	[Import("user32.dll"), CLink]
+	public static extern void* MonitorFromPoint(POINT point, uint32 flags);
+	[Import("user32.dll"), LinkName("GetMonitorInfoW")]
+	public static extern BOOL GetMonitorInfo(void* monitor, ref MONITORINFO info);
+
 	// Window Messages
 	public const uint WM_HSCROLL = 0x0114;
 	public const uint WM_VSCROLL = 0x0115;
