@@ -53,16 +53,38 @@ class LifecycleTests
 		panel.Paint.Add(new [&] (sender, args) =>
 		{
 			paints++;
-			if (paints == 1) panel.Invalidate();
+			if (paints == 1)
+			{
+				Test.Assert((SDL.GetWindowFlags((SDL.Window*)form.Handle) & (uint32)SDL.WindowFlags.Hidden) != 0);
+				panel.Invalidate();
+			}
 		});
 		form.Show();
 		let backend = (SDLBackend)Application.Backend;
-		SDLTestInput.Activate(backend);
-		panel.Invalidate();
 		Test.Assert(paints == 0);
-		backend.FrameLimit = 4;
-		backend.Run(form);
+		Test.Assert((SDL.GetWindowFlags((SDL.Window*)form.Handle) & (uint32)SDL.WindowFlags.Hidden) != 0);
+		Test.Assert(backend.[Friend]RenderIfNeeded());
+		Test.Assert(paints == 1);
+		Test.Assert((SDL.GetWindowFlags((SDL.Window*)form.Handle) & (uint32)SDL.WindowFlags.Shown) != 0);
+		Test.Assert(backend.[Friend]RenderIfNeeded());
 		Test.Assert(paints == 2);
+		Test.Assert(!backend.[Friend]RenderIfNeeded());
+	}
+
+	[Test]
+	public static void SDLHideCancelsPendingShow()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		let form = scope Form();
+		form.ClientSize = .(240, 160);
+		let backend = (SDLBackend)Application.Backend;
+		form.Show();
+		form.Hide();
+		Test.Assert(!backend.[Friend]RenderIfNeeded());
+		Test.Assert((SDL.GetWindowFlags((SDL.Window*)form.Handle) & (uint32)SDL.WindowFlags.Hidden) != 0);
+		form.Show();
+		Test.Assert(backend.[Friend]RenderIfNeeded());
+		Test.Assert((SDL.GetWindowFlags((SDL.Window*)form.Handle) & (uint32)SDL.WindowFlags.Shown) != 0);
 	}
 
 #if BF_PLATFORM_WINDOWS

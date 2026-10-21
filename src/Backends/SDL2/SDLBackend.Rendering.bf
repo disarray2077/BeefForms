@@ -30,7 +30,8 @@ extension SDLBackend
 	}
 
 	private bool CanRender => mWindow != null && mForm.IsEffectivelyVisible &&
-		(SDL.GetWindowFlags(mWindow) & (uint32)(SDL.WindowFlags.Hidden | .Minimized)) == 0;
+		(SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Minimized) == 0 &&
+		(mShowPending || (SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Hidden) == 0);
 
 	private int32 GetRedrawTimeout()
 	{
@@ -67,6 +68,12 @@ extension SDLBackend
 			CapturePath = null;
 		}
 		SDL.GL_SwapWindow(mWindow);
+		if (mShowPending && mForm.IsEffectivelyVisible)
+		{
+			mShowPending = false;
+			SDL.ShowWindow(mWindow);
+			SetActive(SDL.GetKeyboardFocus() == mWindow);
+		}
 	}
 
 	private static Rectangle Intersect(Rectangle a, Rectangle b)

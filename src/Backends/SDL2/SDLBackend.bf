@@ -28,7 +28,7 @@ internal class SDLBackend : FormsBackend
 	private bool mInitialized, mRunning;
 	private bool mRendering;
 	private int mRenderThreadId;
-	private bool mRedrawRequested;
+	private bool mRedrawRequested, mShowPending;
 	private SDL.EventType mRedrawEvent;
 	private uint64 mFrameTicks, mNextAnimationTick = uint64.MaxValue;
 	public int FrameLimit;
@@ -102,6 +102,7 @@ internal class SDLBackend : FormsBackend
 		mContext = default;
 		SDL.DestroyWindow(mWindow);
 		mWindow = null;
+		mShowPending = false;
 		mPointerInside = false;
 		mActive = false;
 		mSuppressTextInput = false;
@@ -140,8 +141,12 @@ internal class SDLBackend : FormsBackend
 		{
 			if (change == .Visibility)
 			{
-				if (control.Visible) SDL.ShowWindow(mWindow);
-				else SDL.HideWindow(mWindow);
+				if (control.Visible) Show(mForm);
+				else
+				{
+					mShowPending = false;
+					SDL.HideWindow(mWindow);
+				}
 			}
 			if (change == .Text)
 				SDL.SetWindowTitle(mWindow, control.Text);
@@ -216,10 +221,9 @@ internal class SDLBackend : FormsBackend
 	}
 	public override void Show(Form form)
 	{
-		SDL.ShowWindow(mWindow);
 		ApplyMinimumSize(form);
-		SetActive(SDL.GetKeyboardFocus() == mWindow);
 		mRunning = true;
+		mShowPending = (SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Hidden) != 0;
 		RequestRedraw();
 	}
 	public override void Close(Form form)

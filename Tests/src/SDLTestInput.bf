@@ -9,6 +9,7 @@ static class SDLTestInput
 {
 	public static void Activate(SDLBackend backend)
 	{
+		backend.[Friend]RenderIfNeeded();
 		backend.ProcessEvents();
 		SetActive(backend, true);
 	}
