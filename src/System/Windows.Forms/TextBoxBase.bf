@@ -1,5 +1,7 @@
 
 
+using System.Text;
+
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
 
@@ -14,9 +16,10 @@ public class TextBoxBase : Control
 		get => mReadOnly;
 		set { mReadOnly = value; UpdateBackend(.ReadOnly); }
 	}
+	/// Selection positions and lengths use UTF-16 code units.
 	public int SelectionStart
 	{
-		get => Math.Min(mCaret, mAnchor);
+		get => Utf16Offset(Text, SelectionByteStart);
 		set
 		{
 			if (value < 0) Runtime.FatalError("SelectionStart must not be negative");
@@ -25,13 +28,15 @@ public class TextBoxBase : Control
 	}
 	public int SelectionLength
 	{
-		get => Math.Abs(mCaret - mAnchor);
+		get => Utf16Offset(Text, SelectionByteStart + SelectionByteLength) - SelectionStart;
 		set
 		{
 			if (value < 0) Runtime.FatalError("SelectionLength must not be negative");
 			Select(SelectionStart, value);
 		}
 	}
+	internal int SelectionByteStart => Math.Min(mCaret, mAnchor);
+	internal int SelectionByteLength => Math.Abs(mCaret - mAnchor);
 	internal int Caret => mCaret;
 	internal int SelectionAnchor => mAnchor;
 	internal int32 ScrollX;
@@ -51,14 +56,16 @@ public class TextBoxBase : Control
 		}
 	}
 
+	/// Selects text by UTF-16 indices; positions inside surrogate pairs snap to the character's start.
 	public void Select(int start, int length)
 	{
-		let position = Math.Clamp(start, 0, Text.Length);
-		mAnchor = CharacterBoundary(position);
-		mCaret = CharacterBoundary(position + Math.Clamp(length, -position, Text.Length - position));
+		let textLength = UTF16.GetEncodedLen(Text);
+		let position = Math.Clamp(start, 0, textLength);
+		mAnchor = Utf8Offset(Text, position);
+		mCaret = Utf8Offset(Text, position + Math.Clamp(length, -position, textLength - position));
 		UpdateBackend(.Selection);
 	}
-	public void SelectAll() => Select(0, Text.Length);
+	public void SelectAll() => Select(0, UTF16.GetEncodedLen(Text));
 
 	internal void SetCaret(int position, bool extend)
 	{
@@ -72,6 +79,23 @@ public class TextBoxBase : Control
 	{
 		mAnchor = anchor;
 		mCaret = caret;
+	}
+
+	internal static int Utf16Offset(StringView text, int utf8Offset) =>
+		UTF16.GetEncodedLen(text.Substring(0, utf8Offset));
+
+	internal static int Utf8Offset(StringView text, int utf16Offset)
+	{
+		int units = 0, bytes = 0;
+		for (let character in text.DecodedChars)
+		{
+			let length = UTF16.GetEncodedLength(character);
+			// Keep whole characters when an index falls between a surrogate pair.
+			if (units + length > utf16Offset) break;
+			units += length;
+			bytes += UTF8.GetEncodedLength(character);
+		}
+		return bytes;
 	}
 
 	private int CharacterBoundary(int position)
@@ -94,11 +118,11 @@ public class TextBoxBase : Control
 	{
 		if (ReadOnly)
 			return;
-		let start = SelectionStart;
+		let start = SelectionByteStart;
 		let text = scope String();
 		text.Append(Text, 0, start);
 		text.Append(value);
-		text.Append(Text, start + SelectionLength);
+		text.Append(Text, start + SelectionByteLength);
 		Text = text;
 		mCaret = start + value.Length;
 		mAnchor = mCaret;
@@ -109,7 +133,7 @@ public class TextBoxBase : Control
 	{
 		if (ReadOnly)
 			return;
-		if (SelectionLength == 0)
+		if (SelectionByteLength == 0)
 		{
 			mAnchor = mCaret;
 			mCaret = AdjacentPosition(mCaret, !backward);

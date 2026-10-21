@@ -104,6 +104,33 @@ class VisibilityTests
 		Test.Assert(panel.VerticalScrollVisible);
 	}
 
+	[Test]
+	public static void InheritedVisibilityChangesNotifyVisibleDescendants()
+	{
+		let parent = scope Panel();
+		let panel = new Panel();
+		let child = new Button();
+		let hidden = new Button();
+		hidden.Hide();
+		panel.Controls.Add(child);
+		panel.Controls.Add(hidden);
+		parent.Controls.Add(panel);
+		int panelChanges = 0, childChanges = 0, hiddenChanges = 0;
+		panel.VisibleChanged.Add(new [&] (sender, args) => { panelChanges++; });
+		child.VisibleChanged.Add(new [&] (sender, args) => { childChanges++; });
+		hidden.VisibleChanged.Add(new [&] (sender, args) => { hiddenChanges++; });
+		parent.Hide();
+		parent.Show();
+		Test.Assert(panelChanges == 2 && childChanges == 2 && hiddenChanges == 0);
+		Test.Assert(child.Visible && !hidden.Visible);
+		parent.Hide();
+		child.Hide();
+		child.Show();
+		Test.Assert(childChanges == 3);
+		parent.Show();
+		Test.Assert(childChanges == 4 && hiddenChanges == 0);
+	}
+
 #if BF_PLATFORM_WINDOWS
 	[Test]
 	public static void NativeVisibilityAndStackingFollowTheControlTree()

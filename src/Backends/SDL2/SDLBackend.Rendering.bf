@@ -102,10 +102,10 @@ extension SDLBackend
 		{
 			editor.ScrollX = Math.Max(0, Math.Max(caret.x - bounds.Width + 10, Math.Min(editor.ScrollX, caret.x)));
 			editor.ScrollY = Math.Max(0, Math.Max(caret.y + mRenderer.LineHeight(editor) - bounds.Height + 8, Math.Min(editor.ScrollY, caret.y)));
-			if (editor.SelectionLength > 0)
+			if (editor.SelectionByteLength > 0)
 			{
-				int start = editor.SelectionStart;
-				let end = start + editor.SelectionLength;
+				int start = editor.SelectionByteStart;
+				let end = start + editor.SelectionByteLength;
 				while (start < end)
 				{
 					var lineEnd = editor.Text.IndexOf('\n', start);

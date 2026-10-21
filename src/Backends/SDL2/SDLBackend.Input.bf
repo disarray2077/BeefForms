@@ -181,7 +181,7 @@ extension SDLBackend
 			if (args.Button == .Left && !args.Handled)
 			{
 				mPressed = target;
-				Focus(target.CanSelect ? target : null);
+				if (target.CanSelect) Focus(target);
 				if (mCaptured == null)
 				{
 					SetCapture(target, true);
@@ -241,6 +241,12 @@ extension SDLBackend
 			if (!mActive) break;
 			let target = mFocused ?? mForm;
 			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
+			if (input.key.keysym.sym == .TAB)
+			{
+				AdvanceFocus((input.key.keysym.mod & .SHIFT) != 0);
+				mSuppressTextInput = true;
+				break;
+			}
 			let args = scope KeyEventArgs(TranslateKey(input.key));
 			target.DispatchInput(.KeyDown, args);
 			mSuppressTextInput = args.SuppressKeyPress;
@@ -298,11 +304,6 @@ extension SDLBackend
 		let shift = (key.keysym.mod & .SHIFT) != 0;
 		let ctrl = (key.keysym.mod & .CTRL) != 0;
 		let symbol = key.keysym.sym;
-		if (symbol == .TAB)
-		{
-			AdvanceFocus(shift);
-			return;
-		}
 		if (mFocused == null || !mFocused.IsEffectivelyEnabled || !mFocused.IsEffectivelyVisible)
 			return;
 		if (let button = mFocused as Button)
@@ -320,9 +321,9 @@ extension SDLBackend
 			{
 			case .A: editor.SelectAll();
 			case .C, .X:
-				if (editor.SelectionLength > 0)
+				if (editor.SelectionByteLength > 0)
 				{
-					let text = scope String(editor.Text, editor.SelectionStart, editor.SelectionLength);
+					let text = scope String(editor.Text, editor.SelectionByteStart, editor.SelectionByteLength);
 					SDL.SetClipboardText(text);
 					if (symbol == .X) editor.ReplaceSelection("");
 				}
@@ -346,8 +347,8 @@ extension SDLBackend
 		case .DELETE: editor.DeleteText(false);
 		case .LEFT, .RIGHT:
 			let forward = symbol == .RIGHT;
-			let position = !shift && editor.SelectionLength > 0
-				? editor.SelectionStart + (forward ? editor.SelectionLength : 0)
+			let position = !shift && editor.SelectionByteLength > 0
+				? editor.SelectionByteStart + (forward ? editor.SelectionByteLength : 0)
 				: editor.AdjacentPosition(editor.Caret, forward);
 			editor.SetCaret(position, shift);
 		case .HOME, .END:

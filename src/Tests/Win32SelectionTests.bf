@@ -10,7 +10,7 @@ namespace BeefForms.Tests;
 class Win32SelectionTests
 {
 	[Test]
-	public static void NativeSelectionConvertsUTF8AndUTF16Offsets()
+	public static void NativeSelectionUsesUTF16PublicIndices()
 	{
 		Application.UseBackend(.Win32);
 		let form = scope Form();
@@ -19,20 +19,20 @@ class Win32SelectionTests
 		editor.Size = .(200, 30);
 		editor.Text = "aé😀z";
 		editor.SelectionStart = 1;
-		editor.SelectionLength = 6;
+		editor.SelectionLength = 3;
 		form.Controls.Add(editor);
 		form.Show();
 		defer { form.Close(); Application.Backend.Run(form); }
 
 		let selection = (uint)(void*)Win32.SendMessage(editor.Handle, Win32.EM_GETSEL, null, null);
 		Test.Assert((selection & 0xFFFF) == 1 && (selection >> 16) == 4);
-		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 6);
+		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 3);
 		editor.Focus();
-		editor.Select(3, 0);
+		editor.Select(2, 0);
 		Win32.SendMessage(editor.Handle, Win32.WM_KEYDOWN, (uint*)(void*)(uint)Keys.Left, null);
 		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 0);
 		Win32.SendMessage(editor.Handle, Win32.EM_SETSEL, (uint*)(void*)2, (int*)(void*)4);
-		Test.Assert(editor.SelectionStart == 3 && editor.SelectionLength == 4);
+		Test.Assert(editor.SelectionStart == 2 && editor.SelectionLength == 2);
 	}
 
 	[Test]
@@ -53,7 +53,7 @@ class Win32SelectionTests
 		Win32.SendMessage(editor.Handle, Win32.WM_LBUTTONDOWN, (uint*)(void*)1, start);
 		Win32.SendMessage(editor.Handle, Win32.WM_MOUSEMOVE, (uint*)(void*)1, end);
 		Win32.SendMessage(editor.Handle, Win32.WM_LBUTTONUP, null, end);
-		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 6);
+		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 3);
 		Win32.SendMessage(editor.Handle, Win32.WM_LBUTTONDOWN, (uint*)(void*)1, end);
 		Win32.SendMessage(editor.Handle, Win32.WM_MOUSEMOVE, (uint*)(void*)1, start);
 		Win32.SendMessage(editor.Handle, Win32.WM_LBUTTONUP, null, start);

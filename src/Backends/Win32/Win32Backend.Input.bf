@@ -89,15 +89,14 @@ extension Win32Backend
 		case Win32.WM_KEYDOWN, Win32.WM_SYSKEYDOWN, Win32.WM_KEYUP, Win32.WM_SYSKEYUP:
 			let down = message == Win32.WM_KEYDOWN || message == Win32.WM_SYSKEYDOWN;
 			let args = scope KeyEventArgs((Keys)(uint)(void*)wParam | KeyboardModifiers());
-			control.DispatchInput(down ? .KeyDown : .KeyUp, args);
-			if (!down) mSuppressChars = false;
-			else mSuppressChars = args.SuppressKeyPress;
-			if (down && !args.Handled && args.KeyCode == .Tab)
+			if (down && args.KeyCode == .Tab)
 			{
 				AdvanceFocus(control, args.Shift);
 				mSuppressChars = true;
 				return true;
 			}
+			control.DispatchInput(down ? .KeyDown : .KeyUp, args);
+			mSuppressChars = down && args.SuppressKeyPress;
 			return args.Handled || args.SuppressKeyPress;
 		case Win32.WM_CHAR:
 			return HandleCharacter(control, (char16)(uint)(void*)wParam, lParam);

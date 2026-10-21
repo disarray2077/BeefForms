@@ -91,4 +91,42 @@ class SDLInputTests
 		backend.ProcessEvents();
 		Test.Assert(!control.Capture);
 	}
+	[Test]
+	public static void ClickingNonSelectableControlsPreservesTextFocus()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		let form = scope Form();
+		form.ClientSize = .(300, 200);
+		let editor = new FocusTextBox();
+		editor.Size = .(200, 30);
+		let label = new Label();
+		label.Location = .(0, 40);
+		label.Size = .(100, 30);
+		let panel = new Panel();
+		panel.Location = .(0, 80);
+		panel.Size = .(100, 50);
+		form.Controls.Add(editor);
+		form.Controls.Add(label);
+		form.Controls.Add(panel);
+		form.Show();
+		let backend = (SDLBackend)Application.Backend;
+		SDLTestInput.Activate(backend);
+		editor.Focus();
+		for (let y in scope int32[](50, 90))
+		{
+			SDL.Event mouse = .();
+			mouse.type = .MouseButtonDown;
+			mouse.button.button = 1;
+			mouse.button.x = 10;
+			mouse.button.y = y;
+			SDL.PushEvent(ref mouse);
+			mouse.type = .MouseButtonUp;
+			SDL.PushEvent(ref mouse);
+			backend.ProcessEvents();
+			Test.Assert(editor.Focused && editor.Losses == 0);
+		}
+		SDLTestInput.TypeText(backend, "b");
+		Test.Assert(editor.Text == "b");
+	}
+
 }

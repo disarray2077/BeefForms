@@ -161,8 +161,8 @@ internal class Win32Backend : FormsBackend
 				Win32.SendMessage(control.Handle, Win32.EM_SETREADONLY, (uint*)(void*)(int)(editor.ReadOnly ? 1 : 0), null);
 			if (change == .Selection || change == .All)
 				Win32.SendMessage(control.Handle, Win32.EM_SETSEL,
-					(uint*)(void*)Utf16Offset(editor.Text, editor.SelectionAnchor),
-					(int*)(void*)Utf16Offset(editor.Text, editor.Caret));
+					(uint*)(void*)TextBoxBase.Utf16Offset(editor.Text, editor.SelectionAnchor),
+					(int*)(void*)TextBoxBase.Utf16Offset(editor.Text, editor.Caret));
 		}
 		Win32.InvalidateRect(control.Handle, null, true);
 	}

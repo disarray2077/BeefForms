@@ -102,27 +102,40 @@ class ControlTests
 	}
 
 	[Test]
-	public static void SelectionSettersAndTextChangesKeepUTF8Boundaries()
+	public static void PublicSelectionUsesUTF16AndKeepsCharacterBoundaries()
 	{
 		let editor = scope TextBox();
 		editor.Text = "aé😀z";
 		editor.SelectionStart = 1;
-		editor.SelectionLength = 6;
-		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 6);
+		editor.SelectionLength = 3;
+		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 3);
 		editor.ReplaceSelection("x");
 		Test.Assert(editor.Text == "axz");
 		editor.Text = "aé😀z";
-		editor.Select(2, 3);
+		editor.Select(3, 0);
+		Test.Assert(editor.SelectionStart == 2 && editor.SelectionLength == 0);
+		editor.Select(2, 2);
 		editor.ReplaceSelection("x");
-		Test.Assert(editor.Text == "ax😀z");
-		editor.SetCaret(4, false);
+		Test.Assert(editor.Text == "aéxz");
+		editor.SetCaret(3, false);
 		editor.Text = "éé";
-		Test.Assert(editor.SelectionStart == 2);
+		Test.Assert(editor.SelectionStart == 1);
 		editor.DeleteText(true);
 		Test.Assert(editor.Text == "é");
 		editor.SelectionStart = int.MaxValue;
 		editor.SelectionLength = int.MaxValue;
-		Test.Assert(editor.SelectionStart == editor.Text.Length && editor.SelectionLength == 0);
+		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 0);
+	}
+
+	[Test]
+	public static void SelectionStartCountsAccentedCharactersOnce()
+	{
+		let editor = scope TextBox();
+		editor.Text = "aéb";
+		editor.SelectionStart = 2;
+		editor.SelectionLength = 0;
+		editor.ReplaceSelection("x");
+		Test.Assert(editor.Text == "aéxb" && editor.SelectionStart == 3);
 	}
 
 }

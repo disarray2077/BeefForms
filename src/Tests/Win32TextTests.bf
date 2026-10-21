@@ -69,7 +69,7 @@ class Win32TextTests
 		editor.TextChanged.Add(new [&] (sender, args) =>
 		{
 			changes++;
-			Test.Assert(editor.SelectionStart == editor.Text.Length && editor.SelectionLength == 0);
+			Test.Assert(editor.SelectionStart == System.Text.UTF16.GetEncodedLen(editor.Text) && editor.SelectionLength == 0);
 		});
 
 		Win32.SendMessage(editor.Handle, Win32.WM_CHAR, (uint*)(void*)0xE9, null);

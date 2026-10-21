@@ -12,15 +12,23 @@ extension Control
 		set
 		{
 			if (mVisible == value) return;
+			let wasVisible = Visible;
 			mVisible = value;
 			UpdateSubtree(.Visibility);
 			Parent?.ChildBoundsChanged();
-			VisibleChanged.Invoke(this, .Empty);
+			if (wasVisible != Visible) OnVisibleChanged(.Empty);
 		}
 	}
 	public bool IsEffectivelyVisible => Visible;
 	internal bool LocallyVisible => mVisible;
 	public ref Event<EventHandler> VisibleChanged { get; set; } ~ _.Dispose();
+
+	protected virtual void OnVisibleChanged(EventArgs args)
+	{
+		VisibleChanged.Invoke(this, args);
+		for (let child in Controls)
+			if (child.mVisible) child.OnVisibleChanged(args);
+	}
 
 	public virtual void Show() => Visible = true;
 	public void Hide() => Visible = false;

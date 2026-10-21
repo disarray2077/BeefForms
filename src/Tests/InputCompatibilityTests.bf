@@ -49,6 +49,9 @@ class InputCompatibilityTests
 		outside.TabIndex = 1;
 		form.Controls.Add(group);
 		form.Controls.Add(outside);
+		form.KeyPreview = true;
+		int tabEvents = 0;
+		form.KeyDown.Add(new [&] (sender, args) => { tabEvents++; args.Handled = true; });
 		form.Show();
 		defer { form.Close(); Application.Backend.Run(form); }
 		if (let sdl = Application.Backend as SDLBackend) SDLTestInput.Activate(sdl);
@@ -67,7 +70,7 @@ class InputCompatibilityTests
 		group.Enabled = false;
 		outside.Focus();
 		PressTab(outside);
-		Test.Assert(outside.Focused);
+		Test.Assert(outside.Focused && tabEvents == 0);
 	}
 
 	[Test]

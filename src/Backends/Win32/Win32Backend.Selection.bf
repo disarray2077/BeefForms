@@ -1,5 +1,4 @@
 using System;
-using System.Text;
 using System.Windows.Forms;
 
 using internal System.Windows.Forms;
@@ -10,29 +9,13 @@ namespace BeefForms.Backends;
 #if BF_PLATFORM_WINDOWS
 extension Win32Backend
 {
-	private static int Utf16Offset(StringView text, int utf8Offset) =>
-		UTF16.GetEncodedLen(text.Substring(0, utf8Offset));
-
-	private static int Utf8Offset(StringView text, uint32 utf16Offset)
-	{
-		int units = 0, bytes = 0;
-		for (let character in text.DecodedChars)
-		{
-			let length = UTF16.GetEncodedLength(character);
-			if (units + length > utf16Offset) break;
-			units += length;
-			bytes += UTF8.GetEncodedLength(character);
-		}
-		return bytes;
-	}
-
 	private void SynchronizeNativeSelection(TextBoxBase editor, StringView text)
 	{
 		if (editor.Handle == null || mInsertingText) return;
 		uint32 nativeStart = 0, nativeEnd = 0;
 		Win32.SendMessage(editor.Handle, Win32.EM_GETSEL, (uint*)&nativeStart, (int*)&nativeEnd);
-		let start = Utf8Offset(text, nativeStart);
-		let end = Utf8Offset(text, nativeEnd);
+		let start = TextBoxBase.Utf8Offset(text, nativeStart);
+		let end = TextBoxBase.Utf8Offset(text, nativeEnd);
 		var caretAtStart = start != end && editor.SelectionAnchor == end;
 		// EM_GETSEL sorts the endpoints; the visible caret identifies the active end.
 		if (start != end && IsFocused(editor) && Win32.GetCaretPos(var caret))
