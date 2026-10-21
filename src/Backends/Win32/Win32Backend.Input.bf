@@ -66,7 +66,7 @@ extension Win32Backend
 		if (!mControls.TryGetValue((void*)lParam, let control))
 			return;
 		let notification = (uint)(void*)wParam >> 16;
-		if (let button = control as Button)
+		if (let button = control as ButtonBase)
 			if (notification == 0)
 				button.PerformClick();
 		if (control is TextBoxBase && notification == 0x300)

@@ -207,7 +207,7 @@ extension SDLBackend
 				mPressed = null;
 				if (mAutomaticCapture && mCaptured == pressed) SetCapture(mCaptured, false);
 				if (!args.Handled && hit == pressed)
-					if (let button = hit as Button)
+					if (let button = hit as ButtonBase)
 						button.PerformClick();
 			}
 		case .MouseWheel:
@@ -306,9 +306,9 @@ extension SDLBackend
 		let symbol = key.keysym.sym;
 		if (mFocused == null || !mFocused.IsEffectivelyEnabled || !mFocused.IsEffectivelyVisible)
 			return;
-		if (let button = mFocused as Button)
+		if (let button = mFocused as ButtonBase)
 		{
-			if ((symbol == .RETURN || symbol == .SPACE) && key.isRepeat == 0)
+			if ((symbol == .SPACE || (symbol == .RETURN && button is Button)) && key.isRepeat == 0)
 				button.PerformClick();
 			return;
 		}

@@ -36,7 +36,22 @@ extension SDLBackend
 		let lineHeight = mRenderer.LineHeight(control);
 		if (control is ScrollableControl || control is GroupBox)
 			mRenderer.Fill(bounds, 0.94f, 0.94f, 0.95f);
-		if (control is Button)
+		if (let checkBox = control as CheckBox)
+		{
+			int32 side = Math.Min(14, Math.Max(0, bounds.Height));
+			let indicator = Rectangle(bounds.X, bounds.Y + (bounds.Height - side) / 2, side, side);
+			mRenderer.Fill(indicator, 1, 1, 1);
+			mRenderer.Border(indicator, enabled ? 0.35f : 0.65f, 0.5f, 0.65f);
+			if (checkBox.Checked)
+				for (int32 x < Math.Max(0, side - 4))
+				{
+					let y = x < 3 ? x : 6 - x;
+					mRenderer.Fill(.(indicator.X + x + 2, indicator.Y + side / 2 + y - 1, 2, 2), 0.15f, 0.4f, 0.65f);
+				}
+			mRenderer.Text(control, bounds.X + side + 6, bounds.Y + (bounds.Height - lineHeight) / 2);
+			if (IsFocused(control)) mRenderer.Border(bounds, 0.35f, 0.5f, 0.7f);
+		}
+		else if (control is Button)
 		{
 			let shade = !enabled ? 0.89f : control == mPressed && control == mHovered ? 0.73f : control == mHovered ? 0.85f : 0.91f;
 			mRenderer.Fill(bounds, shade, shade, shade + 0.02f);

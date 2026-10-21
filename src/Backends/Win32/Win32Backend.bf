@@ -25,7 +25,7 @@ internal class Win32Backend : FormsBackend
 	private static char16* GetWindowClass(Control control)
 	{
 		if (control is Form) return (char16*)&Win32.FORM_CLASS;
-		if (control is Button || control is GroupBox) return (char16*)&Win32.BUTTON_CLASS;
+		if (control is ButtonBase || control is GroupBox) return (char16*)&Win32.BUTTON_CLASS;
 		if (control is TextBoxBase) return (char16*)&Win32.EDIT_CLASS;
 		if (control is ProgressBar) return (char16*)&Win32.PROGRESS_CLASS;
 		return (char16*)&Win32.STATIC_CLASS;
@@ -41,6 +41,7 @@ internal class Win32Backend : FormsBackend
 			style |= Win32.WS_TABSTOP;
 		if (control is GroupBox)
 			style |= Win32.BS_GROUPBOX | Win32.WS_GROUP;
+		if (control is CheckBox) style |= Win32.BS_CHECKBOX;
 		if (control is ProgressBar)
 			style |= Win32.PBS_SMOOTH;
 		if (let textBox = control as TextBoxBase)
@@ -136,7 +137,7 @@ internal class Win32Backend : FormsBackend
 		if (change == .Font || change == .All)
 			Win32.SendMessage(control.Handle, Win32.WM_SETFONT, (uint*)Win32.GetStockObject(Win32.DEFAULT_GUI_FONT), (int*)(void*)1);
 		if (change == .Enabled || change == .All)
-			Win32.EnableWindow(control.Handle, control.IsEffectivelyEnabled);
+			Win32.EnableWindow(control.Handle, control.IsEffectivelyEnabled ? 1 : 0);
 		if (change == .Bounds || change == .All)
 		{
 			let size = control.Size;
@@ -156,6 +157,9 @@ internal class Win32Backend : FormsBackend
 				Win32.SendMessage(control.Handle, Win32.PBM_SETRANGE32, (uint*)(void*)progress.Minimum, (int*)(void*)progress.Maximum);
 				Win32.SendMessage(control.Handle, Win32.PBM_SETPOS, (uint*)(void*)progress.Value, null);
 			}
+		if (change == .Value || change == .All)
+			if (let checkBox = control as CheckBox)
+				Win32.SendMessage(control.Handle, Win32.BM_SETCHECK, (uint*)(void*)(int)(checkBox.Checked ? 1 : 0), null);
 		if (let editor = control as TextBoxBase)
 		{
 			if (change == .ReadOnly || change == .All)

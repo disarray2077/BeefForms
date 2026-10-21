@@ -87,6 +87,9 @@ static class Win32
 
 	// Button Styles
 	public const uint BS_PUSHBUTTON = 0x00000000;
+	public const uint BS_CHECKBOX = 0x00000002;
+	public const uint BM_GETCHECK = 0x00F0;
+	public const uint BM_SETCHECK = 0x00F1;
 	public const uint BS_GROUPBOX = 0x00000007;
 
 	// Edit Control Styles
@@ -319,7 +322,9 @@ static class Win32
 	[Import("user32.dll"), CLink]
 	public static extern bool UpdateWindow(void* hWnd);
 	[Import("user32.dll"), CLink]
-	public static extern bool EnableWindow(void* hWnd, bool bEnable);
+	public static extern BOOL EnableWindow(void* hWnd, BOOL bEnable);
+	[Import("user32.dll"), CLink]
+	public static extern BOOL IsWindowEnabled(void* hWnd);
 	[Import("user32.dll"), CLink]
 	public static extern void* GetDC(void* hWnd);
 	[Import("user32.dll"), CLink]
