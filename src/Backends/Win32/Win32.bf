@@ -40,6 +40,10 @@ static class Win32
 	public const uint WM_CREATE = 0x0001;
 	public const uint WM_DRAWITEM = 0x002B;
 	public const uint WM_PAINT = 0x000F;
+	public const uint WM_ERASEBKGND = 0x0014;
+	public const uint WM_NCHITTEST = 0x0084;
+	public const int HTTRANSPARENT = -1;
+	public const int HTCLIENT = 1;
 	public const uint WM_SETFONT = 0x0030;
 	public const uint WM_CHAR = 0x0102;
 	public const uint WM_KEYDOWN = 0x0100;
@@ -70,6 +74,7 @@ static class Win32
 	// Window Styles
 	public const uint CS_DBLCLKS = 0x0008;
 	public const uint WS_GROUP = 0x00020000;
+	public const uint WS_EX_CONTROLPARENT = 0x00010000;
 	public const uint WS_OVERLAPPEDWINDOW = 0x00CF0000;
 	public const uint WS_CHILD = 0x40000000;
 	public const uint WS_VISIBLE = 0x10000000;

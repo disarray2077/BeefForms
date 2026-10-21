@@ -75,7 +75,8 @@ internal class Win32Backend : FormsBackend
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
 		if (control is Form)
 			Win32.AdjustWindowRectEx(ref bounds, style, false, 0);
-		let handle = Win32.CreateWindowEx(0, GetWindowClass(control), control.Text.ToScopedNativeWChar!(), style,
+		let extendedStyle = (control is GroupBox) ? Win32.WS_EX_CONTROLPARENT : 0;
+		let handle = Win32.CreateWindowEx(extendedStyle, GetWindowClass(control), control.Text.ToScopedNativeWChar!(), style,
 			control.Location.x, control.Location.y, bounds.right - bounds.left, bounds.bottom - bounds.top,
 			control.Parent?.Handle, null, Win32.GetModuleHandle(null), Internal.UnsafeCastToPtr(control));
 		if (handle == null)

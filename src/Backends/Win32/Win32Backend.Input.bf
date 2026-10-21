@@ -29,6 +29,13 @@ extension Win32Backend
 		let backend = (Win32Backend)Application.Backend;
 		if (backend.mControls.TryGetValue(window, let control))
 		{
+			if (control is GroupBox && message == Win32.WM_ERASEBKGND)
+			{
+				// Native group boxes leave background erasure to their host.
+				Win32.GetClientRect(window, var bounds);
+				Win32.FillRect(wParam, ref bounds, (void*)16);
+				return 1;
+			}
 			if (backend.DispatchNativeInput(control, message, wParam, lParam))
 				return 0;
 			if (message == Win32.WM_COMMAND)
@@ -39,7 +46,13 @@ extension Win32Backend
 				control.SetNativeHandle(null);
 				backend.mControls.Remove(window);
 			}
+			// BUTTON's press handling would give the frame keyboard focus.
+			if (control is GroupBox && (message == Win32.WM_LBUTTONDOWN || message == Win32.WM_LBUTTONDBLCLK))
+				return Win32.DefWindowProc(window, message, wParam, lParam);
 			let result = Win32.DefSubclassProc(window, message, wParam, lParam);
+			// Treat the frame's interior as part of our container rather than a sibling behind it.
+			if (control is GroupBox && message == Win32.WM_NCHITTEST && result == Win32.HTTRANSPARENT)
+				return Win32.HTCLIENT;
 			if (message == Win32.WM_PAINT) control.NotifyPaint();
 			if (let editor = control as TextBoxBase)
 				backend.SynchronizeSelectionAfterMessage(editor, message);
