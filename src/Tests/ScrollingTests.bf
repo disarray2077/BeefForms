@@ -93,6 +93,40 @@ class ScrollingTests
 
 #if BF_PLATFORM_WINDOWS
 	[Test]
+	public static void NativePanelsShowScrollbarsOnlyForEnabledOverflow()
+	{
+		Application.UseBackend(.Win32);
+		let form = scope Form();
+		form.ClientSize = .(400, 240);
+		let plain = new Panel();
+		plain.Size = .(160, 120);
+		let scrolling = new Panel();
+		scrolling.Location = .(180, 0);
+		scrolling.Size = plain.Size;
+		scrolling.AutoScroll = true;
+		form.Controls.Add(plain);
+		form.Controls.Add(scrolling);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		function uint(Control) scrollStyles = (control) =>
+			(uint)(void*)Win32.GetWindowLongPtr(control.Handle, Win32.GWL_STYLE) & (Win32.WS_HSCROLL | Win32.WS_VSCROLL);
+		Test.Assert(scrollStyles(plain) == 0 && scrollStyles(scrolling) == 0);
+		let child = new Button();
+		child.Location = .(0, 200);
+		child.Size = .(50, 20);
+		scrolling.Controls.Add(child);
+		Test.Assert(scrollStyles(scrolling) == Win32.WS_VSCROLL);
+		scrolling.AutoScroll = false;
+		Test.Assert(scrollStyles(scrolling) == 0);
+		scrolling.AutoScroll = true;
+		Test.Assert(scrollStyles(scrolling) == Win32.WS_VSCROLL);
+		child.Location = .(200, 200);
+		Test.Assert(scrollStyles(scrolling) == (Win32.WS_HSCROLL | Win32.WS_VSCROLL));
+		child.Location = .(0, 0);
+		Test.Assert(scrollStyles(scrolling) == 0);
+	}
+
+	[Test]
 	public static void NativeScrollbarsMoveChildrenWithoutChangingTheirLocation()
 	{
 		Application.UseBackend(.Win32);

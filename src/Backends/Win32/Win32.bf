@@ -14,11 +14,11 @@ static class Win32
 		{ cbSize = size; fMask = mask; nMin = minimum; nMax = maximum; nPage = page; nPos = position; nTrackPos = track; }
 	}
 	[Import("user32.dll"), CLink]
-	public static extern int32 SetScrollInfo(void* window, int32 bar, ref SCROLLINFO info, bool redraw);
+	public static extern int32 SetScrollInfo(void* window, int32 bar, ref SCROLLINFO info, BOOL redraw);
 	[Import("user32.dll"), CLink]
-	public static extern bool GetScrollInfo(void* window, int32 bar, ref SCROLLINFO info);
+	public static extern BOOL GetScrollInfo(void* window, int32 bar, ref SCROLLINFO info);
 	[Import("user32.dll"), CLink]
-	public static extern bool ShowScrollBar(void* window, int32 bar, bool show);
+	public static extern BOOL ShowScrollBar(void* window, int32 bar, BOOL show);
 	[Import("user32.dll"), CLink]
 	public static extern int32 GetSystemMetrics(int32 index);
 	[Import("user32.dll"), CLink]
@@ -156,6 +156,8 @@ static class Win32
 	// Background Modes
 	public const int TRANSPARENT = 1;
 
+	// Win32 BOOL is 32-bit, unlike Beef bool.
+	public typealias BOOL = int32;
 	public typealias LRESULT = int;
 	public typealias WPARAM = void*;
 	public typealias LPARAM = void*;

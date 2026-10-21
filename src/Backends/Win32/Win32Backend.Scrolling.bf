@@ -40,9 +40,9 @@ extension Win32Backend
 				Math.Max(0, (horizontal ? content.width : content.height) - 1),
 				(uint32)(horizontal ? viewport.width : viewport.height),
 				horizontal ? control.ScrollPosition.x : control.ScrollPosition.y, 0);
-			Win32.SetScrollInfo(control.Handle, horizontal ? 0 : 1, ref info, true);
+			Win32.SetScrollInfo(control.Handle, horizontal ? 0 : 1, ref info, 1);
 			Win32.ShowScrollBar(control.Handle, horizontal ? 0 : 1,
-				horizontal ? control.HorizontalScrollVisible : control.VerticalScrollVisible);
+				(horizontal ? control.HorizontalScrollVisible : control.VerticalScrollVisible) ? 1 : 0);
 		}
 		for (let child in control.Controls)
 			UpdateControl(child, .Bounds);
