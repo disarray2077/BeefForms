@@ -23,8 +23,10 @@ extension SDLBackend
 		if (Thread.CurrentThreadId == backend.mRenderThreadId && backend.mRunning && !backend.mRendering && backend.CanRender &&
 			input.window.windowID == SDL.GetWindowID(backend.mWindow))
 		{
-			InvalidateTree(backend.mForm);
-			backend.RenderFrame();
+			// SDL coalesces pending exposures; the queued copy must not invalidate this frame again.
+			backend.mHandledExposureTimestamp = input.window.timestamp;
+			backend.UpdateFormSize();
+			backend.RenderIfNeeded();
 		}
 		return 0;
 	}

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Windows.Forms;
 using BeefForms.Backends;
 using SDL2;
@@ -11,6 +12,81 @@ namespace BeefForms.Tests;
 
 class SDLRenderingTests
 {
+	[Test]
+	public static void ExposureWatchSkipsIdleFramesAndPreservesPaintInvalidation()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		let form = scope Form();
+		form.ClientSize = .(240, 120);
+		let panel = new Panel();
+		panel.Size = .(200, 100);
+		form.Controls.Add(panel);
+		form.Show();
+		let backend = (SDLBackend)Application.Backend;
+		backend.[Friend]RenderIfNeeded();
+		SDLTestInput.Activate(backend);
+		backend.[Friend]RenderIfNeeded();
+		backend.[Friend]mRenderThreadId = Thread.CurrentThreadId;
+		SDL.AddEventWatch(=> SDLBackend.[Friend]WatchWindowEvents, Internal.UnsafeCastToPtr(backend));
+		defer SDL.DelEventWatch(=> SDLBackend.[Friend]WatchWindowEvents, Internal.UnsafeCastToPtr(backend));
+		SDL.Event exposure = .();
+		exposure.type = .WindowEvent;
+		exposure.window.windowEvent = .Exposed;
+		exposure.window.windowID = SDL.GetWindowID((SDL.Window*)form.Handle);
+		let frame = backend.[Friend]mFrameTicks;
+		SDL.Delay(2);
+		SDL.PushEvent(ref exposure);
+		backend.ProcessEvents();
+		Test.Assert(backend.[Friend]mFrameTicks == frame);
+		Test.Assert(!backend.[Friend]RenderIfNeeded());
+
+		int paints = 0;
+		panel.Paint.Add(new [&] (sender, args) =>
+		{
+			paints++;
+			if (paints == 1) panel.Invalidate();
+		});
+		panel.Invalidate();
+		SDL.PushEvent(ref exposure);
+		Test.Assert(paints == 1);
+		backend.ProcessEvents();
+		Test.Assert(backend.[Friend]RenderIfNeeded());
+		Test.Assert(paints == 2);
+		Test.Assert(!backend.[Friend]RenderIfNeeded());
+	}
+
+	[Test]
+	public static void ExposureWatchRendersDueAnimationsWithoutInvalidatingControls()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		let form = scope Form();
+		form.ClientSize = .(240, 120);
+		let progress = new ProgressBar();
+		progress.Size = .(200, 20);
+		progress.Style = .Marquee;
+		progress.MarqueeAnimationSpeed = 500;
+		form.Controls.Add(progress);
+		form.Show();
+		let backend = (SDLBackend)Application.Backend;
+		backend.[Friend]RenderIfNeeded();
+		SDLTestInput.Activate(backend);
+		backend.[Friend]RenderIfNeeded();
+		backend.[Friend]mRenderThreadId = Thread.CurrentThreadId;
+		SDL.AddEventWatch(=> SDLBackend.[Friend]WatchWindowEvents, Internal.UnsafeCastToPtr(backend));
+		defer SDL.DelEventWatch(=> SDLBackend.[Friend]WatchWindowEvents, Internal.UnsafeCastToPtr(backend));
+		let frame = backend.[Friend]mFrameTicks;
+		SDL.Delay(550);
+		SDL.Event exposure = .();
+		exposure.type = .WindowEvent;
+		exposure.window.windowEvent = .Exposed;
+		exposure.window.windowID = SDL.GetWindowID((SDL.Window*)form.Handle);
+		SDL.PushEvent(ref exposure);
+		Test.Assert(backend.[Friend]mFrameTicks > frame);
+		backend.ProcessEvents();
+		Test.Assert(!backend.[Friend]RenderIfNeeded());
+		Test.Assert(!progress.NeedsPaint);
+	}
+
 	[Test]
 	public static void StaticFormsRedrawOnlyAfterChanges()
 	{

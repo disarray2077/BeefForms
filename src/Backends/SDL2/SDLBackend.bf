@@ -27,6 +27,7 @@ internal class SDLBackend : FormsBackend
 	private bool mSuppressTextInput;
 	private bool mInitialized, mRunning;
 	private bool mRendering;
+	private uint32? mHandledExposureTimestamp;
 	private int mRenderThreadId;
 	private bool mRedrawRequested, mShowPending;
 	private SDL.EventType mRedrawEvent;
@@ -104,6 +105,7 @@ internal class SDLBackend : FormsBackend
 		mWindow = null;
 		mShowPending = false;
 		mPointerInside = false;
+		mHandledExposureTimestamp = null;
 		mActive = false;
 		mSuppressTextInput = false;
 	}
@@ -193,6 +195,13 @@ internal class SDLBackend : FormsBackend
 		let client = GetClientSize(mForm);
 		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
 		return .(client.width + left + right, client.height + top + bottom);
+	}
+	private void UpdateFormSize()
+	{
+		let size = GetFormSize();
+		if (size.width == mForm.Size.width && size.height == mForm.Size.height) return;
+		mForm.NotifyResize(size);
+		RequestRedraw();
 	}
 	private void SetFormSize(Form form, Size size)
 	{

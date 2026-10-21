@@ -145,10 +145,10 @@ extension SDLBackend
 			switch (input.window.windowEvent)
 			{
 			case .Close: mForm.Close();
-			case .Exposed: InvalidateTree(mForm);
-			case .SizeChanged:
-				mForm.NotifyResize(GetFormSize());
-				RequestRedraw();
+			case .Exposed:
+				if (!mHandledExposureTimestamp.HasValue || (int32)(input.window.timestamp &- mHandledExposureTimestamp.Value) > 0)
+					InvalidateTree(mForm);
+			case .SizeChanged: UpdateFormSize();
 			case .Shown, .Hidden, .Minimized, .Restored: RequestRedraw();
 			case .Moved: mForm.NotifyMove(GetFormLocation());
 			case .Focus_lost: SetActive(false);
