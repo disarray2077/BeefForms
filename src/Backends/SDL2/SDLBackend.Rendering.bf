@@ -69,8 +69,8 @@ extension SDLBackend
 			mRenderer.Fill(.(bounds.X + 7, bounds.Y, mRenderer.Measure(control, control.Text) + 6, lineHeight), 0.94f, 0.94f, 0.95f);
 			mRenderer.Text(control, bounds.X + 10, bounds.Y);
 		}
-		else if (control is Label)
-			mRenderer.Text(control, bounds.X, bounds.Y);
+		else if (let label = control as Label)
+			RenderLabel(label, bounds);
 		else if (control.BorderStyle != .None)
 			mRenderer.Border(bounds, 0.7f, 0.7f, 0.72f);
 

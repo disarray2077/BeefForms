@@ -29,6 +29,11 @@ extension Win32Backend
 		let backend = (Win32Backend)Application.Backend;
 		if (backend.mControls.TryGetValue(window, let control))
 		{
+			if (message == Win32.WM_PAINT && control is Label)
+			{
+				backend.PaintLabel((Label)control);
+				return 0;
+			}
 			if (control is GroupBox && message == Win32.WM_ERASEBKGND)
 			{
 				// Native group boxes leave background erasure to their host.

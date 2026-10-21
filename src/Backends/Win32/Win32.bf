@@ -132,6 +132,8 @@ static class Win32
 	public const uint DT_WORDBREAK = 0x00000010;
 	public const uint DT_CALCRECT = 0x00000400;
 	public const uint DT_NOPREFIX = 0x00000800;
+	public const uint DT_SINGLELINE = 0x00000020;
+	public const uint DT_END_ELLIPSIS = 0x00008000;
 
 	// SetWindowPos Flags
 	public const uint SWP_NOSIZE = 0x0001;
@@ -168,6 +170,15 @@ static class Win32
 	public typealias LPARAM = void*;
 
 	// Structs
+	[CRepr]
+	public struct PAINTSTRUCT
+	{
+		public void* hdc;
+		public BOOL erase;
+		public RECT paint;
+		public BOOL restore, update;
+		public uint8[32] reserved;
+	}
 	[CRepr]
 	public struct POINT { public int32 x, y; }
 
@@ -265,6 +276,14 @@ static class Win32
 	}
 
 	// Functions
+	[Import("user32.dll"), CLink]
+	public static extern void* BeginPaint(void* window, out PAINTSTRUCT paint);
+	[Import("user32.dll"), CLink]
+	public static extern BOOL EndPaint(void* window, ref PAINTSTRUCT paint);
+	[Import("user32.dll"), CLink]
+	public static extern uint32 GetSysColor(int32 index);
+	[Import("gdi32.dll"), CLink]
+	public static extern uint32 SetTextColor(void* context, uint32 color);
 	[Import("user32.dll"), CLink]
 	public static extern bool IsWindowVisible(void* window);
 	[Import("user32.dll"), CLink]

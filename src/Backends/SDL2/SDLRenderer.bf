@@ -16,7 +16,8 @@ internal class SDLRenderer
 	private class TextTexture
 	{
 		public uint32 Texture;
-		public int32 Width, Height, FontKey;
+		public int32 Width, Height, FontKey, LayoutWidth, Alignment;
+		public bool Ellipsis;
 		public String Text = new .() ~ delete _;
 		public ~this() { if (Texture != 0) GL.glDeleteTextures(1, &Texture); }
 	}
@@ -220,7 +221,11 @@ internal class SDLRenderer
 			mText.Add(control, texture);
 		}
 		let key = GetFontKey(control);
-		if (texture.Text == control.Text && texture.FontKey == key)
+		let label = control as Label;
+		int32 layoutWidth = (label != null && !label.AutoSize) ? Math.Max(1, label.Size.width) : 0;
+		int32 alignment = label == null ? 0 : (int32)label.HorizontalTextAlignment;
+		let ellipsis = label != null && label.AutoEllipsis && !label.AutoSize;
+		if (texture.Text == control.Text && texture.FontKey == key && texture.LayoutWidth == layoutWidth && texture.Alignment == alignment && texture.Ellipsis == ellipsis)
 			return texture;
 		if (texture.Texture != 0)
 		{
@@ -229,11 +234,19 @@ internal class SDLRenderer
 		}
 		texture.Text.Set(control.Text);
 		texture.FontKey = key;
+		texture.LayoutWidth = layoutWidth;
+		texture.Alignment = alignment;
+		texture.Ellipsis = ellipsis;
 		texture.Width = 0;
 		texture.Height = 0;
 		if (control.Text.IsEmpty)
 			return texture;
-		let surface = SDLTTF.RenderUTF8_Blended_Wrapped(GetFont(control), control.Text, .(255, 255, 255, 255), 0);
+		let displayText = scope String(control.Text);
+		if (ellipsis) Ellipsize(label, displayText);
+		let font = GetFont(control);
+		SDLTTF.SetFontWrappedAlign(font, alignment);
+		defer SDLTTF.SetFontWrappedAlign(font, 0);
+		let surface = SDLTTF.RenderUTF8_Blended_Wrapped(font, displayText, .(255, 255, 255, 255), ellipsis ? 0 : (uint32)layoutWidth);
 		if (surface == null)
 			Runtime.FatalError(scope $"Could not render UI text: {StringView(SDL.GetError())}");
 		defer SDL.FreeSurface(surface);
