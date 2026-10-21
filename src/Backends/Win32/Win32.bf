@@ -55,6 +55,13 @@ static class Win32
 	public static extern void* CreateFont(int32 height, int32 width, int32 escapement, int32 orientation, int32 weight,
 		uint32 italic, uint32 underline, uint32 strikeout, uint32 charset, uint32 outputPrecision, uint32 clipPrecision, uint32 quality, uint32 pitch, char16* family);
 
+	public const int32 SM_CXICON = 11, SM_CYICON = 12, SM_CXSMICON = 49, SM_CYSMICON = 50;
+	public const uint WM_SETICON = 0x0080;
+	[Import("user32.dll"), CLink]
+	public static extern void* CreateIconFromResourceEx(uint8* bits, uint32 size, BOOL icon, uint32 version, int32 width, int32 height, uint32 flags);
+	[Import("user32.dll"), CLink]
+	public static extern BOOL DestroyIcon(void* icon);
+
 	// Window Messages
 	public const uint WM_HSCROLL = 0x0114;
 	public const uint WM_VSCROLL = 0x0115;

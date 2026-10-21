@@ -62,6 +62,10 @@ internal class SDLBackend : FormsBackend
 			Math.Max(1, size.width), Math.Max(1, size.height), .OpenGL | .Resizable | .AllowHighDPI | .Hidden);
 		if (mWindow == null)
 			Runtime.FatalError(scope $"Could not create SDL window: {StringView(SDL.GetError())}");
+		let iconData = (Span<uint8>)DefaultIcon.Data;
+		let icon = SDLImage.Load_RW(SDL.RWFromConstMem(iconData.Ptr, (int32)iconData.Length), 1);
+		SDL.SetWindowIcon(mWindow, icon);
+		SDL.FreeSurface(icon);
 		mContext = SDL.GL_CreateContext(mWindow);
 		if (mContext == default)
 			Runtime.FatalError(scope $"Could not create OpenGL context: {StringView(SDL.GetError())}");

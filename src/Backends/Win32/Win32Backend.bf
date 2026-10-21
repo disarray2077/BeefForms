@@ -17,6 +17,8 @@ internal class Win32Backend : FormsBackend
 	private bool mSuppressChars;
 	public ~this()
 	{
+		if (mWindowIcon != null) Win32.DestroyIcon(mWindowIcon);
+		if (mSmallWindowIcon != null) Win32.DestroyIcon(mSmallWindowIcon);
 		if (mGdiPlusToken != 0) Win32.GdiplusShutdown(mGdiPlusToken);
 	}
 
@@ -116,8 +118,9 @@ internal class Win32Backend : FormsBackend
 			Runtime.FatalError("Could not create the Windows control");
 		control.SetNativeHandle(handle);
 		mControls[handle] = control;
-		if (control is Form)
+		if (let form = control as Form)
 		{
+			SetDefaultIcon(form);
 			Win32.GetWindowRect(handle, var outer);
 			control.NotifyResize(.(outer.right - outer.left, outer.bottom - outer.top));
 		}
