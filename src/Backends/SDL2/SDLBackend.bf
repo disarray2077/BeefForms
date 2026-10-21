@@ -32,6 +32,8 @@ internal class SDLBackend : FormsBackend
 	private bool mRedrawRequested, mShowPending;
 	private SDL.EventType mRedrawEvent;
 	private uint64 mFrameTicks, mNextAnimationTick = uint64.MaxValue;
+	private int mFrames;
+	private bool mPumpingEvents;
 	public int FrameLimit;
 	public String CapturePath;
 
@@ -67,23 +69,33 @@ internal class SDLBackend : FormsBackend
 		mForm = (Form)control;
 		let size = mForm.HasInitialClientSize ? mForm.InitialClientSize : control.Size;
 		SDL.GL_SetAttribute(.GL_CONTEXT_MAJOR_VERSION, 3);
+#if BF_PLATFORM_WASM
+		SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 0);
+		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_ES);
+#else
 		SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 3);
 		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_CORE);
+#endif
 		SDL.GL_SetAttribute(.GL_DOUBLEBUFFER, 1);
 		mWindow = SDL.CreateWindow(control.Text, (.)control.Location.x, (.)control.Location.y,
 			Math.Max(1, size.width), Math.Max(1, size.height), .OpenGL | .Resizable | .AllowHighDPI | .Hidden);
 		if (mWindow == null)
 			Runtime.FatalError(scope $"Could not create SDL window: {StringView(SDL.GetError())}");
+#if !BF_PLATFORM_WASM
 		let iconData = (Span<uint8>)DefaultIcon.Data;
 		let icon = SDLImage.Load_RW(SDL.RWFromConstMem(iconData.Ptr, (int32)iconData.Length), 1);
 		SDL.SetWindowIcon(mWindow, icon);
 		SDL.FreeSurface(icon);
+#endif
 		mContext = SDL.GL_CreateContext(mWindow);
 		if (mContext == default)
 			Runtime.FatalError(scope $"Could not create OpenGL context: {StringView(SDL.GetError())}");
 		GL.Init(scope (name) => SDL.GL_GetProcAddress(name));
+#if !BF_PLATFORM_WASM
 		SDL.GL_SetSwapInterval(1);
-		mRenderer = new .("");
+#endif
+		mRenderer = new .(Application.SDLFontPath);
+		mFrames = 0;
 		control.SetNativeHandle(mWindow);
 		if (!mForm.HasInitialClientSize) SetFormSize(mForm, size);
 		control.NotifyResize(GetFormSize());
@@ -103,6 +115,7 @@ internal class SDLBackend : FormsBackend
 		mContext = default;
 		SDL.DestroyWindow(mWindow);
 		mWindow = null;
+		mRunning = false;
 		mShowPending = false;
 		mPointerInside = false;
 		mHandledExposureTimestamp = null;
@@ -255,24 +268,18 @@ internal class SDLBackend : FormsBackend
 		if (mRunning) WakeEventLoop();
 	}
 
+#if !BF_PLATFORM_WASM
 	public override void Run(Form form)
 	{
 		mRenderThreadId = Thread.CurrentThreadId;
 		SDL.AddEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
 		defer SDL.DelEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
-		int frames = 0;
 		while (mRunning)
 		{
-			ProcessEvents();
-			if (!mRunning)
-				break;
-			let capture = CapturePath != null && (FrameLimit == 0 || frames + 1 == FrameLimit);
-			// An explicit frame limit keeps capture and smoke-test runs finite, even for static forms.
-			let rendered = RenderIfNeeded(FrameLimit > 0 || capture, capture);
+			let frames = mFrames;
+			DoEvents();
 			if (!mRunning) break;
-			if (rendered && FrameLimit > 0 && ++frames >= FrameLimit)
-				break;
-			if (rendered && FrameLimit > 0) continue;
+			if (FrameLimit > 0 && mFrames != frames) continue;
 			let timeout = GetRedrawTimeout();
 			if (timeout == 0) continue;
 			SDL.Event input = ?;
@@ -280,6 +287,20 @@ internal class SDLBackend : FormsBackend
 				ProcessEvent(ref input);
 		}
 		mRunning = false;
+	}
+#endif
+
+	public override void DoEvents()
+	{
+		if (mWindow == null || !mRunning || mPumpingEvents || mRendering) return;
+		mPumpingEvents = true;
+		defer { mPumpingEvents = false; }
+		ProcessEvents();
+		if (!mRunning || mWindow == null) return;
+		let capture = CapturePath != null && (FrameLimit == 0 || mFrames + 1 == FrameLimit);
+		// Explicit frame limits also advance static forms for capture and smoke tests.
+		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && FrameLimit > 0 && ++mFrames >= FrameLimit)
+			mRunning = false;
 	}
 
 	internal void ProcessEvents()

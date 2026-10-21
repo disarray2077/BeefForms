@@ -1,0 +1,15 @@
+FileVersion = 1
+
+[Project]
+Name = "BeefForms.WasmRunTests"
+StartupObject = "BeefForms.WasmRunTests.Program"
+
+[Dependencies]
+corlib = "*"
+BeefForms = "*"
+
+[Configs.Debug.wasm32]
+TargetName = "WasmRunTests.html"
+
+[Configs.Release.wasm32]
+TargetName = "WasmRunTests.html"

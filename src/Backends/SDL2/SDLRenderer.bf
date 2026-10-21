@@ -34,7 +34,9 @@ internal class SDLRenderer
 		mFontPath.Set(fontPath);
 		if (mFontPath.IsEmpty)
 		{
-#if BF_PLATFORM_WINDOWS
+#if BF_PLATFORM_WASM
+			mFontPath.Set("/BeefForms/fonts/NotoSans-Regular.ttf");
+#elif BF_PLATFORM_WINDOWS
 			Environment.GetEnvironmentVariable("WINDIR", mFontPath);
 			mFontPath.Append("/Fonts/segoeui.ttf");
 #else
@@ -44,8 +46,13 @@ internal class SDLRenderer
 		if (!File.Exists(mFontPath))
 			Runtime.FatalError(scope $"Cannot find the UI font: {mFontPath}");
 
-		let vertexSource = """
-			#version 330 core
+#if BF_PLATFORM_WASM
+		let shaderHeader = "#version 300 es\nprecision highp float;\nprecision highp int;\n";
+#else
+		let shaderHeader = "#version 330 core\n";
+#endif
+		let vertexSource = scope String(shaderHeader);
+		vertexSource.Append("""
 			layout(location = 0) in vec2 position;
 			layout(location = 1) in vec2 texcoord;
 			uniform vec2 viewport;
@@ -55,15 +62,15 @@ internal class SDLRenderer
 			        1.0 - position.y / viewport.y * 2.0, 0.0, 1.0);
 			    uv = texcoord;
 			}
-			""";
-		let fragmentSource = """
-			#version 330 core
+			""");
+		let fragmentSource = scope String(shaderHeader);
+		fragmentSource.Append("""
 			in vec2 uv;
 			uniform sampler2D image;
 			uniform vec4 color;
 			out vec4 fragmentColor;
 			void main() { fragmentColor = texture(image, uv) * color; }
-			""";
+			""");
 		let vertex = CompileShader(GL.GL_VERTEX_SHADER, vertexSource);
 		defer GL.glDeleteShader(vertex);
 		let fragment = CompileShader(GL.GL_FRAGMENT_SHADER, fragmentSource);

@@ -10,6 +10,7 @@ namespace BeefForms.Sample
 	{
 		public static int Main(String[] args)
 		{
+#if !BF_PLATFORM_WASM
 			let capturePath = scope String();
 			for (let arg in args)
 				if (arg == "--sdl")
@@ -25,6 +26,7 @@ namespace BeefForms.Sample
 						backend.CapturePath = capturePath;
 					}
 				}
+#endif
 			Application.EnableVisualStyles();
 			Application.SetCompatibleTextRenderingDefault(defaultValue: false);
 			Application.Run(new DownloaderMockForm());

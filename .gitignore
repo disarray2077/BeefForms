@@ -3,3 +3,5 @@
 BeefSpace_User.toml
 BeefProj_User.toml
 __pycache__/
+*.py
+/*_context.txt

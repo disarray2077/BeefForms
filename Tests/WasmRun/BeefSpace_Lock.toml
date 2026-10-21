@@ -1,0 +1,6 @@
+FileVersion = 1
+
+[Locks.BeefGL.Git]
+URL = "https://github.com/disarray2077/BeefGL"
+Tag = ""
+Hash = "afbc966ca3b9c2985ac18c72790f1a3595469866"

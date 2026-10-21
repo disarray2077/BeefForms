@@ -85,6 +85,9 @@ static class Win32
 	public const uint WM_CLOSE = 0x0010;
 	public const uint WM_GETMINMAXINFO = 0x0024;
 	public const uint WM_QUIT = 0x0012;
+	public const uint PM_REMOVE = 0x0001;
+	[Import("user32.dll"), LinkName("PeekMessageW")]
+	public static extern BOOL PeekMessage(out MSG message, void* window, uint minimum, uint maximum, uint flags);
 	public const uint WM_COMMAND = 0x0111;
 	public const uint WM_NCCREATE = 0x0081;
 	public const uint WM_CREATE = 0x0001;

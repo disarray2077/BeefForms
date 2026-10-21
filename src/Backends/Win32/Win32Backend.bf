@@ -242,6 +242,21 @@ internal class Win32Backend : FormsBackend
 
 	public override void Show(Form form) => Win32.ShowWindow(form.Handle, Win32.SW_SHOW);
 	public override void Close(Form form) => DestroyControl(form);
+	public override void DoEvents()
+	{
+		Win32.MSG message = ?;
+		while (Win32.PeekMessage(out message, null, 0, 0, Win32.PM_REMOVE) != 0)
+		{
+			if (message.message == Win32.WM_QUIT)
+			{
+				// Leave shutdown visible to an enclosing native Run loop.
+				Win32.PostQuitMessage((int)(void*)message.wParam);
+				break;
+			}
+			Win32.TranslateMessage(message);
+			Win32.DispatchMessage(message);
+		}
+	}
 	public override void Run(Form form)
 	{
 		Win32.MSG message = ?;

@@ -1,0 +1,19 @@
+FileVersion = 1
+Unlocked = ["corlib", "SDL2"]
+ExtraPlatforms = ["wasm32"]
+
+[Workspace]
+StartupProject = "BeefForms.WasmRunTests"
+
+[Projects]
+BeefForms = {Path = "../.."}
+"BeefForms.WasmRunTests" = {Path = "."}
+
+[Configs.Debug.wasm32]
+Toolset = "GNU"
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
+[Configs.Release.wasm32]
+Toolset = "GNU"

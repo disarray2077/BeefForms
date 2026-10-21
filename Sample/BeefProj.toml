@@ -11,3 +11,12 @@ BeefForms = "*"
 [Platform.Windows]
 IconFile = "../Resources/BeefForms.ico"
 ManifestFile = "../win32.manifest"
+
+[Configs.Debug.Win64]
+DebugCommandArguments = "--sdl"
+
+[Configs.Debug.wasm32]
+TargetName = "BeefForms.html"
+
+[Configs.Release.wasm32]
+TargetName = "BeefForms.html"

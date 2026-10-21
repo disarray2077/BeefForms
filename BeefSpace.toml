@@ -1,6 +1,6 @@
 FileVersion = 1
 Unlocked = ["corlib", "SDL2"]
-ExtraPlatforms = ["Linux64"]
+ExtraPlatforms = ["Linux64", "wasm32"]
 
 [Workspace]
 StartupProject = "BeefForms.Sample"
@@ -27,3 +27,14 @@ ConfigSelections = {"BeefForms.Sample" = {Enabled = false}}
 
 [Configs.Test.Linux64]
 ConfigSelections = {"BeefForms.Sample" = {Enabled = false}}
+
+[Configs.Debug.wasm32]
+Toolset = "GNU"
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+ConfigSelections = {"BeefForms.Tests" = {Enabled = false}}
+
+[Configs.Release.wasm32]
+Toolset = "GNU"
+ConfigSelections = {"BeefForms.Tests" = {Enabled = false}}
