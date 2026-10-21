@@ -16,7 +16,7 @@ class DownloaderMockForm : Form
 	public this()
 	{
 		Text = "Beef Async Downloader";
-		Size = .(800, 520);
+		ClientSize = .(800, 520);
 		MinimumSize = .(640, 360);
 
 		let urlLabel = new Label();
@@ -118,7 +118,7 @@ class DownloaderMockForm : Form
 		{
 			let row = mDownloads.Controls[i];
 			row.Location = .(8, 8 + (int32)i * 96);
-			row.Size = .(mDownloads.ClientSize.width - 18, 90);
+			row.Size = .(mDownloads.ClientSize.width - 16, 90);
 			row.Anchor = .Top | .Left | .Right;
 		}
 	}
@@ -156,25 +156,25 @@ class MockDownloadRow : Panel
 	public this(DownloaderMockForm owner)
 	{
 		mOwner = owner;
-		Size = .(744, 90);
 		BorderStyle = .FixedSingle;
+		Size = .(744, 90);
 
 		mTitle = new Label();
 		mTitle.AutoEllipsis = true;
 		mTitle.Location = .(10, 6);
-		mTitle.Size = .(710, 18);
+		mTitle.Size = .(ClientSize.width - 20, 18);
 		mTitle.Anchor = .Top | .Left | .Right;
 		Controls.Add(mTitle);
 
 		mProgress = new ProgressBar();
 		mProgress.Location = .(10, 29);
-		mProgress.Size = .(600, 18);
+		mProgress.Size = .(ClientSize.width - 112, 18);
 		mProgress.Anchor = .Top | .Left | .Right;
 		Controls.Add(mProgress);
 
 		mCancel = new Button();
 		mCancel.Text = "Cancel";
-		mCancel.Location = .(620, 26);
+		mCancel.Location = .(ClientSize.width - 92, 26);
 		mCancel.Size = .(82, 25);
 		mCancel.Anchor = .Top | .Right;
 		mCancel.Click.Add(new => OnCancel);
@@ -182,14 +182,14 @@ class MockDownloadRow : Panel
 
 		mStatus = new Label();
 		mStatus.Location = .(10, 51);
-		mStatus.Size = .(710, 17);
+		mStatus.Size = .(ClientSize.width - 20, 17);
 		mStatus.Anchor = .Top | .Left | .Right;
 		Controls.Add(mStatus);
 
 		mDestination = new Label();
 		mDestination.AutoEllipsis = true;
 		mDestination.Location = .(10, 69);
-		mDestination.Size = .(710, 17);
+		mDestination.Size = .(ClientSize.width - 20, 17);
 		mDestination.Anchor = .Top | .Left | .Right;
 		Controls.Add(mDestination);
 	}

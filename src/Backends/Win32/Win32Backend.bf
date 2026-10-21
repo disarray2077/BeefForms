@@ -15,6 +15,10 @@ internal class Win32Backend : FormsBackend
 	private bool mRegistered;
 	private Control mHovered;
 	private bool mSuppressChars;
+	public ~this()
+	{
+		if (mGdiPlusToken != 0) Win32.GdiplusShutdown(mGdiPlusToken);
+	}
 
 	public override void EnableVisualStyles()
 	{
@@ -97,8 +101,13 @@ internal class Win32Backend : FormsBackend
 		let style = GetWindowStyle(control);
 		let size = control.Size;
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
-		if (control is Form)
-			Win32.AdjustWindowRectEx(ref bounds, style, 0, 0);
+		if (let form = control as Form)
+			if (form.HasInitialClientSize)
+			{
+				let client = form.InitialClientSize;
+				bounds = .(0, 0, client.width, client.height);
+				Win32.AdjustWindowRectEx(ref bounds, style, 0, 0);
+			}
 		let extendedStyle = GetWindowExtendedStyle(control);
 		let handle = Win32.CreateWindowEx(extendedStyle, GetWindowClass(control), control.Text.ToScopedNativeWChar!(), style,
 			control.Location.x, control.Location.y, bounds.right - bounds.left, bounds.bottom - bounds.top,
@@ -107,6 +116,11 @@ internal class Win32Backend : FormsBackend
 			Runtime.FatalError("Could not create the Windows control");
 		control.SetNativeHandle(handle);
 		mControls[handle] = control;
+		if (control is Form)
+		{
+			Win32.GetWindowRect(handle, var outer);
+			control.NotifyResize(.(outer.right - outer.left, outer.bottom - outer.top));
+		}
 		if (!(control is Form))
 			Win32.SetWindowSubclass(handle, => ChildWindowProc, 1, 0);
 		UpdateControl(control, .All);
@@ -158,7 +172,7 @@ internal class Win32Backend : FormsBackend
 		if (change == .Text)
 			Win32.SetWindowText(control.Handle, control.Text.ToScopedNativeWChar!());
 		if (change == .Font || change == .All)
-			Win32.SendMessage(control.Handle, Win32.WM_SETFONT, (uint*)Win32.GetStockObject(Win32.DEFAULT_GUI_FONT), (int*)(void*)1);
+			Win32.SendMessage(control.Handle, Win32.WM_SETFONT, (uint*)GetNativeFont(control).Handle, (int*)(void*)1);
 		if (change == .Enabled || change == .All)
 			Win32.EnableWindow(control.Handle, control.IsEffectivelyEnabled ? 1 : 0);
 		if (change == .Border && !(control is Form))
@@ -169,7 +183,8 @@ internal class Win32Backend : FormsBackend
 			let location = control.Location;
 			let offset = control.Parent?.ContentOffset ?? .(0, 0);
 			if (let form = control as Form)
-				SetClientSize(form, size);
+				Win32.SetWindowPos(form.Handle, null, location.x, location.y,
+					Math.Max(size.width, form.MinimumSize.width), Math.Max(size.height, form.MinimumSize.height), Win32.SWP_NOZORDER);
 			else
 				Win32.SetWindowPos(control.Handle, null, location.x - offset.x, location.y - offset.y, size.width, size.height, Win32.SWP_NOZORDER);
 		}
@@ -195,6 +210,12 @@ internal class Win32Backend : FormsBackend
 
 	public override Size GetClientSize(Form form)
 	{
+		if (form.Handle == null)
+		{
+			var frame = Win32.RECT(0, 0, 0, 0);
+			Win32.AdjustWindowRectEx(ref frame, GetWindowStyle(form), 0, 0);
+			return .(Math.Max(0, form.Size.width - frame.right + frame.left), Math.Max(0, form.Size.height - frame.bottom + frame.top));
+		}
 		Win32.GetClientRect(form.Handle, var bounds);
 		return .(bounds.right, bounds.bottom);
 	}
@@ -245,7 +266,8 @@ internal class Win32Backend : FormsBackend
 			limits.minTrackSize.y = Math.Max(limits.minTrackSize.y, form.MinimumSize.height);
 			return 0;
 		case Win32.WM_SIZE:
-			form.NotifyResize(backend.GetScrollClientSize(form));
+			Win32.GetWindowRect(window, var windowBounds);
+			form.NotifyResize(.(windowBounds.right - windowBounds.left, windowBounds.bottom - windowBounds.top));
 		case Win32.WM_MOVE:
 			Win32.GetWindowRect(window, var bounds);
 			form.NotifyMove(.(bounds.left, bounds.top));

@@ -9,6 +9,14 @@ public class Form : ContainerControl
 {
 	private bool mLoaded, mClosing, mClosed;
 	private System.Drawing.Size mMinimumSize;
+	private System.Drawing.Size mInitialClientSize;
+	internal bool HasInitialClientSize;
+	internal System.Drawing.Size InitialClientSize => mInitialClientSize;
+	public override System.Drawing.Size Size
+	{
+		get => base.Size;
+		set { HasInitialClientSize = false; base.Size = value; }
+	}
 	public System.Drawing.Size MinimumSize
 	{
 		get => mMinimumSize;
@@ -34,13 +42,17 @@ public class Form : ContainerControl
 
 	public override System.Drawing.Size ClientSize
 	{
-		get => IsHandleCreated ? Application.Backend.GetClientSize(this) : Size;
+		get => !IsHandleCreated && HasInitialClientSize ? mInitialClientSize : Application.Backend.GetClientSize(this);
 		set
 		{
 			if (IsHandleCreated)
 				Application.Backend.SetClientSize(this, value);
 			else
-				Size = value;
+			{
+				mInitialClientSize = value;
+				HasInitialClientSize = true;
+				base.Size = value;
+			}
 		}
 	}
 

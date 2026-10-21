@@ -10,8 +10,9 @@ extension SDLRenderer
 {
 	private void Ellipsize(Label label, String text)
 	{
-		if (Measure(label, text) <= label.Size.width) return;
-		let available = label.Size.width - Measure(label, "...");
+		let width = label.ClientSize.width - LabelPadding(label) * 2;
+		if (Measure(label, text) <= width) return;
+		let available = width - Measure(label, "...");
 		int length = 0;
 		for (let character in text.DecodedChars)
 		{
@@ -29,7 +30,7 @@ extension SDLBackend
 	private void RenderLabel(Label label, Rectangle bounds)
 	{
 		let size = mRenderer.MeasureText(label);
-		int32 x = bounds.X, y = bounds.Y;
+		int32 x = bounds.X + mRenderer.LabelPadding(label), y = bounds.Y;
 		if (label.HorizontalTextAlignment == 1) x += (bounds.Width - size.width) / 2;
 		if (label.HorizontalTextAlignment == 2) x += bounds.Width - size.width;
 		if (label.VerticalTextAlignment == 1) y += (bounds.Height - size.height) / 2;

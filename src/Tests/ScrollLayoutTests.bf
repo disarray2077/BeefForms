@@ -109,10 +109,9 @@ class ScrollLayoutTests
 	[Test]
 	public static void SDLAutoSizeLabelsExtendScrollBounds() => VerifyAutoSizeLabel(.SDL2OpenGL);
 
-	[Test]
-	public static void InheritedFontChangesResizeAutoSizeLabels()
+	private static void VerifyInheritedFont(ApplicationBackend backend)
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(backend);
 		let form = scope Form();
 		form.ClientSize = .(240, 160);
 		form.Font = new System.Drawing.Font("Segoe UI", 9);
@@ -121,11 +120,16 @@ class ScrollLayoutTests
 		label.Text = "Text";
 		form.Controls.Add(label);
 		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
 		let before = label.Size;
 		form.Font = new System.Drawing.Font("Segoe UI", 24);
 		Test.Assert(label.Size.width > before.width && label.Size.height > before.height);
 	}
+	[Test]
+	public static void InheritedFontChangesResizeAutoSizeLabels() => VerifyInheritedFont(.SDL2OpenGL);
 #if BF_PLATFORM_WINDOWS
+	[Test]
+	public static void NativeInheritedFontChangesResizeAutoSizeLabels() => VerifyInheritedFont(.Win32);
 	[Test]
 	public static void NativeAutoSizeLabelsExtendScrollBounds() => VerifyAutoSizeLabel(.Win32);
 

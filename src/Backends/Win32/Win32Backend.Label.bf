@@ -18,6 +18,9 @@ extension Win32Backend
 		defer Win32.SelectObject(context, previous);
 		Win32.SetBkMode(context, Win32.TRANSPARENT);
 		Win32.SetTextColor(context, Win32.GetSysColor(label.Enabled ? 18 : 17));
+		let padding = (GetNativeFont(label).Height + 5) / 6;
+		bounds.left += padding;
+		bounds.right = Math.Max(bounds.left, bounds.right - padding);
 		uint flags = Win32.DT_NOPREFIX;
 		flags |= (label.AutoEllipsis && !label.AutoSize) ? Win32.DT_SINGLELINE | Win32.DT_END_ELLIPSIS : Win32.DT_WORDBREAK;
 		if (label.HorizontalTextAlignment == 1) flags |= Win32.DT_CENTER;

@@ -9,6 +9,54 @@ namespace BeefForms.Tests;
 
 class FormWindowTests
 {
+	private static void VerifyWindowSize(ApplicationBackend backend)
+	{
+		Application.UseBackend(backend);
+		let form = scope Form();
+		form.Size = .(800, 520);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		Test.Assert(form.Size.width == 800 && form.Size.height == 520);
+		Test.Assert(form.ClientSize.width < form.Size.width && form.ClientSize.height < form.Size.height);
+		let frame = System.Drawing.Size(form.Size.width - form.ClientSize.width, form.Size.height - form.ClientSize.height);
+		form.ClientSize = .(320, 180);
+		Test.Assert(form.ClientSize.width == 320 && form.ClientSize.height == 180);
+		Test.Assert(form.Size.width == 320 + frame.width && form.Size.height == 180 + frame.height);
+		form.Size = .(800, 520);
+		Test.Assert(form.ClientSize.width == 800 - frame.width && form.ClientSize.height == 520 - frame.height);
+	}
+	[Test]
+	public static void SDLWindowAndClientSizesAreDistinct() => VerifyWindowSize(.SDL2OpenGL);
+#if BF_PLATFORM_WINDOWS
+	[Test]
+	public static void NativeWindowAndClientSizesAreDistinct() => VerifyWindowSize(.Win32);
+#endif
+
+	private static void VerifyTextBoxHeight(ApplicationBackend backend)
+	{
+		Application.UseBackend(backend);
+		let form = scope Form();
+		form.ClientSize = .(320, 180);
+		let editor = new TextBox();
+		editor.Size = .(200, 50);
+		form.Controls.Add(editor);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		let original = editor.Size.height;
+		Test.Assert(original < 50);
+		editor.Font = new System.Drawing.Font("Segoe UI", 18);
+		Test.Assert(editor.Size.height > original);
+		editor.AutoSize = false;
+		editor.Size = .(200, 50);
+		Test.Assert(editor.Size.height == 50);
+	}
+	[Test]
+	public static void SDLTextBoxHeightFollowsItsFont() => VerifyTextBoxHeight(.SDL2OpenGL);
+#if BF_PLATFORM_WINDOWS
+	[Test]
+	public static void NativeTextBoxHeightFollowsItsFont() => VerifyTextBoxHeight(.Win32);
+#endif
+
 	private static void VerifyClosing(ApplicationBackend backend)
 	{
 		Application.UseBackend(backend);

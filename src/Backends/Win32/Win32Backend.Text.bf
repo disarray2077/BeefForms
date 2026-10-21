@@ -19,6 +19,7 @@ extension Win32Backend
 		defer Win32.SelectObject(context, previous);
 		Win32.RECT bounds = .(0, 0, 0, 0);
 		Win32.DrawText(context, control.Text.ToScopedNativeWChar!(), -1, ref bounds, Win32.DT_CALCRECT);
+		if (control is Label && !control.Text.IsEmpty) bounds.right += (GetNativeFont(control).Height + 5) / 6 * 2;
 		return .(bounds.right, bounds.bottom);
 	}
 

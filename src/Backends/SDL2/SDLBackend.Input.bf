@@ -15,12 +15,13 @@ extension SDLBackend
 	{
 		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible || x < 0 || y < 0 || x >= control.Size.width || y >= control.Size.height)
 			return null;
-		if (x >= control.ViewportSize.width || y >= control.ViewportSize.height)
+		int32 border = (control is Form) ? 0 : control.BorderWidth;
+		if (x < border || y < border || x >= border + control.ViewportSize.width || y >= border + control.ViewportSize.height)
 			return control;
 		for (int i = control.Controls.Count - 1; i >= 0; i--)
 		{
 			let child = control.Controls[i];
-			if (let found = HitTest(child, x - child.Location.x + control.ContentOffset.x, y - child.Location.y + control.ContentOffset.y))
+			if (let found = HitTest(child, x - border - child.Location.x + control.ContentOffset.x, y - border - child.Location.y + control.ContentOffset.y))
 				return found;
 		}
 		return control;
@@ -31,9 +32,11 @@ extension SDLBackend
 		var result = Point((.)x, (.)y);
 		for (var current = control; current.Parent != null; current = current.Parent)
 		{
-			result.x -= current.Location.x - current.Parent.ContentOffset.x;
-			result.y -= current.Location.y - current.Parent.ContentOffset.y;
+			int32 border = (current.Parent is Form) ? 0 : current.Parent.BorderWidth;
+			result.x -= current.Location.x + border - current.Parent.ContentOffset.x;
+			result.y -= current.Location.y + border - current.Parent.ContentOffset.y;
 		}
+		if (!(control is Form)) { result.x -= control.BorderWidth; result.y -= control.BorderWidth; }
 		return result;
 	}
 
@@ -139,7 +142,7 @@ extension SDLBackend
 			{
 			case .Close: mForm.Close();
 			case .Exposed: InvalidateTree(mForm);
-			case .SizeChanged: mForm.NotifyResize(GetClientSize(mForm));
+			case .SizeChanged: mForm.NotifyResize(GetFormSize());
 			case .Moved:
 				SDL.GetWindowPosition(mWindow, var x, var y);
 				mForm.NotifyMove(.(x, y));
@@ -358,8 +361,8 @@ extension SDLBackend
 		case .UP, .DOWN:
 			let position = mRenderer.TextPosition(editor, editor.Caret);
 			let delta = symbol == .DOWN ? 1 : -1;
-			editor.SetCaret(mRenderer.HitText(editor, position.x + 4 - editor.ScrollX,
-				position.y + delta * mRenderer.LineHeight(editor) + 4 - editor.ScrollY), shift);
+				editor.SetCaret(mRenderer.HitText(editor, position.x + 4 - editor.BorderWidth - editor.ScrollX,
+					position.y + delta * mRenderer.LineHeight(editor) + 4 - editor.BorderWidth - editor.ScrollY), shift);
 		case .RETURN:
 			if (editor is RichTextBox) editor.ReplaceSelection("\n");
 		default:

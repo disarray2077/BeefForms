@@ -9,7 +9,18 @@ namespace System.Windows.Forms;
 
 public class TextBoxBase : Control
 {
-	public this() { TabStop = true; BorderStyle = .Fixed3D; }
+	public this() { TabStop = true; BorderStyle = .Fixed3D; AutoSize = true; }
+	public override System.Drawing.Size Size
+	{
+		get => base.Size;
+		set
+		{
+			var size = value;
+			if (IsHandleCreated && AutoSize && !(this is RichTextBox))
+				size.height = Application.Backend.GetTextBoxHeight(this);
+			base.Size = size;
+		}
+	}
 	private bool mReadOnly;
 	public bool ReadOnly
 	{

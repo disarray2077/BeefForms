@@ -138,7 +138,7 @@ internal class SDLRenderer
 	private int32 GetFontKey(Control control)
 	{
 		let font = control.Font;
-		let pixels = font == null ? 13 : Math.Max(1, (int32)(font.Size * (font.Unit == .Point ? 96.0f / 72 : 1)));
+		let pixels = font == null ? 12 : Math.Max(1, (int32)(font.Size * (font.Unit == .Point ? 96.0f / 72 : 1)));
 		return (int32)(pixels * 32 + (font == null ? 0 : (int32)font.Style));
 	}
 
@@ -160,8 +160,9 @@ internal class SDLRenderer
 	public Size MeasureText(Control control)
 	{
 		let texture = GetText(control);
-		return .(texture.Width, texture.Height);
+		return .(texture.Width + (control is Label && !control.Text.IsEmpty ? LabelPadding(control) * 2 : 0), texture.Height);
 	}
+	public int32 LabelPadding(Control control) => (LineHeight(control) + 5) / 6;
 
 	public int32 Measure(Control control, StringView text)
 	{
@@ -184,7 +185,7 @@ internal class SDLRenderer
 
 	public int HitText(TextBoxBase control, int x, int y)
 	{
-		let line = Math.Max(0, (y + control.ScrollY - 4) / LineHeight(control));
+		let line = Math.Max(0, (y + control.BorderWidth + control.ScrollY - 4) / LineHeight(control));
 		int start = 0;
 		for (int i < line)
 		{
@@ -199,7 +200,7 @@ internal class SDLRenderer
 			let next = control.AdjacentPosition(position, true);
 			let left = Measure(control, .(control.Text, start, position - start));
 			let right = Measure(control, .(control.Text, start, next - start));
-			if (x + control.ScrollX - 4 < (left + right) / 2)
+			if (x + control.BorderWidth + control.ScrollX - 4 < (left + right) / 2)
 				break;
 			position = next;
 		}
@@ -222,7 +223,7 @@ internal class SDLRenderer
 		}
 		let key = GetFontKey(control);
 		let label = control as Label;
-		int32 layoutWidth = (label != null && !label.AutoSize) ? Math.Max(1, label.Size.width) : 0;
+		int32 layoutWidth = (label != null && !label.AutoSize) ? Math.Max(1, label.ClientSize.width - LabelPadding(label) * 2) : 0;
 		int32 alignment = label == null ? 0 : (int32)label.HorizontalTextAlignment;
 		let ellipsis = label != null && label.AutoEllipsis && !label.AutoSize;
 		if (texture.Text == control.Text && texture.FontKey == key && texture.LayoutWidth == layoutWidth && texture.Alignment == alignment && texture.Ellipsis == ellipsis)
@@ -270,7 +271,7 @@ internal class SDLRenderer
 		SDL.GL_GetDrawableSize(window, out mPixelWidth, out mPixelHeight);
 		GL.glViewport(0, 0, mPixelWidth, mPixelHeight);
 		GL.glDisable(GL.GL_SCISSOR_TEST);
-		GL.glClearColor(0.94f, 0.94f, 0.95f, 1);
+		GL.glClearColor(240f / 255, 240f / 255, 240f / 255, 1);
 		GL.glClear(GL.GL_COLOR_BUFFER_BIT);
 		GL.glUseProgram(mProgram);
 		GL.glBindVertexArray(mVertexArray);
@@ -327,6 +328,14 @@ internal class SDLRenderer
 	}
 
 	public void Fill(Rectangle rect, float r, float g, float b) => Quad(rect, mWhiteTexture, r, g, b);
+	public void RoundedFill(Rectangle rect, float r, float g, float b)
+	{
+		Fill(.(rect.X + 2, rect.Y, rect.Width - 4, 1), r, g, b);
+		Fill(.(rect.X + 1, rect.Y + 1, rect.Width - 2, 1), r, g, b);
+		Fill(.(rect.X, rect.Y + 2, rect.Width, rect.Height - 4), r, g, b);
+		Fill(.(rect.X + 1, rect.Y + rect.Height - 2, rect.Width - 2, 1), r, g, b);
+		Fill(.(rect.X + 2, rect.Y + rect.Height - 1, rect.Width - 4, 1), r, g, b);
+	}
 	public void Border(Rectangle rect, float r, float g, float b)
 	{
 		Fill(.(rect.X, rect.Y, rect.Width, 1), r,g,b);
@@ -340,7 +349,7 @@ internal class SDLRenderer
 		let texture = GetText(control);
 		if (texture.Texture == 0)
 			return;
-		let shade = control.IsEffectivelyEnabled ? 0.12f : 0.55f;
+		let shade = control.IsEffectivelyEnabled ? 0f : 109f / 255;
 		Quad(.((.)x, (.)y, texture.Width, texture.Height), texture.Texture, shade, shade, shade);
 	}
 }

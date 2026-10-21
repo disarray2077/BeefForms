@@ -20,7 +20,7 @@ extension Win32Backend
 
 	public override Size GetScrollClientSize(Control control)
 	{
-		if (control.Handle == null) return control.Size;
+		if (control.Handle == null) return control.ClientSize;
 		Win32.GetClientRect(control.Handle, var client);
 		let style = (uint)(void*)Win32.GetWindowLongPtr(control.Handle, Win32.GWL_STYLE);
 		let bars = GetScrollBarSize(control);

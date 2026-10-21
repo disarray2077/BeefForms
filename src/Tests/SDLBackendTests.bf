@@ -11,6 +11,33 @@ namespace BeefForms.Tests;
 
 class SDLBackendTests
 {
+	[Test]
+	public static void BorderedPanelsOffsetMouseTargetsToTheirClientArea()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		let form = scope Form();
+		form.ClientSize = .(300, 150);
+		let panel = new Panel();
+		panel.Location = .(10, 10);
+		panel.Size = .(200, 100);
+		panel.BorderStyle = .Fixed3D;
+		let button = new Button();
+		button.Size = .(100, 25);
+		panel.Controls.Add(button);
+		form.Controls.Add(panel);
+		int clicks = 0;
+		button.Click.Add(new [&] (sender, args) => { clicks++; });
+		form.Show();
+		let backend = (SDLBackend)Application.Backend;
+		SDLTestInput.Activate(backend);
+		PushClick(10, 10);
+		backend.ProcessEvents();
+		Test.Assert(clicks == 0);
+		PushClick(12, 12);
+		backend.ProcessEvents();
+		Test.Assert(clicks == 1);
+	}
+
 	private class TestForm : Form
 	{
 		public int Clicks;

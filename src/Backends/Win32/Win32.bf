@@ -32,6 +32,28 @@ static class Win32
 	public static extern int32 GetSystemMetricsForDpi(int32 index, uint32 dpi);
 	public const int32 SM_CXVSCROLL = 2;
 	public const int32 SM_CYHSCROLL = 3;
+	public const int32 SM_CYBORDER = 6;
+
+	[CRepr]
+	public struct GdiplusStartupInput
+	{
+		public uint32 Version;
+		public void* DebugCallback;
+		public BOOL SuppressBackgroundThread, SuppressExternalCodecs;
+	}
+	[Import("gdiplus.dll"), CLink]
+	public static extern int32 GdiplusStartup(out uint token, ref GdiplusStartupInput input, void* output);
+	[Import("gdiplus.dll"), CLink]
+	public static extern void GdiplusShutdown(uint token);
+	[Import("gdiplus.dll"), CLink]
+	public static extern int32 GdipCreateFontFromDC(void* context, out void* font);
+	[Import("gdiplus.dll"), CLink]
+	public static extern int32 GdipGetFontHeightGivenDPI(void* font, float dpi, out float height);
+	[Import("gdiplus.dll"), CLink]
+	public static extern int32 GdipDeleteFont(void* font);
+	[Import("gdi32.dll"), LinkName("CreateFontW")]
+	public static extern void* CreateFont(int32 height, int32 width, int32 escapement, int32 orientation, int32 weight,
+		uint32 italic, uint32 underline, uint32 strikeout, uint32 charset, uint32 outputPrecision, uint32 clipPrecision, uint32 quality, uint32 pitch, char16* family);
 
 	// Window Messages
 	public const uint WM_HSCROLL = 0x0114;

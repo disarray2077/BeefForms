@@ -35,27 +35,28 @@ extension SDLBackend
 		let enabled = control.IsEffectivelyEnabled;
 		let lineHeight = mRenderer.LineHeight(control);
 		if (control is ScrollableControl || control is GroupBox)
-			mRenderer.Fill(bounds, 0.94f, 0.94f, 0.95f);
+			mRenderer.Fill(bounds, 240f / 255, 240f / 255, 240f / 255);
 		if (let checkBox = control as CheckBox)
 		{
-			int32 side = Math.Min(14, Math.Max(0, bounds.Height));
+			int32 side = Math.Min(13, Math.Max(0, bounds.Height));
 			let indicator = Rectangle(bounds.X, bounds.Y + (bounds.Height - side) / 2, side, side);
 			mRenderer.Fill(indicator, 1, 1, 1);
-			mRenderer.Border(indicator, enabled ? 0.35f : 0.65f, 0.5f, 0.65f);
+			mRenderer.Border(indicator, enabled ? 0.45f : 0.7f, enabled ? 0.45f : 0.7f, enabled ? 0.45f : 0.7f);
 			if (checkBox.Checked)
 				for (int32 x < Math.Max(0, side - 4))
 				{
 					let y = x < 3 ? x : 6 - x;
 					mRenderer.Fill(.(indicator.X + x + 2, indicator.Y + side / 2 + y - 1, 2, 2), 0.15f, 0.4f, 0.65f);
 				}
-			mRenderer.Text(control, bounds.X + side + 6, bounds.Y + (bounds.Height - lineHeight) / 2);
+			mRenderer.Text(control, bounds.X + side + 4, bounds.Y + (bounds.Height - lineHeight) / 2);
 			if (IsFocused(control)) mRenderer.Border(bounds, 0.35f, 0.5f, 0.7f);
 		}
 		else if (control is Button)
 		{
-			let shade = !enabled ? 0.89f : control == mPressed && control == mHovered ? 0.73f : control == mHovered ? 0.85f : 0.91f;
-			mRenderer.Fill(bounds, shade, shade, shade + 0.02f);
-			mRenderer.Border(bounds, IsFocused(control) ? 0.2f : 0.6f, 0.5f, 0.7f);
+			let shade = control == mPressed && control == mHovered ? 0.9f : enabled && control == mHovered ? 0.96f : 253f / 255;
+			if (IsFocused(control)) mRenderer.RoundedFill(bounds, 0, 120f / 255, 215f / 255);
+			else mRenderer.RoundedFill(bounds, enabled ? 0.8f : 0.9f, enabled ? 0.8f : 0.9f, enabled ? 0.8f : 0.9f);
+			mRenderer.RoundedFill(.(bounds.X + 1, bounds.Y + 1, bounds.Width - 2, bounds.Height - 2), shade, shade, shade);
 			let textWidth = mRenderer.Measure(control, control.Text);
 			mRenderer.Text(control, bounds.X + (bounds.Width - textWidth) / 2, bounds.Y + (bounds.Height - lineHeight) / 2);
 		}
@@ -66,22 +67,23 @@ extension SDLBackend
 		else if (control is GroupBox)
 		{
 			mRenderer.Border(.(bounds.X, bounds.Y + lineHeight / 2, bounds.Width, bounds.Height - lineHeight / 2), 0.7f, 0.7f, 0.72f);
-			mRenderer.Fill(.(bounds.X + 7, bounds.Y, mRenderer.Measure(control, control.Text) + 6, lineHeight), 0.94f, 0.94f, 0.95f);
+			mRenderer.Fill(.(bounds.X + 7, bounds.Y, mRenderer.Measure(control, control.Text) + 6, lineHeight), 240f / 255, 240f / 255, 240f / 255);
 			mRenderer.Text(control, bounds.X + 10, bounds.Y);
 		}
 		else if (let label = control as Label)
 			RenderLabel(label, bounds);
 		else if (control.BorderStyle != .None)
-			mRenderer.Border(bounds, 0.7f, 0.7f, 0.72f);
+			mRenderer.Border(bounds, 100f / 255, 100f / 255, 100f / 255);
 
 		if (control.NeedsPaint) control.NotifyPaint();
 
 		let viewport = control.ViewportSize;
-		let childClip = Intersect(clip, .(bounds.X, bounds.Y, viewport.width, viewport.height));
+		int32 border = (control is Form) ? 0 : control.BorderWidth;
+		let childClip = Intersect(clip, .(bounds.X + border, bounds.Y + border, viewport.width, viewport.height));
 		for (let child in control.Controls)
 		{
 			let childSize = child.Size;
-			RenderControl(child, .(bounds.X + child.Location.x - control.ContentOffset.x, bounds.Y + child.Location.y - control.ContentOffset.y, childSize.width, childSize.height), childClip);
+			RenderControl(child, .(bounds.X + border + child.Location.x - control.ContentOffset.x, bounds.Y + border + child.Location.y - control.ContentOffset.y, childSize.width, childSize.height), childClip);
 		}
 		if (let scrollable = control as ScrollableControl)
 		{
@@ -91,8 +93,8 @@ extension SDLBackend
 				var track = scrollable.ScrollTrack(horizontal);
 				if (track.Width == 0 || track.Height == 0) continue;
 				var thumb = scrollable.ScrollThumb(horizontal);
-				track.X += bounds.X; track.Y += bounds.Y;
-				thumb.X += bounds.X; thumb.Y += bounds.Y;
+				track.X += bounds.X + border; track.Y += bounds.Y + border;
+				thumb.X += bounds.X + border; thumb.Y += bounds.Y + border;
 				mRenderer.Fill(track, 0.88f, 0.89f, 0.90f);
 				mRenderer.Fill(thumb, 0.58f, 0.60f, 0.64f);
 			}
@@ -101,9 +103,11 @@ extension SDLBackend
 
 	private void RenderEditor(TextBoxBase editor, Rectangle bounds, Rectangle parentClip)
 	{
-		mRenderer.Fill(bounds, editor.ReadOnly ? 0.96f : 1, editor.ReadOnly ? 0.96f : 1, 1);
+		let background = editor.ReadOnly ? 240f / 255 : 1f;
+		mRenderer.Fill(bounds, background, background, background);
 		if (editor.BorderStyle != .None)
-			mRenderer.Border(bounds, IsFocused(editor) ? 0.2f : 0.65f, 0.5f, 0.7f);
+			if (IsFocused(editor)) mRenderer.Border(bounds, 0, 120f / 255, 215f / 255);
+			else mRenderer.Border(bounds, 0.68f, 0.68f, 0.68f);
 		let clip = Intersect(parentClip, .(bounds.X + 2, bounds.Y + 2, Math.Max(0, bounds.Width - 4), Math.Max(0, bounds.Height - 4)));
 		mRenderer.Clip(clip);
 		let caret = mRenderer.TextPosition(editor, editor.Caret);

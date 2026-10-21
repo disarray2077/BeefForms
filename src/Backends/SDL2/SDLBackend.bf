@@ -53,12 +53,13 @@ internal class SDLBackend : FormsBackend
 			mWheelHasPosition = version.major > 2 || version.minor >= 26;
 		}
 		mForm = (Form)control;
+		let size = mForm.HasInitialClientSize ? mForm.InitialClientSize : control.Size;
 		SDL.GL_SetAttribute(.GL_CONTEXT_MAJOR_VERSION, 3);
 		SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 3);
 		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_CORE);
 		SDL.GL_SetAttribute(.GL_DOUBLEBUFFER, 1);
 		mWindow = SDL.CreateWindow(control.Text, (.)SDL.WindowPos.Centered, (.)SDL.WindowPos.Centered,
-			Math.Max(1, control.Size.width), Math.Max(1, control.Size.height), .OpenGL | .Resizable | .AllowHighDPI | .Hidden);
+			Math.Max(1, size.width), Math.Max(1, size.height), .OpenGL | .Resizable | .AllowHighDPI | .Hidden);
 		if (mWindow == null)
 			Runtime.FatalError(scope $"Could not create SDL window: {StringView(SDL.GetError())}");
 		mContext = SDL.GL_CreateContext(mWindow);
@@ -68,6 +69,8 @@ internal class SDLBackend : FormsBackend
 		SDL.GL_SetSwapInterval(1);
 		mRenderer = new .("");
 		control.SetNativeHandle(mWindow);
+		if (!mForm.HasInitialClientSize) SetFormSize(mForm, size);
+		control.NotifyResize(GetFormSize());
 		SDL.GetWindowPosition(mWindow, var x, var y);
 		control.NotifyMove(.(x, y));
 		ApplyMinimumSize(mForm);
@@ -122,10 +125,10 @@ internal class SDLBackend : FormsBackend
 			}
 			if (change == .Text)
 				SDL.SetWindowTitle(mWindow, control.Text);
-			if (change == .Bounds || change == .Constraints)
+			if (change == .Constraints) ApplyMinimumSize(mForm);
+			if (change == .Bounds)
 			{
-				ApplyMinimumSize(mForm);
-				SetClientSize(mForm, control.Size);
+				SetFormSize(mForm, control.Size);
 				SDL.GetWindowPosition(mWindow, var x, var y);
 				if (x != control.Location.x || y != control.Location.y)
 					SDL.SetWindowPosition(mWindow, control.Location.x, control.Location.y);
@@ -137,10 +140,23 @@ internal class SDLBackend : FormsBackend
 
 	public override Size GetClientSize(Form form)
 	{
+		if (mWindow == null) return form.Size;
 		SDL.GetWindowSize(mWindow, var width, var height);
 		return .(width, height);
 	}
+	private Size GetFormSize()
+	{
+		let client = GetClientSize(mForm);
+		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
+		return .(client.width + left + right, client.height + top + bottom);
+	}
+	private void SetFormSize(Form form, Size size)
+	{
+		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
+		SetClientSize(form, .(Math.Max(1, size.width - left - right), Math.Max(1, size.height - top - bottom)));
+	}
 	public override Size MeasureText(Control control) => mRenderer.MeasureText(control);
+	public override int32 GetTextBoxHeight(TextBoxBase editor) => mRenderer.LineHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
 	private Size GetMinimumClientSize(Form form)
 	{
 		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
@@ -157,6 +173,7 @@ internal class SDLBackend : FormsBackend
 	{
 		let minimum = GetMinimumClientSize(form);
 		SDL.SetWindowSize(mWindow, Math.Max(1, Math.Max(size.width, minimum.width)), Math.Max(1, Math.Max(size.height, minimum.height)));
+		form.NotifyResize(GetFormSize());
 	}
 	public override void Show(Form form)
 	{

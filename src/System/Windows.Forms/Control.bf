@@ -90,7 +90,7 @@ public class Control : System.ComponentModel.Component
 	private String mText = new .() ~ delete _;
 	private Font mFont ~ _?.Release();
 	private System.Drawing.Point mLocation;
-	private Size mSize;
+	private Size mSize, mClientSize;
 	private AnchorInfo mAnchorInfo;
 	private bool mLayoutSuspended;
 	private bool mEnabled = true;
@@ -114,7 +114,12 @@ public class Control : System.ComponentModel.Component
 	internal bool LayoutSuspended => mLayoutSuspended;
 	protected internal virtual void ChildBoundsChanged() {}
 
-	public virtual Size ClientSize { get => Size; set => Size = value; }
+	internal int32 BorderWidth => BorderStyle == .None ? 0 : BorderStyle == .FixedSingle ? 1 : 2;
+	public virtual Size ClientSize
+	{
+		get => mClientSize;
+		set => Size = .(value.width + BorderWidth * 2, value.height + BorderWidth * 2);
+	}
 	public bool IsEffectivelyEnabled => Enabled;
 
 	public virtual String Text
@@ -159,7 +164,7 @@ public class Control : System.ComponentModel.Component
 		}
 	}
 
-	public Size Size
+	public virtual Size Size
 	{
 		get => mSize;
 		set
@@ -167,6 +172,7 @@ public class Control : System.ComponentModel.Component
 			if (mSize.width == value.width && mSize.height == value.height)
 				return;
 			mSize = value;
+			UpdateClientSize();
 			UpdateAnchorDistances();
 			UpdateBackend(.Bounds);
 			OnSizeChanged(.Empty);
@@ -195,13 +201,16 @@ public class Control : System.ComponentModel.Component
 		{
 			if (mBorderStyle == value) return;
 			mBorderStyle = value;
+			if (mCreated) UpdateClientSize();
 			UpdateBackend(.Border);
+			UpdateAutoSize();
 			PerformLayout();
 		}
 	}
 
 	public this() { Controls = new .(this); }
 	public ~this() { DestroyHandle(); }
+	private void UpdateClientSize() => mClientSize = .(Math.Max(0, mSize.width - BorderWidth * 2), Math.Max(0, mSize.height - BorderWidth * 2));
 
 	internal void DestroyHandle()
 	{
@@ -227,6 +236,8 @@ public class Control : System.ComponentModel.Component
 	{
 		if (mCreated && AutoSize && this is Label)
 			Size = Application.Backend.MeasureText(this);
+		else if (mCreated && AutoSize && this is TextBoxBase && !(this is RichTextBox))
+			Size = .(Size.width, Application.Backend.GetTextBoxHeight((TextBoxBase)this));
 	}
 
 	private void UpdateFont()
@@ -287,6 +298,7 @@ public class Control : System.ComponentModel.Component
 		let resized = size.width != mSize.width || size.height != mSize.height;
 		mLocation = location;
 		mSize = size;
+		UpdateClientSize();
 		if (moved || resized)
 			UpdateBackend(.Bounds);
 		if (moved)
@@ -323,8 +335,10 @@ public class Control : System.ComponentModel.Component
 	}
 	internal void NotifyResize(Size size)
 	{
+		if (mSize.width == size.width && mSize.height == size.height) return;
 		mSize = size;
-		OnSizeChanged(.Empty);
+		UpdateClientSize();
+		if (mCreated) OnSizeChanged(.Empty);
 	}
 
 	protected internal virtual void CreateHandle()
@@ -333,10 +347,14 @@ public class Control : System.ComponentModel.Component
 			return;
 		Application.CreatedControlCount++;
 		Application.Backend.CreateControl(this);
+		UpdateClientSize();
 		mCreated = true;
 		UpdateAutoSize();
 		for (let child in Controls)
+		{
+			child.UpdateAnchorDistances();
 			child.CreateHandle();
+		}
 		PerformLayout();
 	}
 }

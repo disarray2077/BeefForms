@@ -106,8 +106,8 @@ extension Control
 	{
 		DispatchInput(.MouseWheel, args);
 		if (args.Handled || Parent == null) return;
-		let x = Location.x - Parent.ContentOffset.x;
-		let y = Location.y - Parent.ContentOffset.y;
+		let x = Location.x + BorderWidth - Parent.ContentOffset.x;
+		let y = Location.y + BorderWidth - Parent.ContentOffset.y;
 		args.X += x;
 		args.Y += y;
 		Parent.DispatchMouseWheel(args);
