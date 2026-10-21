@@ -1,29 +1,9 @@
 using System;
-using System.Text;
 using System.Drawing;
 using System.Windows.Forms;
 using internal System.Windows.Forms;
 
 namespace BeefForms.Backends;
-
-extension SDLRenderer
-{
-	private void Ellipsize(Label label, String text)
-	{
-		let width = label.ClientSize.width - LabelPadding(label) * 2;
-		if (Measure(label, text) <= width) return;
-		let available = width - Measure(label, "...");
-		int length = 0;
-		for (let character in text.DecodedChars)
-		{
-			let next = length + UTF8.GetEncodedLength(character);
-			if (Measure(label, .(text, 0, next)) > available) break;
-			length = next;
-		}
-		text.Remove(length, text.Length - length);
-		text.Append("...");
-	}
-}
 
 extension SDLBackend
 {

@@ -7,6 +7,7 @@ TargetType = "BeefTest"
 [Dependencies]
 corlib = "*"
 BeefForms = "*"
+"BeefForms.SDL" = "*"
 SDL2 = "*"
 BeefGL = "*"
 

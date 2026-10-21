@@ -9,6 +9,8 @@ namespace BeefForms.Backends;
 
 internal abstract class FormsBackend
 {
+	public abstract ApplicationBackend Type { get; }
+
 	public abstract void CreateControl(Control control);
 	public abstract void DestroyControl(Control control);
 	public abstract void UpdateControl(Control control, ControlChange change);
@@ -27,6 +29,7 @@ internal abstract class FormsBackend
 	public abstract bool HasCapture(Control control);
 	public abstract Size MeasureText(Control control);
 	public abstract int32 GetTextBoxHeight(TextBoxBase editor);
+
 	/// Client area available before scrollbars are applied.
 	public virtual Size GetScrollClientSize(Control control) => control.ClientSize;
 	/// Vertical scrollbar width and horizontal scrollbar height.

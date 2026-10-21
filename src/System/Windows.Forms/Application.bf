@@ -13,11 +13,7 @@ public enum ApplicationBackend
 
 public static class Application
 {
-#if BF_PLATFORM_WINDOWS
-	internal static FormsBackend Backend = new Win32Backend() ~ delete _;
-#else
-	internal static FormsBackend Backend = new SDLBackend() ~ delete _;
-#endif
+	internal static FormsBackend Backend = FormsBackendFactory.Instance.CreateDefaultBackend() ~ delete _;
 	private static bool sRunning;
 	private static bool sProcessingEvents;
 
@@ -49,30 +45,20 @@ public static class Application
 	}
 #endif
 
-	private static String sSDLFontPath = new .() ~ delete _;
 	internal static int CreatedControlCount;
-
-	/// SDL font file override. Empty keeps the platform default (the packaged font on Wasm).
-	/// Set this before creating any control handles.
-	public static StringView SDLFontPath
-	{
-		get => sSDLFontPath;
-		set
-		{
-			if (sRunning || sProcessingEvents || CreatedControlCount != 0)
-				Runtime.FatalError("Set SDLFontPath before creating control handles");
-			sSDLFontPath.Set(value);
-		}
-	}
 
 	public static void UseBackend(ApplicationBackend backend)
 	{
 		if (sRunning || sProcessingEvents || CreatedControlCount != 0)
 			Runtime.FatalError("Dispose existing controls before changing the forms backend");
+		
+		if (Backend.Type == backend)
+			return;
+
 		delete Backend;
 		switch (backend)
 		{
-		case .SDL2OpenGL: Backend = new SDLBackend();
+		case .SDL2OpenGL: Backend = FormsBackendFactory.Instance.CreateSDLBackend();
 #if BF_PLATFORM_WINDOWS
 		case .Win32: Backend = new Win32Backend();
 #else

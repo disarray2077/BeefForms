@@ -11,6 +11,8 @@ namespace BeefForms.Backends;
 #if BF_PLATFORM_WINDOWS
 internal class Win32Backend : FormsBackend
 {
+	public override ApplicationBackend Type => .Win32;
+
 	private Dictionary<void*, Control> mControls = new .() ~ delete _;
 	private bool mRegistered;
 	private Control mHovered;

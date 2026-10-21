@@ -3,6 +3,7 @@ using System.Collections;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using System.Text;
 using SDL2;
 using BeefGL;
 
@@ -218,6 +219,22 @@ internal class SDLRenderer
 	{
 		if (mText.GetAndRemove(control) case .Ok(let texture))
 			delete texture.value;
+	}
+	
+	private void Ellipsize(Label label, String text)
+	{
+		let width = label.ClientSize.width - LabelPadding(label) * 2;
+		if (Measure(label, text) <= width) return;
+		let available = width - Measure(label, "...");
+		int length = 0;
+		for (let character in text.DecodedChars)
+		{
+			let next = length + UTF8.GetEncodedLength(character);
+			if (Measure(label, .(text, 0, next)) > available) break;
+			length = next;
+		}
+		text.Remove(length, text.Length - length);
+		text.Append("...");
 	}
 
 	private TextTexture GetText(Control control)

@@ -13,6 +13,8 @@ namespace BeefForms.Backends;
 
 internal class SDLBackend : FormsBackend
 {
+	public override ApplicationBackend Type => .SDL2OpenGL;
+
 	private SDL.Window* mWindow;
 	private SDL.SDL_GLContext mContext;
 	private SDLRenderer mRenderer;
