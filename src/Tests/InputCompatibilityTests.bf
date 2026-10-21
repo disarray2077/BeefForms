@@ -80,6 +80,62 @@ class InputCompatibilityTests
 	public static void NativeTabOrderStaysWithinEachContainer() => VerifyContainerTabOrder(.Win32);
 #endif
 
+	private static void Click(Control control, int32 x = 10, int32 y = 10)
+	{
+		if (let backend = Application.Backend as SDLBackend)
+		{
+			SDL.Event input = .();
+			input.type = .MouseButtonDown;
+			input.button.button = 1;
+			input.button.x = (control is Form) ? x : control.Location.x + x;
+			input.button.y = (control is Form) ? y : control.Location.y + y;
+			SDL.PushEvent(ref input);
+			input.type = .MouseButtonUp;
+			SDL.PushEvent(ref input);
+			backend.ProcessEvents();
+		}
+#if BF_PLATFORM_WINDOWS
+		else
+		{
+			let point = (int*)(void*)(int)((y << 16) | x);
+			Win32.SendMessage(control.Handle, Win32.WM_LBUTTONDOWN, (uint*)(void*)1, point);
+			Win32.SendMessage(control.Handle, Win32.WM_LBUTTONUP, null, point);
+		}
+#endif
+	}
+
+	private static void VerifyBackgroundClickFocus(ApplicationBackend backend)
+	{
+		Application.UseBackend(backend);
+		let form = scope Form();
+		form.ClientSize = .(240, 160);
+		let editor = new TextBox();
+		editor.Size = .(100, 25);
+		let button = new Button();
+		button.Location = .(0, 40);
+		button.Size = .(100, 25);
+		form.Controls.Add(editor);
+		form.Controls.Add(button);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		if (let sdl = Application.Backend as SDLBackend) SDLTestInput.Activate(sdl);
+		Click(editor);
+		Test.Assert(editor.Focused);
+		Click(form, 220, 140);
+		Test.Assert(editor.Focused);
+		Click(button);
+		Test.Assert(button.Focused);
+		Click(form, 220, 140);
+		Test.Assert(button.Focused);
+	}
+
+	[Test]
+	public static void SDLBackgroundClicksPreserveChildFocus() => VerifyBackgroundClickFocus(.SDL2OpenGL);
+#if BF_PLATFORM_WINDOWS
+	[Test]
+	public static void NativeBackgroundClicksPreserveChildFocus() => VerifyBackgroundClickFocus(.Win32);
+#endif
+
 	[Test]
 	public static void FormKeyPreviewRunsBeforeTheTargetAndCanCancelIt()
 	{

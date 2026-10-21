@@ -127,6 +127,8 @@ static class Win32
 
 	// Button Styles
 	public const uint BS_PUSHBUTTON = 0x00000000;
+	public const uint BS_DEFPUSHBUTTON = 0x00000001;
+	public const uint BM_SETSTYLE = 0x00F4;
 	public const uint BS_CHECKBOX = 0x00000002;
 	public const uint BM_GETCHECK = 0x00F0;
 	public const uint BM_SETCHECK = 0x00F1;

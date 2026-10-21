@@ -192,7 +192,7 @@ extension SDLBackend
 			{
 				mPressed = target;
 				RequestRedraw();
-				if (target.CanSelect) Focus(target);
+				if (target != mForm && target.CanSelect) Focus(target);
 				if (mCaptured == null)
 				{
 					SetCapture(target, true);

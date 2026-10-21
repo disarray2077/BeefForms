@@ -10,6 +10,28 @@ namespace BeefForms.Tests;
 class Win32BackendTests
 {
 	[Test]
+	public static void NativeButtonsHighlightWhileFocused()
+	{
+		Application.UseBackend(.Win32);
+		let form = scope Form();
+		form.ClientSize = .(240, 120);
+		let button = new Button();
+		button.Size = .(100, 25);
+		let editor = new TextBox();
+		editor.Location = .(0, 40);
+		editor.Size = .(100, 25);
+		form.Controls.Add(button);
+		form.Controls.Add(editor);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		function bool(Button) highlighted = (b) => ((uint)(void*)Win32.GetWindowLongPtr(b.Handle, Win32.GWL_STYLE) & Win32.BS_DEFPUSHBUTTON) != 0;
+		button.Focus();
+		Test.Assert(highlighted(button));
+		editor.Focus();
+		Test.Assert(!highlighted(button));
+	}
+
+	[Test]
 	public static void NativeTextBoxBordersMatchTheirStyleAndUpdateTheClientArea()
 	{
 		Application.UseBackend(.Win32);

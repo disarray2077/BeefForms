@@ -102,11 +102,17 @@ extension Win32Backend
 		if (HandleScroll(control, message, wParam)) return true;
 		switch (message)
 		{
-		case Win32.WM_SETFOCUS: control.NotifyFocus(true);
-		case Win32.WM_KILLFOCUS:
-			mHighSurrogate = 0;
-			mSurrogateControl = null;
-			control.NotifyFocus(false);
+		case Win32.WM_SETFOCUS, Win32.WM_KILLFOCUS:
+			let focused = message == Win32.WM_SETFOCUS;
+			if (control is Button)
+				Win32.SendMessage(control.Handle, Win32.BM_SETSTYLE,
+					(uint*)(void*)(focused ? Win32.BS_DEFPUSHBUTTON : Win32.BS_PUSHBUTTON), (int*)(void*)1);
+			if (!focused)
+			{
+				mHighSurrogate = 0;
+				mSurrogateControl = null;
+			}
+			control.NotifyFocus(focused);
 		case Win32.WM_KEYDOWN, Win32.WM_SYSKEYDOWN, Win32.WM_KEYUP, Win32.WM_SYSKEYUP:
 			let down = message == Win32.WM_KEYDOWN || message == Win32.WM_SYSKEYDOWN;
 			let args = scope KeyEventArgs((Keys)(uint)(void*)wParam | KeyboardModifiers());
@@ -166,7 +172,7 @@ extension Win32Backend
 			control.DispatchInput(doubleClick ? .MouseDown : kind, args);
 			if (doubleClick && !args.Handled) control.DispatchInput(.MouseDoubleClick, args);
 			if (args.Handled) return true;
-			if ((kind == .MouseDown || doubleClick) && control.CanSelect) FocusControl(control);
+			if ((kind == .MouseDown || doubleClick) && !(control is Form) && control.CanSelect) FocusControl(control);
 		default:
 		}
 		return false;
