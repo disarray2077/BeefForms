@@ -116,7 +116,8 @@ public class Control : System.ComponentModel.Component
 	private System.Drawing.Point mLocation;
 	private Size mSize, mClientSize;
 	private AnchorInfo mAnchorInfo;
-	private bool mLayoutSuspended;
+	private uint32 mLayoutSuspendCount;
+	private bool mLayoutDeferred;
 	private bool mEnabled = true;
 	private bool mAutoSize;
 	private BorderStyle mBorderStyle;
@@ -142,8 +143,11 @@ public class Control : System.ComponentModel.Component
 	protected internal virtual System.Drawing.Point ContentOffset => .(0, 0);
 	protected internal virtual Size ViewportSize => ClientSize;
 	protected internal virtual Size LayoutSize => ClientSize;
-	internal bool LayoutSuspended => mLayoutSuspended;
-	protected internal virtual void ChildBoundsChanged() {}
+	internal bool LayoutSuspended => mLayoutSuspendCount > 0;
+	protected internal virtual void ChildBoundsChanged()
+	{
+		if (LayoutSuspended) mLayoutDeferred = true;
+	}
 
 	internal int32 BorderWidth => BorderStyle == .None ? 0 : BorderStyle == .FixedSingle ? 1 : 2;
 	public virtual Size ClientSize
@@ -348,21 +352,32 @@ public class Control : System.ComponentModel.Component
 			if (child.mFont == null) child.UpdateFont();
 	}
 
-	public virtual void SuspendLayout() => mLayoutSuspended = true;
+	public virtual void SuspendLayout() => mLayoutSuspendCount++;
 	public virtual void ResumeLayout(bool performLayout)
 	{
-		mLayoutSuspended = false;
-		if (performLayout)
-			PerformLayout();
+		if (mLayoutSuspendCount > 0)
+		{
+			mLayoutSuspendCount--;
+			if (!LayoutSuspended && mLayoutDeferred && performLayout) PerformLayout();
+		}
+		// WinForms refreshes anchor baselines on every ResumeLayout(false), even an inner one.
+		if (!performLayout)
+			for (let child in Controls) child.UpdateAnchorDistances();
 	}
 
 	public virtual void PerformLayout()
 	{
-		if (mLayoutSuspended)
+		if (LayoutSuspended)
+		{
+			mLayoutDeferred = true;
 			return;
+		}
+		// Layout requests made by callbacks must not recurse into the active pass.
+		mLayoutSuspendCount = 1;
+		defer { mLayoutSuspendCount = 0; mLayoutDeferred = false; }
+		Layout.Invoke(this, .Empty);
 		for (let child in Controls)
 			child.ApplyAnchoring(LayoutSize);
-		Layout.Invoke(this, .Empty);
 	}
 
 	internal void UpdateAnchorDistances()
@@ -376,8 +391,6 @@ public class Control : System.ComponentModel.Component
 
 	internal void ApplyAnchoring(Size parentSize)
 	{
-		if (mLayoutSuspended)
-			return;
 		var location = mLocation;
 		var size = mSize;
 		if (Anchor.HasFlag(.Right))

@@ -63,11 +63,16 @@ public class ScrollableControl : Control
 	}
 	protected internal override void ChildBoundsChanged()
 	{
-		if (!LayoutSuspended) UpdateScrollBounds();
+		UpdateScrollBounds();
 	}
 
 	private void UpdateScrollBounds()
 	{
+		if (LayoutSuspended)
+		{
+			base.PerformLayout(); // Queue the change for the outer resume or active layout pass.
+			return;
+		}
 		mContentSize = mAutoScroll ? mMinimumSize : .(0, 0);
 		if (mAutoScroll)
 			for (let child in Controls)
