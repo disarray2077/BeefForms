@@ -13,7 +13,8 @@ extension SDLBackend
 {
 	private Control HitTest(Control control, int x, int y)
 	{
-		if (!control.IsEffectivelyEnabled || !control.IsEffectivelyVisible || x < 0 || y < 0 || x >= control.Size.width || y >= control.Size.height)
+		if (control.IsDisposingOrDisposed || !control.IsHandleCreated || !control.IsEffectivelyEnabled || !control.IsEffectivelyVisible ||
+			x < 0 || y < 0 || x >= control.Size.width || y >= control.Size.height)
 			return null;
 		int32 border = (control is Form) ? 0 : control.BorderWidth;
 		if (x < border || y < border || x >= border + control.ViewportSize.width || y >= border + control.ViewportSize.height)
@@ -62,7 +63,15 @@ extension SDLBackend
 	private void Focus(Control control)
 	{
 		if (mFocused == control) return;
-		if (mActive) mFocused?.NotifyFocus(false);
+		let snapshot = mWindowGeneration;
+		mFocusGeneration.Advance();
+		let transition = mFocusGeneration;
+		let previous = mFocused;
+		// Clear first: closing from LostFocus must not notify this control recursively.
+		mFocused = null;
+		if (mActive) previous?.NotifyFocus(false);
+		if (!mWindowGeneration.IsCurrent(snapshot) || !mFocusGeneration.IsCurrent(transition)) return;
+		if (control != null && !IsCurrentControl(control, snapshot)) return;
 		mFocused = control;
 		RequestRedraw();
 		UpdateTextInput();
@@ -138,6 +147,8 @@ extension SDLBackend
 
 	private void ProcessEvent(ref SDL.Event input)
 	{
+		let snapshot = mWindowGeneration;
+		if (!IsCurrentWindow(snapshot)) return;
 		switch (input.type)
 		{
 		case .Quit: mForm.Close();
@@ -163,12 +174,15 @@ extension SDLBackend
 			}
 		case .MouseMotion:
 			UpdateHover(input.motion.x, input.motion.y);
+			if (!IsCurrentWindow(snapshot)) break;
 			let target = mCaptured ?? mHovered;
 			if (target != null)
 			{
+				let handleSnapshot = target.HandleGeneration;
 				let point = PositionIn(target, input.motion.x, input.motion.y);
 				let args = scope MouseEventArgs(.None, 0, point.x, point.y);
 				target.DispatchInput(.MouseMove, args);
+				if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 				if (!args.Handled)
 					if (let editor = mPressed as TextBoxBase)
 					{
@@ -178,19 +192,24 @@ extension SDLBackend
 			}
 		case .MouseButtonDown:
 			UpdateHover(input.button.x, input.button.y);
+			if (!IsCurrentWindow(snapshot)) break;
 			let target = mCaptured ?? mHovered;
 			if (target == null) break;
+			let handleSnapshot = target.HandleGeneration;
 			let point = PositionIn(target, input.button.x, input.button.y);
 			let args = scope MouseEventArgs(MouseButton(input.button.button), input.button.clicks, point.x, point.y);
 			target.DispatchInput(.MouseDown, args);
+			if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 			if (!target.IsEffectivelyVisible || !target.IsEffectivelyEnabled) break;
 			if (args.Clicks >= 2 && !args.Handled)
 				target.DispatchInput(.MouseDoubleClick, args);
+			if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 			if (args.Button == .Left && !args.Handled)
 			{
 				mPressed = target;
 				RequestRedraw();
 				if (target != mForm && target.CanSelect) Focus(target);
+				if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 				if (mCaptured == null)
 				{
 					SetCapture(target, true);
@@ -204,12 +223,15 @@ extension SDLBackend
 			}
 		case .MouseButtonUp:
 			UpdateHover(input.button.x, input.button.y);
+			if (!IsCurrentWindow(snapshot)) break;
 			let hit = mHovered;
 			let target = mCaptured ?? hit;
 			if (target == null) break;
+			let handleSnapshot = target.HandleGeneration;
 			let point = PositionIn(target, input.button.x, input.button.y);
 			let args = scope MouseEventArgs(MouseButton(input.button.button), input.button.clicks, point.x, point.y);
 			target.DispatchInput(.MouseUp, args);
+			if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 			if (args.Button == .Left)
 			{
 				let pressed = mPressed;
@@ -230,6 +252,7 @@ extension SDLBackend
 			else
 				SDL.GetMouseState(out x, out y);
 			UpdateHover(x, y);
+			if (!IsCurrentWindow(snapshot)) break;
 			let target = mHovered;
 			if (target != null)
 			{
@@ -241,15 +264,18 @@ extension SDLBackend
 		case .TextInput:
 			if (!mActive || mSuppressTextInput) break;
 			let target = mFocused ?? mForm;
+			let handleSnapshot = target.HandleGeneration;
 			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			let text = scope String((char8*)&input.text.text);
 			let accepted = scope String();
 			target.FilterTextInput(text, accepted);
+			if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 			if (let editor = target as TextBoxBase)
 				if (!accepted.IsEmpty) editor.ReplaceSelection(accepted);
 		case .KeyDown:
 			if (!mActive) break;
 			let target = mFocused ?? mForm;
+			let handleSnapshot = target.HandleGeneration;
 			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			if (input.key.keysym.sym == .TAB)
 			{
@@ -259,15 +285,18 @@ extension SDLBackend
 			}
 			let args = scope KeyEventArgs(TranslateKey(input.key));
 			target.DispatchInput(.KeyDown, args);
+			if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 			mSuppressTextInput = args.SuppressKeyPress;
 			if (!args.Handled && !args.SuppressKeyPress)
 				DefaultKeyDown(input.key);
 		case .KeyUp:
 			if (!mActive) break;
 			let target = mFocused ?? mForm;
+			let handleSnapshot = target.HandleGeneration;
 			if (!target.IsEffectivelyEnabled || !target.IsEffectivelyVisible) break;
 			let args = scope KeyEventArgs(TranslateKey(input.key));
 			target.DispatchInput(.KeyUp, args);
+			if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 			mSuppressTextInput = false;
 		default:
 		}

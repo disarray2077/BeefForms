@@ -10,6 +10,89 @@ namespace BeefForms.Tests;
 
 class LifecycleTests
 {
+	private static int sLoopStops;
+
+	private class OwnedForm : Form
+	{
+		private bool* mDeleted;
+		public this(bool* deleted) { mDeleted = deleted; ClientSize = .(240, 160); }
+		public ~this() { *mDeleted = true; }
+	}
+
+	private static void StopScheduledLoop()
+	{
+		Test.Assert(!Application.[Friend]sProcessingEvents);
+		Test.Assert(Application.[Friend]sRunning && Application.[Friend]sMainForm != null);
+		Test.Assert(!Application.[Friend]sMainForm.IsHandleCreated);
+		sLoopStops++;
+	}
+
+	[Test]
+	public static void ScheduledFrameReleasesTheMainFormAfterPaintUnwinds()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		bool deleted = false;
+		sLoopStops = 0;
+		let form = new OwnedForm(&deleted);
+		let panel = new Panel();
+		panel.Size = .(100, 100);
+		form.Controls.Add(panel);
+		int paints = 0;
+		panel.Paint.Add(new [&] (sender, args) =>
+		{
+			paints++;
+			form.Close();
+			Test.Assert(form.IsDisposed && !deleted && Application.[Friend]sRunning);
+			// A nested scheduled frame must not delete the form underneath this callback.
+			Application.[Friend]RunFrame(=> StopScheduledLoop);
+			Test.Assert(!deleted && sLoopStops == 0);
+		});
+		Application.[Friend]BeginRun(form);
+		Test.Assert(paints == 0 && !deleted);
+		Application.[Friend]RunFrame(=> StopScheduledLoop);
+		Test.Assert(paints == 1 && deleted && sLoopStops == 1);
+		Test.Assert(Application.[Friend]sMainForm == null && !Application.[Friend]sRunning);
+		Test.Assert(Application.CreatedControlCount == 0);
+		Application.[Friend]RunFrame(=> StopScheduledLoop);
+		Test.Assert(sLoopStops == 1);
+	}
+
+	[Test]
+	public static void ScheduledFrameKeepsOwnershipUntilClosureIsAccepted()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		bool deleted = false, cancel = true;
+		sLoopStops = 0;
+		let form = new OwnedForm(&deleted);
+		form.FormClosing.Add(new [&] (sender, args) => { args.Cancel = cancel; });
+		Application.[Friend]BeginRun(form);
+		form.Close();
+		Application.[Friend]RunFrame(=> StopScheduledLoop);
+		Test.Assert(!deleted && sLoopStops == 0 && Application.[Friend]sMainForm == form);
+		Test.Assert(Application.[Friend]sRunning);
+		cancel = false;
+		form.Close();
+		Test.Assert(!deleted);
+		Application.[Friend]RunFrame(=> StopScheduledLoop);
+		Test.Assert(deleted && sLoopStops == 1 && !Application.[Friend]sRunning);
+		Test.Assert(Application.[Friend]sMainForm == null);
+	}
+
+	[Test]
+	public static void RunReleasesTheMainFormClosedDuringLoadAndCanRunAgain()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		for (int i < 2)
+		{
+			bool deleted = false;
+			let form = new OwnedForm(&deleted);
+			form.Load.Add(new (sender, args) => { ((Form)sender).Close(); });
+			Application.Run(form);
+			Test.Assert(deleted && !Application.[Friend]sRunning);
+			Test.Assert(Application.[Friend]sMainForm == null && Application.CreatedControlCount == 0);
+		}
+	}
+
 	private static void VerifyLoad(ApplicationBackend backend)
 	{
 		Application.UseBackend(backend);

@@ -117,7 +117,7 @@ public class ScrollableControl : Control
 	protected override void OnMouseWheel(MouseEventArgs args)
 	{
 		base.OnMouseWheel(args);
-		if (args.Handled || !AutoScroll) return;
+		if (args.Handled || IsDisposingOrDisposed || !AutoScroll) return;
 		let previous = mScrollPosition;
 		var next = previous;
 		if (mVerticalScroll) next.y -= args.Delta * 48 / 120;
@@ -130,7 +130,7 @@ public class ScrollableControl : Control
 	protected override void OnMouseDown(MouseEventArgs args)
 	{
 		base.OnMouseDown(args);
-		if (args.Handled || args.Button != .Left) return;
+		if (args.Handled || IsDisposingOrDisposed || args.Button != .Left) return;
 		for (let horizontal in scope bool[](true, false))
 		{
 			if (!Contains(ScrollTrack(horizontal), args.X, args.Y)) continue;
@@ -160,7 +160,7 @@ public class ScrollableControl : Control
 	protected override void OnMouseMove(MouseEventArgs args)
 	{
 		base.OnMouseMove(args);
-		if (!mDragging || !Capture) return;
+		if (IsDisposingOrDisposed || !mDragging || !Capture) return;
 		let track = ScrollTrack(mDragHorizontal);
 		let thumb = ScrollThumb(mDragHorizontal);
 		let length = mDragHorizontal ? track.Width : track.Height;
@@ -181,7 +181,7 @@ public class ScrollableControl : Control
 	protected override void OnMouseUp(MouseEventArgs args)
 	{
 		base.OnMouseUp(args);
-		if (args.Button != .Left || !mDragging) return;
+		if (IsDisposingOrDisposed || args.Button != .Left || !mDragging) return;
 		mDragging = false;
 		Capture = false;
 		args.Handled = true;

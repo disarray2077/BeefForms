@@ -15,6 +15,15 @@ internal class SDLBackend : FormsBackend
 {
 	public override ApplicationBackend Type => .SDL2OpenGL;
 
+	// Changes on window creation/destruction so an operation on form A stops even if
+	// a callback closes A and shows B, making this shared backend run again.
+	// A separate window session's identity could replace this counter in the future.
+	private Generation mWindowGeneration;
+
+	// Changes on each focus transition so a nested transition from a callback
+	// prevents the outer transition from overwriting its result.
+	private Generation mFocusGeneration;
+
 	private SDL.Window* mWindow;
 	private SDL.SDL_GLContext mContext;
 	private SDLRenderer mRenderer;
@@ -69,6 +78,7 @@ internal class SDLBackend : FormsBackend
 			mWheelHasPosition = version.major > 2 || version.minor >= 26;
 		}
 		mForm = (Form)control;
+		mWindowGeneration.Advance();
 		let size = mForm.HasInitialClientSize ? mForm.InitialClientSize : control.Size;
 		SDL.GL_SetAttribute(.GL_CONTEXT_MAJOR_VERSION, 3);
 #if BF_PLATFORM_WASM
@@ -110,6 +120,7 @@ internal class SDLBackend : FormsBackend
 	{
 		if (mWindow == null)
 			return;
+		mWindowGeneration.Advance();
 		SDL.StopTextInput();
 		delete mRenderer;
 		mRenderer = null;
@@ -297,19 +308,31 @@ internal class SDLBackend : FormsBackend
 		if (mWindow == null || !mRunning || mPumpingEvents || mRendering) return;
 		mPumpingEvents = true;
 		defer { mPumpingEvents = false; }
+		let snapshot = mWindowGeneration;
 		ProcessEvents();
-		if (!mRunning || mWindow == null) return;
+		if (!IsCurrentWindow(snapshot)) return;
 		let capture = CapturePath != null && (FrameLimit == 0 || mFrames + 1 == FrameLimit);
 		// Explicit frame limits also advance static forms for capture and smoke tests.
-		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && FrameLimit > 0 && ++mFrames >= FrameLimit)
+		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && IsCurrentWindow(snapshot) && FrameLimit > 0 && ++mFrames >= FrameLimit)
 			mRunning = false;
 	}
 
 	internal void ProcessEvents()
 	{
+		let snapshot = mWindowGeneration;
 		SDL.Event input = ?;
-		while (mWindow != null && SDL.PollEvent(out input) != 0)
+		while (IsCurrentWindow(snapshot) && SDL.PollEvent(out input) != 0)
 			ProcessEvent(ref input);
 	}
+
+	// Close is synchronous. A callback may even replace the window before returning.
+	private bool IsCurrentWindow(Generation snapshot) => mWindowGeneration.IsCurrent(snapshot) && mRunning &&
+		mWindow != null && mForm != null && mForm.IsHandleCreated && !mForm.IsDisposingOrDisposed;
+
+	private bool IsCurrentControl(Control control, Generation snapshot) => IsCurrentWindow(snapshot) &&
+		control != null && control.IsHandleCreated && !control.IsDisposingOrDisposed;
+
+	private bool IsCurrentControl(Control control, Generation snapshot, Generation handleSnapshot) =>
+		IsCurrentWindow(snapshot) && control != null && control.IsCurrentHandle(handleSnapshot);
 
 }

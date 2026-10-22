@@ -16,14 +16,25 @@ public static class Application
 	internal static FormsBackend Backend = FormsBackendFactory.Instance.CreateDefaultBackend() ~ delete _;
 	private static bool sRunning;
 	private static bool sProcessingEvents;
-
-#if BF_PLATFORM_WASM
 	private static Form sMainForm;
 
+#if BF_PLATFORM_WASM
 	[CLink]
 	private static extern void emscripten_set_main_loop(function void() callback, int32 fps, int32 simulateInfiniteLoop);
 	[CLink]
 	private static extern void emscripten_cancel_main_loop();
+
+	private static void BrowserFrame() => RunFrame(=> emscripten_cancel_main_loop);
+#endif
+
+	private static void BeginRun(Form mainForm)
+	{
+		if (sRunning)
+			Runtime.FatalError("Application.Run is already active");
+		sRunning = true;
+		sMainForm = mainForm;
+		mainForm.Show();
+	}
 
 	private static void ReleaseMainForm()
 	{
@@ -33,17 +44,17 @@ public static class Application
 		sRunning = false;
 	}
 
-	private static void BrowserFrame()
+	// Scheduled hosts call this once per frame; only stopping their loop is platform-specific.
+	private static void RunFrame<F>(F stopMainLoop) where F : delegate void()
 	{
-		if (sMainForm == null) return;
+		if (sMainForm == null || sProcessingEvents) return;
 		DoEvents();
 		if (!sMainForm.IsHandleCreated)
 		{
-			emscripten_cancel_main_loop();
+			stopMainLoop();
 			ReleaseMainForm();
 		}
 	}
-#endif
 
 	internal static int CreatedControlCount;
 
@@ -84,12 +95,8 @@ public static class Application
 	/// On Wasm, schedules browser frames and returns immediately.
 	public static void Run(Form mainForm)
 	{
-		if (sRunning)
-			Runtime.FatalError("Application.Run is already active");
-		sRunning = true;
+		BeginRun(mainForm);
 #if BF_PLATFORM_WASM
-		sMainForm = mainForm;
-		mainForm.Show();
 		// A Load handler can close the form before a browser loop is registered.
 		if (!mainForm.IsHandleCreated)
 		{
@@ -98,8 +105,7 @@ public static class Application
 		}
 		emscripten_set_main_loop(=> BrowserFrame, 0, 0);
 #else
-		defer { sRunning = false; delete mainForm; }
-		mainForm.Show();
+		defer { ReleaseMainForm(); }
 		Backend.Run(mainForm);
 #endif
 	}

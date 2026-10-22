@@ -285,6 +285,7 @@ internal class Win32Backend : FormsBackend
 			return Win32.DefWindowProc(window, message, wParam, lParam);
 		if (backend.DispatchNativeInput(form, message, wParam, lParam))
 			return 0;
+		if (form.Handle != window) return 0;
 
 		switch (message)
 		{
@@ -309,7 +310,7 @@ internal class Win32Backend : FormsBackend
 			return 0;
 		default:
 		}
-		return Win32.DefWindowProc(window, message, wParam, lParam);
+		return form.Handle == window ? Win32.DefWindowProc(window, message, wParam, lParam) : 0;
 	}
 }
 #endif

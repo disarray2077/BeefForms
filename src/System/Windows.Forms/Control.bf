@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Drawing;
+using BeefForms.Backends;
 
 using internal System.Windows.Forms;
 using internal System.Drawing;
@@ -97,6 +98,8 @@ public class Control : System.ComponentModel.Component
 	private bool mAutoSize;
 	private BorderStyle mBorderStyle;
 	private bool mCreated;
+	private Generation mHandleGeneration;
+	private bool mDisposing, mDisposed;
 	internal bool NeedsPaint = true;
 
 	public ref Event<EventHandler> LocationChanged { get; set; } ~ _.Dispose();
@@ -107,6 +110,11 @@ public class Control : System.ComponentModel.Component
 
 	public void* Handle => mHandle;
 	public bool IsHandleCreated => mCreated;
+	internal Generation HandleGeneration => mHandleGeneration;
+	internal bool IsCurrentHandle(Generation snapshot) => mCreated && !IsDisposingOrDisposed && mHandleGeneration.IsCurrent(snapshot);
+	public bool Disposing => mDisposing;
+	public bool IsDisposed => mDisposed;
+	internal bool IsDisposingOrDisposed => mDisposing || mDisposed;
 	public Control Parent => mParent;
 	protected internal virtual System.Drawing.Point ContentOffset => .(0, 0);
 	protected internal virtual Size ViewportSize => ClientSize;
@@ -209,13 +217,27 @@ public class Control : System.ComponentModel.Component
 	}
 
 	public this() { Controls = new .(this); }
-	public ~this() { DestroyHandle(); }
+	public ~this() { Dispose(); }
+
+	protected override void Dispose(bool disposing)
+	{
+		if (!disposing || IsDisposingOrDisposed) return;
+		mDisposing = true;
+		defer { mDisposing = false; mDisposed = true; }
+		let children = scope List<Control>();
+		for (let child in Controls) children.Add(child);
+		DestroyHandle();
+		// Ownership stays with the parent until delete; callbacks can still reference these objects.
+		for (let child in children) child.Dispose();
+		base.Dispose(disposing);
+	}
 	private void UpdateClientSize() => mClientSize = .(Math.Max(0, mSize.width - BorderWidth * 2), Math.Max(0, mSize.height - BorderWidth * 2));
 
 	internal void DestroyHandle()
 	{
 		if (!mCreated) return;
 		mCreated = false;
+		mHandleGeneration.Advance();
 		for (let child in Controls) child.DestroyHandle();
 		Application.Backend.DestroyControl(this);
 		Application.CreatedControlCount--;
@@ -343,8 +365,11 @@ public class Control : System.ComponentModel.Component
 
 	protected internal virtual void CreateHandle()
 	{
+		if (IsDisposingOrDisposed)
+			Runtime.FatalError("Cannot create a handle for a disposed control");
 		if (mCreated)
 			return;
+		mHandleGeneration.Advance();
 		Application.CreatedControlCount++;
 		Application.Backend.CreateControl(this);
 		UpdateClientSize();
@@ -352,6 +377,7 @@ public class Control : System.ComponentModel.Component
 		UpdateAutoSize();
 		for (let child in Controls)
 		{
+			if (child.IsDisposingOrDisposed) continue;
 			child.UpdateAnchorDistances();
 			child.CreateHandle();
 		}

@@ -5,14 +5,15 @@ namespace BeefForms.Backends;
 
 internal class FormsBackendFactory
 {
+	private static FormsBackendFactory sInstance ~ delete _;
+
 	public static FormsBackendFactory Instance
 	{
 		get
 		{
-			static FormsBackendFactory instance = null;
-			if (instance == null)
-				instance = new .();
-			return instance;
+			if (sInstance == null)
+				sInstance = new .();
+			return sInstance;
 		}
 	}
 

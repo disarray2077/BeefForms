@@ -31,7 +31,7 @@ extension SDLBackend
 		return 0;
 	}
 
-	private bool CanRender => mWindow != null && mForm.IsEffectivelyVisible &&
+	private bool CanRender => IsCurrentWindow(mWindowGeneration) && mForm.IsEffectivelyVisible &&
 		(SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Minimized) == 0 &&
 		(mShowPending || (SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Hidden) == 0);
 
@@ -46,13 +46,14 @@ extension SDLBackend
 
 	private bool RenderIfNeeded(bool force = false, bool capture = false)
 	{
-		if (!CanRender || (!force && GetRedrawTimeout() != 0)) return false;
+		if (mRendering || !CanRender || (!force && GetRedrawTimeout() != 0)) return false;
 		RenderFrame(capture);
 		return true;
 	}
 
 	private void RenderFrame(bool capture = false)
 	{
+		let snapshot = mWindowGeneration;
 		mRendering = true;
 		defer { mRendering = false; }
 		// Clear before drawing so invalidation from layout or Paint schedules another frame.
@@ -60,10 +61,11 @@ extension SDLBackend
 		mFrameTicks = SDL.GetTicks64();
 		mNextAnimationTick = uint64.MaxValue;
 		mForm.NotifyResize(GetFormSize());
-		if (!mRunning) return;
+		if (!IsCurrentWindow(snapshot)) return;
 		mRenderer.Begin(mWindow);
 		let size = GetClientSize(mForm);
-		RenderControl(mForm, .(0, 0, size.width, size.height), .(0, 0, size.width, size.height));
+		RenderControl(mForm, .(0, 0, size.width, size.height), .(0, 0, size.width, size.height), snapshot);
+		if (!IsCurrentWindow(snapshot)) return;
 		if (capture)
 		{
 			mRenderer.Capture(CapturePath);
@@ -91,9 +93,9 @@ extension SDLBackend
 		for (let child in control.Controls) InvalidateTree(child);
 	}
 
-	private void RenderControl(Control control, Rectangle bounds, Rectangle parentClip)
+	private void RenderControl(Control control, Rectangle bounds, Rectangle parentClip, Generation snapshot)
 	{
-		if (!control.IsEffectivelyVisible) return;
+		if (!IsCurrentControl(control, snapshot) || !control.IsEffectivelyVisible) return;
 		var clip = Intersect(bounds, parentClip);
 		if (clip.Width == 0 || clip.Height == 0)
 			return;
@@ -142,6 +144,8 @@ extension SDLBackend
 			mRenderer.Border(bounds, 100f / 255, 100f / 255, 100f / 255);
 
 		if (control.NeedsPaint) control.NotifyPaint();
+		// Paint can synchronously close the form and destroy its GL context.
+		if (!IsCurrentControl(control, snapshot)) return;
 
 		let viewport = control.ViewportSize;
 		int32 border = (control is Form) ? 0 : control.BorderWidth;
@@ -149,7 +153,8 @@ extension SDLBackend
 		for (let child in control.Controls)
 		{
 			let childSize = child.Size;
-			RenderControl(child, .(bounds.X + border + child.Location.x - control.ContentOffset.x, bounds.Y + border + child.Location.y - control.ContentOffset.y, childSize.width, childSize.height), childClip);
+			RenderControl(child, .(bounds.X + border + child.Location.x - control.ContentOffset.x, bounds.Y + border + child.Location.y - control.ContentOffset.y, childSize.width, childSize.height), childClip, snapshot);
+			if (!IsCurrentControl(control, snapshot)) return;
 		}
 		if (let scrollable = control as ScrollableControl)
 		{

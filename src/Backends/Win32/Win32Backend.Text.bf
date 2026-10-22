@@ -41,6 +41,8 @@ extension Win32Backend
 
 	private void ApplyCharacter(Control control, char32 character, int32* lParam)
 	{
+		let window = control.Handle;
+		let snapshot = control.HandleGeneration;
 		let accepted = scope String();
 		if (character < ' ')
 		{
@@ -53,22 +55,25 @@ extension Win32Backend
 			let text = scope String()..Append(character);
 			control.FilterTextInput(text, accepted);
 		}
-		if (accepted.IsEmpty) return;
+		if (accepted.IsEmpty || control.Handle != window || !control.IsCurrentHandle(snapshot)) return;
 		// Publish one text change after the accepted text has reached the native editor.
 		mInsertingText = true;
 		let units = accepted.ToScopedNativeWChar!();
 		for (var cursor = units; *cursor != 0; cursor++)
-			DefaultCharacter(control, *cursor, lParam);
+		{
+			if (control.Handle != window || !control.IsCurrentHandle(snapshot)) break;
+			DefaultCharacter(control, window, *cursor, lParam);
+		}
 		mInsertingText = false;
-		if (control is TextBoxBase) NotifyNativeText(control);
+		if (control.Handle == window && control.IsCurrentHandle(snapshot) && control is TextBoxBase) NotifyNativeText(control);
 	}
 
-	private static void DefaultCharacter(Control control, char16 character, int32* lParam)
+	private static void DefaultCharacter(Control control, void* window, char16 character, int32* lParam)
 	{
 		if (control is Form)
-			Win32.DefWindowProc(control.Handle, Win32.WM_CHAR, (uint32*)(void*)(uint)character, lParam);
+			Win32.DefWindowProc(window, Win32.WM_CHAR, (uint32*)(void*)(uint)character, lParam);
 		else
-			Win32.DefSubclassProc(control.Handle, Win32.WM_CHAR, (uint32*)(void*)(uint)character, lParam);
+			Win32.DefSubclassProc(window, Win32.WM_CHAR, (uint32*)(void*)(uint)character, lParam);
 	}
 
 	private bool HandleCharacter(Control control, char16 character, int32* lParam)

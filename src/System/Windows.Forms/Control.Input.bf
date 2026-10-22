@@ -15,7 +15,7 @@ extension Control
 {
 	public bool TabStop { get; set; }
 	public bool CanSelect => CanSelectCore();
-	protected virtual bool CanSelectCore() => Visible && Enabled;
+	protected virtual bool CanSelectCore() => !IsDisposingOrDisposed && Visible && Enabled;
 	public bool Focused => IsHandleCreated && Application.Backend.IsFocused(this);
 	public bool IsMouseOver { get; private set; }
 	public bool Capture
@@ -61,19 +61,23 @@ extension Control
 
 	internal void FilterTextInput(StringView text, String accepted)
 	{
+		let snapshot = HandleGeneration;
 		let args = scope TextInputEventArgs(text);
 		DispatchInput(.TextInput, args);
-		if (args.Handled) return;
+		if (args.Handled || IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot)) return;
 		for (let character in args.Text.DecodedChars)
 		{
 			let press = scope KeyPressEventArgs(character);
 			DispatchInput(.KeyPress, press);
+			if (IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot)) return;
 			if (!press.Handled) accepted.Append(press.KeyChar);
 		}
 	}
 
 	internal void DispatchInput(InputEventKind kind, InputEventArgs args)
 	{
+		if (IsDisposingOrDisposed) return;
+		let snapshot = HandleGeneration;
 		if (args.Source == null)
 			args.Source = this;
 		if (kind == .KeyDown || kind == .KeyUp || kind == .KeyPress)
@@ -84,7 +88,7 @@ extension Control
 				if (form != this && form.KeyPreview)
 				{
 					form.DispatchInput(kind, args);
-					if (args.Handled) return;
+					if (args.Handled || IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot)) return;
 				}
 		}
 		switch (kind)
@@ -105,7 +109,7 @@ extension Control
 	internal void DispatchMouseWheel(MouseEventArgs args)
 	{
 		DispatchInput(.MouseWheel, args);
-		if (args.Handled || Parent == null) return;
+		if (args.Handled || IsDisposingOrDisposed || Parent == null) return;
 		let x = Location.x + BorderWidth - Parent.ContentOffset.x;
 		let y = Location.y + BorderWidth - Parent.ContentOffset.y;
 		args.X += x;
@@ -128,7 +132,7 @@ extension Control
 
 	private static void CollectTabControls(Control parent, List<Control> controls)
 	{
-		if (!parent.Visible || !parent.Enabled) return;
+		if (parent.IsDisposingOrDisposed || !parent.Visible || !parent.Enabled) return;
 		let children = scope List<Control>();
 		for (let child in parent.Controls) children.Add(child);
 		children.Sort(scope (a, b) =>
@@ -139,7 +143,7 @@ extension Control
 		});
 		for (let child in children)
 		{
-			if (!child.Visible || !child.Enabled) continue;
+			if (child.IsDisposingOrDisposed || !child.Visible || !child.Enabled) continue;
 			if (child.TabStop && child.TabIndex >= 0 && child.CanSelect) controls.Add(child);
 			CollectTabControls(child, controls);
 		}
@@ -162,11 +166,14 @@ extension Control
 				control.OnMouseLeave(.Empty);
 			}
 		for (var control = next; control != null; control = control.Parent)
+		{
+			if (control.IsDisposingOrDisposed) return;
 			if (!IsAncestorOf(control, previous))
 			{
 				control.IsMouseOver = true;
 				control.OnMouseEnter(.Empty);
 			}
+		}
 	}
 
 	internal static bool IsAncestorOf(Control ancestor, Control control)

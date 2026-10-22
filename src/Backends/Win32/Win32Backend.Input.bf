@@ -29,6 +29,7 @@ extension Win32Backend
 		let backend = (Win32Backend)Application.Backend;
 		if (backend.mControls.TryGetValue(window, let control))
 		{
+			let snapshot = control.HandleGeneration;
 			if (message == Win32.WM_PAINT && control is Label)
 			{
 				backend.PaintLabel((Label)control);
@@ -43,8 +44,10 @@ extension Win32Backend
 			}
 			if (backend.DispatchNativeInput(control, message, wParam, lParam))
 				return 0;
+			if (control.Handle != window || !control.HandleGeneration.IsCurrent(snapshot)) return 0;
 			if (message == Win32.WM_COMMAND)
 				backend.HandleCommand(wParam, lParam);
+			if (control.Handle != window || !control.HandleGeneration.IsCurrent(snapshot)) return 0;
 			if (message == Win32.WM_NCDESTROY)
 			{
 				Win32.RemoveWindowSubclass(window, => ChildWindowProc, id);
@@ -58,10 +61,12 @@ extension Win32Backend
 			if (control is ScrollableControl && (message == Win32.WM_NCLBUTTONDOWN || message == Win32.WM_NCLBUTTONDBLCLK))
 				return Win32.DefWindowProc(window, message, wParam, lParam);
 			let result = Win32.DefSubclassProc(window, message, wParam, lParam);
+			if (control.Handle != window || !control.HandleGeneration.IsCurrent(snapshot)) return result;
 			// STATIC and group boxes are mouse-transparent; preserve client and scrollbar hit testing.
 			if (message == Win32.WM_NCHITTEST && result == Win32.HTTRANSPARENT)
 				return Win32.DefWindowProc(window, message, wParam, lParam);
 			if (message == Win32.WM_PAINT) control.NotifyPaint();
+			if (control.Handle != window || !control.HandleGeneration.IsCurrent(snapshot)) return result;
 			if (let editor = control as TextBoxBase)
 				backend.SynchronizeSelectionAfterMessage(editor, message);
 			return result;
@@ -99,6 +104,8 @@ extension Win32Backend
 
 	private bool DispatchNativeInput(Control control, uint32 message, uint32* wParam, int32* lParam)
 	{
+		let window = control.Handle;
+		let snapshot = control.HandleGeneration;
 		if (HandleScroll(control, message, wParam)) return true;
 		switch (message)
 		{
@@ -123,6 +130,7 @@ extension Win32Backend
 				return true;
 			}
 			control.DispatchInput(down ? .KeyDown : .KeyUp, args);
+			if (control.Handle != window || !control.IsCurrentHandle(snapshot)) return true;
 			mSuppressChars = down && args.SuppressKeyPress;
 			return args.Handled || args.SuppressKeyPress;
 		case Win32.WM_CHAR:
@@ -160,6 +168,7 @@ extension Win32Backend
 			if (kind == .MouseMove)
 			{
 				Control.UpdateMouseOver(mHovered, control);
+				if (control.Handle != window || !control.IsCurrentHandle(snapshot)) return true;
 				mHovered = control;
 				Win32.TRACKMOUSEEVENT tracking = .(sizeof(Win32.TRACKMOUSEEVENT), 2, control.Handle, 0);
 				Win32.TrackMouseEvent(ref tracking);
@@ -170,7 +179,9 @@ extension Win32Backend
 			let args = scope MouseEventArgs(button, clicks, point.x, point.y,
 				message == Win32.WM_MOUSEWHEEL ? delta : 0, message == Win32.WM_MOUSEHWHEEL ? delta : 0);
 			control.DispatchInput(doubleClick ? .MouseDown : kind, args);
+			if (control.Handle != window || !control.IsCurrentHandle(snapshot)) return true;
 			if (doubleClick && !args.Handled) control.DispatchInput(.MouseDoubleClick, args);
+			if (control.Handle != window || !control.IsCurrentHandle(snapshot)) return true;
 			if (args.Handled) return true;
 			if ((kind == .MouseDown || doubleClick) && !(control is Form) && control.CanSelect) FocusControl(control);
 		default:

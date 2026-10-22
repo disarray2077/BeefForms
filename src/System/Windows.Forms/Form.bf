@@ -59,10 +59,11 @@ public class Form : ContainerControl
 
 	public override void Show()
 	{
-		if (mClosed) Runtime.FatalError("Cannot show a closed form");
+		if (mClosed || IsDisposingOrDisposed) Runtime.FatalError("Cannot show a closed or disposed form");
 		Visible = true;
 		let created = IsHandleCreated;
 		CreateHandle();
+		if (mClosed || IsDisposingOrDisposed) return;
 		if (!created && StartPosition == .CenterScreen)
 		{
 			let area = Application.Backend.GetScreenWorkingArea();
@@ -70,12 +71,12 @@ public class Form : ContainerControl
 				area.Y + Math.Max(0, area.Height - Size.height) / 2);
 		}
 		NotifyLoad();
-		if (!mClosed) Application.Backend.Show(this);
+		if (!mClosed && !IsDisposingOrDisposed) Application.Backend.Show(this);
 	}
 
 	public void Close()
 	{
-		if (mClosing || mClosed) return;
+		if (mClosing || mClosed || IsDisposingOrDisposed) return;
 		mClosing = true;
 		defer { mClosing = false; }
 		let args = scope FormClosingEventArgs(.UserClosing);
@@ -85,5 +86,6 @@ public class Form : ContainerControl
 		if (IsHandleCreated) Application.Backend.Close(this);
 		DestroyHandle();
 		OnFormClosed(scope .(.UserClosing));
+		Dispose();
 	}
 }
