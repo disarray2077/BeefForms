@@ -27,7 +27,7 @@ class CallbackLifecycleTests
 		form.Disposed.Add(new (sender, args) =>
 		{
 			Test.Assert(events == "BCD" && form.Disposing && !form.IsDisposed);
-			for (let child in form.Controls) Test.Assert(child.IsDisposed && !child.Disposing);
+			Test.Assert(form.Controls.IsEmpty);
 			events.Append('S');
 		});
 	}

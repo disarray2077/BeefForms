@@ -27,10 +27,18 @@ public class Control : System.ComponentModel.Component
 		public int IndexOf(Control value) => mItems.IndexOf(value);
 		public bool Contains(Control value) => mItems.Contains(value);
 
+		/// Takes ownership until the child is removed or independently disposed.
 		public void Add(Control value) => Insert(Count, value);
 		public void Insert(int index, Control value)
 		{
-			if (value.Parent == mOwner) return;
+			if (TryInsert(index, value) case .Err)
+				Runtime.FatalError("A control cannot be parented to itself or its descendant");
+		}
+		private Result<void> TryInsert(int index, Control value)
+		{
+			// Validate before detaching from the old parent.
+			if (Control.IsAncestorOf(value, mOwner)) return .Err;
+			if (value.Parent == mOwner) return .Ok;
 			value.Parent?.Controls.Remove(value);
 			mItems.Insert(index, value);
 			value.mParent = mOwner;
@@ -38,9 +46,12 @@ public class Control : System.ComponentModel.Component
 			if (mOwner.IsHandleCreated) value.CreateHandle();
 			mOwner.PerformLayout();
 			value.UpdateBackend(.ZOrder);
+			return .Ok;
 		}
+		/// Detaches without disposal or deletion; ownership returns to the caller.
 		public bool Remove(Control value)
 		{
+			if (value.Parent != mOwner) return false;
 			let index = IndexOf(value);
 			if (index < 0) return false;
 			RemoveAt(index);
@@ -49,6 +60,7 @@ public class Control : System.ComponentModel.Component
 		public void RemoveAt(int index)
 		{
 			let value = mItems[index];
+			if (value.Parent != mOwner) return;
 			mItems.RemoveAt(index);
 			value.DestroyHandle();
 			value.mParent = null;
@@ -73,6 +85,7 @@ public class Control : System.ComponentModel.Component
 			mItems.Insert(front ? Count : 0, value);
 			value.UpdateBackend(.ZOrder);
 		}
+		internal void ClearAfterDisposal() => mItems.Clear();
 
 		public Enumerator GetEnumerator() => .(this);
 		public struct Enumerator : IEnumerator<Control>
@@ -88,6 +101,9 @@ public class Control : System.ComponentModel.Component
 	private struct AnchorInfo : this(int32 Left, int32 Top, int32 Right, int32 Bottom) {}
 	private void* mHandle;
 	private Control mParent;
+	// Cascaded disposal detaches the public tree but keeps allocations alive until delete.
+	private List<Control> mDisposedChildren ~ delete _;
+	private Control mDisposalOwner;
 	private String mText = new .() ~ delete _;
 	private Font mFont ~ _?.Release();
 	private System.Drawing.Point mLocation;
@@ -201,7 +217,7 @@ public class Control : System.ComponentModel.Component
 		get => mAutoSize;
 		set { mAutoSize = value; UpdateAutoSize(); }
 	}
-	public readonly ControlCollection Controls ~ DeleteContainerAndItems!(_);
+	public readonly ControlCollection Controls ~ delete _;
 	public virtual BorderStyle BorderStyle
 	{
 		get => mBorderStyle;
@@ -217,18 +233,39 @@ public class Control : System.ComponentModel.Component
 	}
 
 	public this() { Controls = new .(this); }
-	public ~this() { Dispose(); }
+	public ~this()
+	{
+		if (!mDisposed) Dispose();
+		mDisposalOwner?.mDisposedChildren.Remove(this);
+		if (mDisposedChildren != null)
+			while (!mDisposedChildren.IsEmpty)
+			{
+				let child = mDisposedChildren.PopBack();
+				child.mDisposalOwner = null;
+				delete child;
+			}
+	}
 
 	protected override void Dispose(bool disposing)
 	{
-		if (!disposing || IsDisposingOrDisposed) return;
+		if (!disposing || mDisposing) return;
 		mDisposing = true;
 		defer { mDisposing = false; mDisposed = true; }
 		let children = scope List<Control>();
 		for (let child in Controls) children.Add(child);
 		DestroyHandle();
-		// Ownership stays with the parent until delete; callbacks can still reference these objects.
-		for (let child in children) child.Dispose();
+		Parent?.Controls.Remove(this);
+		for (let child in children)
+		{
+			if (child.Parent != this) continue;
+			// Match WinForms: clear Parent before notifying, clear Controls after the cascade.
+			child.mParent = null;
+			if (mDisposedChildren == null) mDisposedChildren = new .();
+			mDisposedChildren.Add(child);
+			child.mDisposalOwner = this;
+			child.Dispose();
+		}
+		Controls.ClearAfterDisposal();
 		base.Dispose(disposing);
 	}
 	private void UpdateClientSize() => mClientSize = .(Math.Max(0, mSize.width - BorderWidth * 2), Math.Max(0, mSize.height - BorderWidth * 2));

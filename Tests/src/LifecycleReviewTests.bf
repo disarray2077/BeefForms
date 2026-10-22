@@ -16,7 +16,9 @@ class LifecycleReviewTests
 		let form = scope Form();
 		form.ClientSize = .(240, 160);
 		let disposed = new Panel();
-		disposed.Controls.Add(new TextBox());
+		defer delete disposed;
+		let descendant = new TextBox();
+		disposed.Controls.Add(descendant);
 		let live = new TextBox();
 		live.Size = .(100, 30);
 		form.Controls.Add(disposed);
@@ -24,7 +26,9 @@ class LifecycleReviewTests
 		disposed.Dispose();
 		form.Show();
 		Test.Assert(form.IsHandleCreated && live.IsHandleCreated);
-		Test.Assert(disposed.IsDisposed && !disposed.IsHandleCreated && !disposed.Controls[0].IsHandleCreated);
+		Test.Assert(disposed.IsDisposed && !disposed.IsHandleCreated && descendant.IsDisposed && !descendant.IsHandleCreated);
+		Test.Assert(disposed.Parent == null && descendant.Parent == null && disposed.Controls.IsEmpty);
+		Test.Assert(form.Controls.Count == 1 && form.Controls[0] == live);
 		Test.Assert(Application.CreatedControlCount == 2);
 		form.Close();
 #if BF_PLATFORM_WINDOWS
@@ -33,10 +37,10 @@ class LifecycleReviewTests
 	}
 
 	[Test]
-	public static void SDLShowSkipsDisposedChildren() => VerifyDisposedChildBeforeShow(.SDL2OpenGL);
+	public static void SDLShowAfterChildDisposal() => VerifyDisposedChildBeforeShow(.SDL2OpenGL);
 #if BF_PLATFORM_WINDOWS
 	[Test]
-	public static void NativeShowSkipsDisposedChildren() => VerifyDisposedChildBeforeShow(.Win32);
+	public static void NativeShowAfterChildDisposal() => VerifyDisposedChildBeforeShow(.Win32);
 #endif
 
 	private static void VerifyParentRecreation(ApplicationBackend backend)
@@ -47,6 +51,7 @@ class LifecycleReviewTests
 		let parent = new Panel();
 		parent.Size = .(200, 120);
 		let disposed = new TextBox();
+		defer delete disposed;
 		let live = new TextBox();
 		live.Size = .(100, 30);
 		parent.Controls.Add(disposed);
@@ -58,6 +63,7 @@ class LifecycleReviewTests
 		parent.CreateHandle();
 		Test.Assert(parent.IsHandleCreated && live.IsHandleCreated && !parent.IsDisposed && !live.IsDisposed);
 		Test.Assert(disposed.IsDisposed && !disposed.IsHandleCreated && Application.CreatedControlCount == 3);
+		Test.Assert(disposed.Parent == null && parent.Controls.Count == 1 && parent.Controls[0] == live);
 		form.Close();
 #if BF_PLATFORM_WINDOWS
 		if (backend == .Win32) Application.Backend.Run(form);
@@ -65,10 +71,10 @@ class LifecycleReviewTests
 	}
 
 	[Test]
-	public static void SDLParentRecreationSkipsDisposedChildren() => VerifyParentRecreation(.SDL2OpenGL);
+	public static void SDLParentRecreationAfterChildDisposal() => VerifyParentRecreation(.SDL2OpenGL);
 #if BF_PLATFORM_WINDOWS
 	[Test]
-	public static void NativeParentRecreationSkipsDisposedChildren() => VerifyParentRecreation(.Win32);
+	public static void NativeParentRecreationAfterChildDisposal() => VerifyParentRecreation(.Win32);
 #endif
 
 	[Test]
@@ -89,7 +95,6 @@ class LifecycleReviewTests
 		Test.Assert(first.Parent == null && second.IsDisposed && third.IsDisposed);
 		Test.Assert(firstDisposals == 1 && secondDisposals == 1 && thirdDisposals == 1);
 		delete parent;
-		delete first;
 		Test.Assert(firstDisposals == 1 && secondDisposals == 1 && thirdDisposals == 1);
 	}
 

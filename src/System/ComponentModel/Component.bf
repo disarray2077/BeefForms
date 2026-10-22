@@ -16,13 +16,12 @@ public class Component : IComponent
 
     private void NotifyDisposed()
     {
-        if (mDisposeNotified) return;
         mDisposeNotified = true;
         Disposed.Invoke(this, System.EventArgs.Empty);
     }
 
 	public ~this()
 	{
-		NotifyDisposed();
+		if (!mDisposeNotified) NotifyDisposed();
 	}
 }

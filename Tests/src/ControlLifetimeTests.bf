@@ -64,14 +64,12 @@ class ControlLifetimeTests
 		parent.Dispose();
 		Test.Assert(events == "ECP" && parent.IsDisposed && child.IsDisposed && editor.IsDisposed);
 		Test.Assert(!parent.Disposing && !child.Disposing && !editor.Disposing);
-		Test.Assert(parent.Controls.Contains(child) && child.Controls.Contains(editor));
-		parent.Dispose();
-		child.Dispose();
-		Test.Assert(events == "ECP");
+		Test.Assert(parent.Controls.IsEmpty && child.Controls.IsEmpty);
+		Test.Assert(child.Parent == null && editor.Parent == null);
 	}
 
 	[Test]
-	public static void ComponentDisposalIsIdempotentAcrossDelete()
+	public static void ExplicitComponentDisposalRepeatsTheEventButDeleteDoesNot()
 	{
 		let component = new Component();
 		int disposals = 0;
@@ -79,9 +77,9 @@ class ControlLifetimeTests
 		IComponent reference = component;
 		reference.Dispose();
 		reference.Dispose();
-		Test.Assert(disposals == 1);
+		Test.Assert(disposals == 2);
 		delete component;
-		Test.Assert(disposals == 1);
+		Test.Assert(disposals == 2);
 	}
 
 	[Test]
@@ -101,10 +99,12 @@ class ControlLifetimeTests
 		Application.UseBackend(backend);
 		let form = scope Form();
 		form.ClientSize = .(240, 160);
-		form.Controls.Add(new TextBox());
+		let editor = new TextBox();
+		form.Controls.Add(editor);
 		form.Load.Add(new (sender, args) => { form.Dispose(); });
 		form.Show();
-		Test.Assert(form.IsDisposed && form.Controls[0].IsDisposed && !form.IsHandleCreated);
+		Test.Assert(form.IsDisposed && editor.IsDisposed && !form.IsHandleCreated);
+		Test.Assert(form.Controls.IsEmpty && editor.Parent == null);
 #if BF_PLATFORM_WINDOWS
 		if (backend == .Win32) Application.Backend.Run(form);
 #endif
@@ -124,6 +124,7 @@ class ControlLifetimeTests
 		let form = scope Form();
 		form.ClientSize = .(240, 160);
 		let panel = new Panel();
+		defer delete panel;
 		panel.Size = .(100, 100);
 		let editor = new TextBox();
 		editor.Size = .(90, 30);
@@ -157,6 +158,7 @@ class ControlLifetimeTests
 		let form = scope Form();
 		form.ClientSize = .(240, 160);
 		let editor = new TextBox();
+		defer delete editor;
 		editor.Size = .(120, 30);
 		editor.Text = "seed";
 		form.Controls.Add(editor);

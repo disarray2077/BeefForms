@@ -150,8 +150,11 @@ extension SDLBackend
 		let viewport = control.ViewportSize;
 		int32 border = (control is Form) ? 0 : control.BorderWidth;
 		let childClip = Intersect(clip, .(bounds.X + border, bounds.Y + border, viewport.width, viewport.height));
-		for (let child in control.Controls)
+		let children = scope List<Control>();
+		for (let child in control.Controls) children.Add(child);
+		for (let child in children)
 		{
+			if (child.Parent != control) continue;
 			let childSize = child.Size;
 			RenderControl(child, .(bounds.X + border + child.Location.x - control.ContentOffset.x, bounds.Y + border + child.Location.y - control.ContentOffset.y, childSize.width, childSize.height), childClip, snapshot);
 			if (!IsCurrentControl(control, snapshot)) return;
