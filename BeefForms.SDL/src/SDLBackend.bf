@@ -20,15 +20,29 @@ internal class SDLBackend : FormsBackend
 	private bool mInitialized, mWheelHasPosition, mPumpingEvents;
 	private int mRenderThreadId, mFrames;
 	private SDL.EventType mRedrawEvent;
+	private SDLTextService mTextService;
+	internal SDLTextService TextService
+	{
+		get
+		{
+			if (mTextService == null || !mTextService.UsesPath(Application.SDLFontPath))
+			{
+				delete mTextService;
+				mTextService = new .(Application.SDLFontPath);
+			}
+			return mTextService;
+		}
+	}
+
 	public int FrameLimit;
 	public String CapturePath;
 
 	public ~this()
 	{
 		for (let session in mSessions) session.ReleaseRef();
+		delete mTextService;
 		if (mInitialized)
 		{
-			SDLTTF.Quit();
 			SDL.QuitSubSystem(.Video);
 		}
 	}
@@ -119,7 +133,7 @@ internal class SDLBackend : FormsBackend
 #endif
 			if (!mInitialized)
 			{
-				if (SDL.InitSubSystem(.Video) != 0 || SDLTTF.Init() != 0)
+				if (SDL.InitSubSystem(.Video) != 0)
 					Runtime.FatalError(scope $"Could not initialize SDL: {StringView(SDL.GetError())}");
 				mInitialized = true;
 				mRedrawEvent = (.)SDL.RegisterEvents(1);
@@ -236,22 +250,8 @@ internal class SDLBackend : FormsBackend
 			session.SetCapture(control, capture);
 		}
 	}
-	public override Size MeasureText(Control control)
-	{
-		using (let current = UseSession(control))
-		{
-			let session = current.Session;
-			return session == null ? .(0, 0) : session.MeasureText(control);
-		}
-	}
-	public override int32 GetTextBoxHeight(TextBoxBase editor)
-	{
-		using (let current = UseSession(editor))
-		{
-			let session = current.Session;
-			return session == null ? editor.Size.height : session.GetTextBoxHeight(editor);
-		}
-	}
+	public override Size MeasureText(Control control) => TextService.MeasureText(control);
+	public override int32 GetTextBoxHeight(TextBoxBase editor) => TextService.LineHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
 
 	internal void WakeEventLoop()
 	{

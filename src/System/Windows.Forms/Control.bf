@@ -44,6 +44,7 @@ public class Control : System.ComponentModel.Component
 			mItems.Insert(index, value);
 			value.mParent = mOwner;
 			value.UpdateAnchorDistances();
+			value.UpdateFont();
 			if (mOwner.IsHandleCreated) value.CreateHandle();
 			mOwner.PerformLayout();
 			value.UpdateBackend(.ZOrder);
@@ -339,9 +340,9 @@ public class Control : System.ComponentModel.Component
 
 	private void UpdateAutoSize()
 	{
-		if (mCreated && AutoSize && this is Label)
+		if (AutoSize && this is Label && (mCreated || Parent != null))
 			Size = Application.Backend.MeasureText(this);
-		else if (mCreated && AutoSize && this is TextBoxBase && !(this is RichTextBox))
+		else if (AutoSize && this is TextBoxBase && !(this is RichTextBox))
 			Size = .(Size.width, Application.Backend.GetTextBoxHeight((TextBoxBase)this));
 	}
 

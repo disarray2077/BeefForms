@@ -167,7 +167,7 @@ extension SDLWindowSession
 				if (!mHandledExposureTimestamp.HasValue || (int32)(input.window.timestamp &- mHandledExposureTimestamp.Value) > 0)
 					InvalidateTree(mForm);
 			case .SizeChanged: UpdateFormSize();
-			case .Shown, .Hidden, .Minimized, .Restored: RequestRedraw();
+			case .Shown, .Hidden, .Minimized, .Restored, .DISPLAY_CHANGED: RequestRedraw();
 			case .Moved: mForm.NotifyMove(GetFormLocation());
 			case .Focus_lost: SetActive(false);
 			case .FocusGained: SetActive(true);

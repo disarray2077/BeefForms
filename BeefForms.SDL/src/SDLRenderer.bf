@@ -1,9 +1,7 @@
 using System;
 using System.Collections;
 using System.Drawing;
-using System.IO;
 using System.Windows.Forms;
-using System.Text;
 using SDL2;
 using BeefGL;
 
@@ -18,6 +16,7 @@ internal class SDLRenderer
 	{
 		public uint32 Texture;
 		public int32 Width, Height, FontKey, LayoutWidth, Alignment;
+		public float RasterScale;
 		public bool Ellipsis;
 		public String Text = new .() ~ delete _;
 		public ~this() { if (Texture != 0) GL.glDeleteTextures(1, &Texture); }
@@ -25,27 +24,13 @@ internal class SDLRenderer
 
 	private uint32 mProgram, mBuffer, mVertexArray, mWhiteTexture;
 	private int mViewportUniform, mColorUniform;
-	private Dictionary<int32, SDLTTF.Font*> mFonts = new .() ~ delete _;
+	private SDLTextService mTextService;
 	private Dictionary<Control, TextTexture> mText = new .() ~ DeleteDictionaryAndValues!(_);
-	private String mFontPath = new .() ~ delete _;
 	private int32 mWidth, mHeight, mPixelWidth, mPixelHeight;
 
-	public this(StringView fontPath)
+	public this(SDLTextService textService)
 	{
-		mFontPath.Set(fontPath);
-		if (mFontPath.IsEmpty)
-		{
-#if BF_PLATFORM_WASM
-			mFontPath.Set("/BeefForms/fonts/NotoSans-Regular.ttf");
-#elif BF_PLATFORM_WINDOWS
-			Environment.GetEnvironmentVariable("WINDIR", mFontPath);
-			mFontPath.Append("/Fonts/segoeui.ttf");
-#else
-			mFontPath.Set("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
-#endif
-		}
-		if (!File.Exists(mFontPath))
-			Runtime.FatalError(scope $"Cannot find the UI font: {mFontPath}");
+		mTextService = textService;
 
 #if BF_PLATFORM_WASM
 		let shaderHeader = "#version 300 es\nprecision highp float;\nprecision highp int;\n";
@@ -110,8 +95,6 @@ internal class SDLRenderer
 	public ~this()
 	{
 		// GL resources must be released before the backend destroys its context.
-		for (let entry in mFonts)
-			SDLTTF.CloseFont(entry.value);
 		GL.glDeleteBuffers(1, &mBuffer);
 		GL.glDeleteVertexArrays(1, &mVertexArray);
 		GL.glDeleteTextures(1, &mWhiteTexture);
@@ -143,77 +126,12 @@ internal class SDLRenderer
 		GL.glTexParameteri(GL.GL_TEXTURE_2D, GL.GL_TEXTURE_WRAP_T, GL.GL_CLAMP_TO_EDGE);
 	}
 
-	private int32 GetFontKey(Control control)
-	{
-		let font = control.Font;
-		let pixels = font == null ? 12 : Math.Max(1, (int32)(font.Size * (font.Unit == .Point ? 96.0f / 72 : 1)));
-		return (int32)(pixels * 32 + (font == null ? 0 : (int32)font.Style));
-	}
-
-	private SDLTTF.Font* GetFont(Control control)
-	{
-		let key = GetFontKey(control);
-		if (mFonts.TryGetValue(key, let font))
-			return font;
-		let result = SDLTTF.OpenFont(mFontPath, key / 32);
-		if (result == null)
-			Runtime.FatalError(scope $"Could not open UI font: {StringView(SDL.GetError())}");
-		SDLTTF.SetFontStyle(result, key % 32);
-		mFonts.Add(key, result);
-		return result;
-	}
-
-	public int32 LineHeight(Control control) => SDLTTF.FontLineSkip(GetFont(control));
-
-	public Size MeasureText(Control control)
-	{
-		let texture = GetText(control);
-		return .(texture.Width + (control is Label && !control.Text.IsEmpty ? LabelPadding(control) * 2 : 0), texture.Height);
-	}
-	public int32 LabelPadding(Control control) => (LineHeight(control) + 5) / 6;
-
-	public int32 Measure(Control control, StringView text)
-	{
-		int32 width = 0, height = 0;
-		SDLTTF.SizeUTF8(GetFont(control), scope String(text), out width, out height);
-		return width;
-	}
-
-	public Point TextPosition(TextBoxBase control, int position)
-	{
-		int lineStart = 0, line = 0;
-		for (int i < position)
-			if (control.Text[i] == '\n')
-			{
-				lineStart = i + 1;
-				line++;
-			}
-		return .(Measure(control, .(control.Text, lineStart, position - lineStart)), (int32)(line * LineHeight(control)));
-	}
-
-	public int HitText(TextBoxBase control, int x, int y)
-	{
-		let line = Math.Max(0, (y + control.BorderWidth + control.ScrollY - 4) / LineHeight(control));
-		int start = 0;
-		for (int i < line)
-		{
-			let end = control.Text.IndexOf('\n', start);
-			if (end < 0)
-				return control.Text.Length;
-			start = end + 1;
-		}
-		int position = start;
-		while (position < control.Text.Length && control.Text[position] != '\n')
-		{
-			let next = control.AdjacentPosition(position, true);
-			let left = Measure(control, .(control.Text, start, position - start));
-			let right = Measure(control, .(control.Text, start, next - start));
-			if (x + control.BorderWidth + control.ScrollX - 4 < (left + right) / 2)
-				break;
-			position = next;
-		}
-		return position;
-	}
+	public int32 LineHeight(Control control) => mTextService.LineHeight(control);
+	public Size MeasureText(Control control) => mTextService.MeasureText(control);
+	public int32 LabelPadding(Control control) => mTextService.LabelPadding(control);
+	public int32 Measure(Control control, StringView text) => mTextService.Measure(control, text);
+	public Point TextPosition(TextBoxBase control, int position) => mTextService.TextPosition(control, position);
+	public int HitText(TextBoxBase control, int x, int y) => mTextService.HitText(control, x, y);
 
 	public void Forget(Control control)
 	{
@@ -221,22 +139,6 @@ internal class SDLRenderer
 			delete texture.value;
 	}
 	
-	private void Ellipsize(Label label, String text)
-	{
-		let width = label.ClientSize.width - LabelPadding(label) * 2;
-		if (Measure(label, text) <= width) return;
-		let available = width - Measure(label, "...");
-		int length = 0;
-		for (let character in text.DecodedChars)
-		{
-			let next = length + UTF8.GetEncodedLength(character);
-			if (Measure(label, .(text, 0, next)) > available) break;
-			length = next;
-		}
-		text.Remove(length, text.Length - length);
-		text.Append("...");
-	}
-
 	private TextTexture GetText(Control control)
 	{
 		TextTexture texture;
@@ -245,12 +147,12 @@ internal class SDLRenderer
 			texture = new .();
 			mText.Add(control, texture);
 		}
-		let key = GetFontKey(control);
-		let label = control as Label;
-		int32 layoutWidth = (label != null && !label.AutoSize) ? Math.Max(1, label.ClientSize.width - LabelPadding(label) * 2) : 0;
-		int32 alignment = label == null ? 0 : (int32)label.HorizontalTextAlignment;
-		let ellipsis = label != null && label.AutoEllipsis && !label.AutoSize;
-		if (texture.Text == control.Text && texture.FontKey == key && texture.LayoutWidth == layoutWidth && texture.Alignment == alignment && texture.Ellipsis == ellipsis)
+		let key = SDLTextService.FontKey(control);
+		let layoutWidth = mTextService.LayoutWidth(control);
+		let alignment = SDLTextService.Alignment(control);
+		let ellipsis = SDLTextService.HasEllipsis(control);
+		let rasterScale = Math.Max(1f, Math.Max(mPixelWidth / (float)Math.Max(1, mWidth), mPixelHeight / (float)Math.Max(1, mHeight)));
+		if (texture.Text == control.Text && texture.FontKey == key && texture.LayoutWidth == layoutWidth && texture.Alignment == alignment && texture.Ellipsis == ellipsis && texture.RasterScale == rasterScale)
 			return texture;
 		if (texture.Texture != 0)
 		{
@@ -262,16 +164,16 @@ internal class SDLRenderer
 		texture.LayoutWidth = layoutWidth;
 		texture.Alignment = alignment;
 		texture.Ellipsis = ellipsis;
+		texture.RasterScale = rasterScale;
 		texture.Width = 0;
 		texture.Height = 0;
 		if (control.Text.IsEmpty)
 			return texture;
-		let displayText = scope String(control.Text);
-		if (ellipsis) Ellipsize(label, displayText);
-		let font = GetFont(control);
-		SDLTTF.SetFontWrappedAlign(font, alignment);
-		defer SDLTTF.SetFontWrappedAlign(font, 0);
-		let surface = SDLTTF.RenderUTF8_Blended_Wrapped(font, displayText, .(255, 255, 255, 255), ellipsis ? 0 : (uint32)layoutWidth);
+		let displayText = scope String();
+		mTextService.GetDisplayText(control, displayText);
+		let lines = scope List<SDLTextService.TextLine>();
+		let size = mTextService.LayoutText(control, displayText, rasterScale == 1 ? null : lines);
+		let surface = RasterizeText(control, displayText, rasterScale, size, lines);
 		if (surface == null)
 			Runtime.FatalError(scope $"Could not render UI text: {StringView(SDL.GetError())}");
 		defer SDL.FreeSurface(surface);
@@ -279,14 +181,51 @@ internal class SDLRenderer
 		if (rgba == null)
 			Runtime.FatalError("Could not convert UI text pixels");
 		defer SDL.FreeSurface(rgba);
-		texture.Width = rgba.w;
-		texture.Height = rgba.h;
+		texture.Width = size.width;
+		texture.Height = size.height;
 		GL.glGenTextures(1, &texture.Texture);
 		GL.glBindTexture(GL.GL_TEXTURE_2D, texture.Texture);
 		GL.glPixelStorei(GL.GL_UNPACK_ALIGNMENT, 4);
 		GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, rgba.w, rgba.h, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, rgba.pixels);
 		SetTextureParameters();
 		return texture;
+	}
+
+	private SDL.Surface* RasterizeText(Control control, String text, float scale, Size size, List<SDLTextService.TextLine> lines)
+	{
+		let font = mTextService.GetFont(control, scale);
+		let alignment = SDLTextService.Alignment(control);
+		if (scale == 1)
+		{
+			SDLTTF.SetFontWrappedAlign(font, alignment);
+			defer SDLTTF.SetFontWrappedAlign(font, 0);
+			return SDLTTF.RenderUTF8_Blended_Wrapped(font, text, .(255, 255, 255, 255),
+				SDLTextService.HasEllipsis(control) ? 0 : (uint32)mTextService.LayoutWidth(control));
+		}
+		// Keep logical line breaks, alignment and bounds even when font hinting at
+		// the drawable resolution produces slightly different glyph advances.
+		let surface = SDL.CreateRGBSurfaceWithFormat(0, (.)Math.Ceiling(size.width * scale),
+			(.)Math.Ceiling(size.height * scale), 32, SDL.PIXELFORMAT_ABGR8888);
+		if (surface == null) return null;
+		if (SDL.FillRect(surface, null, 0) != 0)
+			Runtime.FatalError("Could not clear UI text pixels");
+		let lineSkip = mTextService.LineHeight(control);
+		int row = 0;
+		for (let line in lines)
+		{
+			defer { row++; }
+			if (line.Width == 0 || line.Length == 0) continue;
+			let content = scope String(text, line.Start, line.Length);
+			let rendered = SDLTTF.RenderUTF8_Blended(font, content, .(255, 255, 255, 255));
+			if (rendered == null) Runtime.FatalError(scope $"Could not render UI text: {StringView(SDL.GetError())}");
+			defer SDL.FreeSurface(rendered);
+			let x = alignment == 1 ? (size.width - line.Width) / 2 : alignment == 2 ? size.width - line.Width : 0;
+			SDL.Rect destination = .((.)Math.Round(x * scale), (.)Math.Round(row * lineSkip * scale),
+				(.)Math.Ceiling(line.Width * scale), (.)Math.Ceiling(line.Height * scale));
+			if (SDL.SetSurfaceBlendMode(rendered, .None) != 0 || SDL.BlitScaled(rendered, null, surface, &destination) != 0)
+				Runtime.FatalError(scope $"Could not compose UI text: {StringView(SDL.GetError())}");
+		}
+		return surface;
 	}
 
 	public void Begin(SDL.Window* window)

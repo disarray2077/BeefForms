@@ -14,7 +14,7 @@ extension Win32Backend
 	{
 		let context = Win32.GetDC(control.Handle);
 		defer Win32.ReleaseDC(control.Handle, context);
-		let font = (void*)Win32.SendMessage(control.Handle, Win32.WM_GETFONT, null, null);
+		let font = GetNativeFont(control).Handle;
 		let previous = Win32.SelectObject(context, font);
 		defer Win32.SelectObject(context, previous);
 		Win32.RECT bounds = .(0, 0, 0, 0);

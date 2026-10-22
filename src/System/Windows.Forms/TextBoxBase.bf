@@ -16,7 +16,7 @@ public class TextBoxBase : Control
 		set
 		{
 			var size = value;
-			if (IsHandleCreated && AutoSize && !(this is RichTextBox))
+			if (AutoSize && !(this is RichTextBox))
 				size.height = Application.Backend.GetTextBoxHeight(this);
 			base.Size = size;
 		}

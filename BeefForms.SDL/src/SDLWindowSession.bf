@@ -88,7 +88,7 @@ internal class SDLWindowSession : RefCounted
 #if !BF_PLATFORM_WASM
 		SDL.GL_SetSwapInterval(1);
 #endif
-		mRenderer = new .(Application.SDLFontPath);
+		mRenderer = new .(mBackend.TextService);
 		control.SetNativeHandle(mWindow);
 		if (!mForm.HasInitialClientSize) SetFormSize(mForm, size);
 		control.NotifyResize(GetFormSize());
@@ -209,8 +209,6 @@ internal class SDLWindowSession : RefCounted
 		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
 		SetClientSize(form, .(Math.Max(1, size.width - left - right), Math.Max(1, size.height - top - bottom)));
 	}
-	public Size MeasureText(Control control) => mRenderer.MeasureText(control);
-	public int32 GetTextBoxHeight(TextBoxBase editor) => mRenderer.LineHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
 	private Size GetMinimumClientSize(Form form)
 	{
 		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
