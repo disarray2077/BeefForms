@@ -39,7 +39,7 @@ class SDLInputTests
 		SDL.Event key = .();
 		key.type = .KeyDown;
 		key.key.keysym.sym = .A;
-		SDL.PushEvent(ref key);
+		SDLTestInput.PushEvent(ref key);
 		backend.ProcessEvents();
 
 		SDLTestInput.SetActive(backend, false);
@@ -68,26 +68,26 @@ class SDLInputTests
 		mouse.button.x = 20;
 		mouse.button.y = 20;
 		control.Capture = true;
-		SDL.PushEvent(ref mouse);
+		SDLTestInput.PushEvent(ref mouse);
 		backend.ProcessEvents();
 		Test.Assert(control.Capture);
 		control.Capture = false;
 
 		mouse.type = .MouseButtonDown;
-		SDL.PushEvent(ref mouse);
+		SDLTestInput.PushEvent(ref mouse);
 		backend.ProcessEvents();
 		Test.Assert(control.Capture);
 		control.Capture = true;
 		mouse.type = .MouseButtonUp;
-		SDL.PushEvent(ref mouse);
+		SDLTestInput.PushEvent(ref mouse);
 		backend.ProcessEvents();
 		Test.Assert(control.Capture);
 		control.Capture = false;
 
 		mouse.type = .MouseButtonDown;
-		SDL.PushEvent(ref mouse);
+		SDLTestInput.PushEvent(ref mouse);
 		mouse.type = .MouseButtonUp;
-		SDL.PushEvent(ref mouse);
+		SDLTestInput.PushEvent(ref mouse);
 		backend.ProcessEvents();
 		Test.Assert(!control.Capture);
 	}
@@ -119,9 +119,9 @@ class SDLInputTests
 			mouse.button.button = 1;
 			mouse.button.x = 10;
 			mouse.button.y = y;
-			SDL.PushEvent(ref mouse);
+			SDLTestInput.PushEvent(ref mouse);
 			mouse.type = .MouseButtonUp;
-			SDL.PushEvent(ref mouse);
+			SDLTestInput.PushEvent(ref mouse);
 			backend.ProcessEvents();
 			Test.Assert(editor.Focused && editor.Losses == 0);
 		}

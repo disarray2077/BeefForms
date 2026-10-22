@@ -4,7 +4,6 @@ using System.Threading;
 using System.Drawing;
 using System.Windows.Forms;
 using SDL2;
-using BeefGL;
 
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
@@ -15,42 +14,18 @@ internal class SDLBackend : FormsBackend
 {
 	public override ApplicationBackend Type => .SDL2OpenGL;
 
-	// Changes on window creation/destruction so an operation on form A stops even if
-	// a callback closes A and shows B, making this shared backend run again.
-	// A separate window session's identity could replace this counter in the future.
-	private Generation mWindowGeneration;
-
-	// Changes on each focus transition so a nested transition from a callback
-	// prevents the outer transition from overwriting its result.
-	private Generation mFocusGeneration;
-
-	private SDL.Window* mWindow;
-	private SDL.SDL_GLContext mContext;
-	private SDLRenderer mRenderer;
-	private Form mForm;
-	private Control mFocused, mPressed, mHovered;
-	private Point mPointerPosition;
-	private bool mPointerInside;
-	private Control mCaptured;
-	private bool mAutomaticCapture;
-	private bool mActive;
-	private bool mWheelHasPosition;
-	private bool mSuppressTextInput;
-	private bool mInitialized, mRunning;
-	private bool mRendering;
-	private uint32? mHandledExposureTimestamp;
-	private int mRenderThreadId;
-	private bool mRedrawRequested, mShowPending;
+	private List<SDLWindowSession> mSessions = new .() ~ delete _;
+	private Dictionary<uint32, SDLWindowSession> mWindows = new .() ~ delete _;
+	private Dictionary<Control, SDLWindowSession> mControls = new .() ~ delete _;
+	private bool mInitialized, mWheelHasPosition, mPumpingEvents;
+	private int mRenderThreadId, mFrames;
 	private SDL.EventType mRedrawEvent;
-	private uint64 mFrameTicks, mNextAnimationTick = uint64.MaxValue;
-	private int mFrames;
-	private bool mPumpingEvents;
 	public int FrameLimit;
 	public String CapturePath;
 
 	public ~this()
 	{
-		DestroyWindow();
+		for (let session in mSessions) session.ReleaseRef();
 		if (mInitialized)
 		{
 			SDLTTF.Quit();
@@ -58,144 +33,146 @@ internal class SDLBackend : FormsBackend
 		}
 	}
 
-	public override void CreateControl(Control control)
+	internal SDLWindowSession GetSession(Control control)
 	{
-		RequestRedraw();
-		if (!(control is Form))
-		{
-			if (let progress = control as ProgressBar) UpdateMarquee(progress);
-			return;
-		}
-		if (mWindow != null)
-			Runtime.FatalError("The SDL backend currently supports one top-level form");
-		if (!mInitialized)
-		{
-			if (SDL.InitSubSystem(.Video) != 0 || SDLTTF.Init() != 0)
-				Runtime.FatalError(scope $"Could not initialize SDL: {StringView(SDL.GetError())}");
-			mInitialized = true;
-			mRedrawEvent = (.)SDL.RegisterEvents(1);
-			SDL.GetVersion(var version);
-			mWheelHasPosition = version.major > 2 || version.minor >= 26;
-		}
-		mForm = (Form)control;
-		mWindowGeneration.Advance();
-		let size = mForm.HasInitialClientSize ? mForm.InitialClientSize : control.Size;
-		SDL.GL_SetAttribute(.GL_CONTEXT_MAJOR_VERSION, 3);
-#if BF_PLATFORM_WASM
-		SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 0);
-		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_ES);
-#else
-		SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 3);
-		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_CORE);
-#endif
-		SDL.GL_SetAttribute(.GL_DOUBLEBUFFER, 1);
-		mWindow = SDL.CreateWindow(control.Text, (.)control.Location.x, (.)control.Location.y,
-			Math.Max(1, size.width), Math.Max(1, size.height), .OpenGL | .Resizable | .AllowHighDPI | .Hidden);
-		if (mWindow == null)
-			Runtime.FatalError(scope $"Could not create SDL window: {StringView(SDL.GetError())}");
-#if !BF_PLATFORM_WASM
-		let iconData = (Span<uint8>)DefaultIcon.Data;
-		let icon = SDLImage.Load_RW(SDL.RWFromConstMem(iconData.Ptr, (int32)iconData.Length), 1);
-		SDL.SetWindowIcon(mWindow, icon);
-		SDL.FreeSurface(icon);
-#endif
-		mContext = SDL.GL_CreateContext(mWindow);
-		if (mContext == default)
-			Runtime.FatalError(scope $"Could not create OpenGL context: {StringView(SDL.GetError())}");
-		GL.Init(scope (name) => SDL.GL_GetProcAddress(name));
-#if !BF_PLATFORM_WASM
-		SDL.GL_SetSwapInterval(1);
-#endif
-		mRenderer = new .(Application.SDLFontPath);
-		mFrames = 0;
-		control.SetNativeHandle(mWindow);
-		if (!mForm.HasInitialClientSize) SetFormSize(mForm, size);
-		control.NotifyResize(GetFormSize());
-		SetFormLocation(control.Location);
-		control.NotifyMove(GetFormLocation());
-		ApplyMinimumSize(mForm);
+		return mControls.TryGetValue(control, let session) ? session : null;
 	}
 
-	private void DestroyWindow()
+	private struct ContextSnapshot
 	{
-		if (mWindow == null)
-			return;
-		mWindowGeneration.Advance();
-		SDL.StopTextInput();
-		delete mRenderer;
-		mRenderer = null;
-		SDL.GL_DeleteContext(mContext);
-		mContext = default;
-		SDL.DestroyWindow(mWindow);
-		mWindow = null;
-		mRunning = false;
-		mShowPending = false;
-		mPointerInside = false;
-		mHandledExposureTimestamp = null;
-		mActive = false;
-		mSuppressTextInput = false;
+		public SDL.Window* Window;
+		public SDL.SDL_GLContext Context;
+		public SDLWindowSession Owner;
+
+		public static ContextSnapshot CaptureContext(SDLBackend backend)
+		{
+			ContextSnapshot snapshot = .();
+			snapshot.Window = SDL.GL_GetCurrentWindow();
+			snapshot.Context = SDL.GL_GetCurrentContext();
+			if (snapshot.Context != default)
+				for (let session in backend.mSessions)
+					if (session.mContext == snapshot.Context)
+					{
+						session.AddRef();
+						snapshot.Owner = session;
+						break;
+					}
+			return snapshot;
+		}
+
+		public void RestoreContext()
+		{
+			var window = this.Window;
+			var context = this.Context;
+			// A callback may destroy an owned context. Its retained session identifies
+			// that lifetime even if a new native context reuses the same address.
+			if (this.Owner != null && this.Owner.mContext != context)
+			{
+				window = null;
+				context = default;
+			}
+			if (SDL.GL_GetCurrentContext() == context && SDL.GL_GetCurrentWindow() == window) return;
+			if (SDL.GL_MakeCurrent(window, context) != 0)
+				Runtime.FatalError("Could not restore the previous OpenGL context");
+		}
+	}
+
+	// Owns both session references until synchronous callbacks have unwound.
+	private struct ContextScope : IDisposable
+	{
+		private SDLBackend mBackend;
+		private ContextSnapshot mPrevious;
+		public SDLWindowSession Session;
+
+		public this(SDLBackend backend, SDLWindowSession session = null)
+		{
+			mBackend = backend;
+			mPrevious = ContextSnapshot.CaptureContext(backend);
+			Session = session;
+			Session?.AddRef();
+			Session?.MakeCurrent();
+		}
+
+		public void Dispose()
+		{
+			mPrevious.RestoreContext();
+			mPrevious.Owner?.ReleaseRef();
+			Session?.ReleaseRef();
+		}
+	}
+
+	private ContextScope UseSession(Control control) => .(this, GetSession(control));
+
+	private void Snapshot(List<SDLWindowSession> sessions)
+	{
+		for (let session in mSessions) { session.AddRef(); sessions.Add(session); }
+	}
+
+	public override void CreateControl(Control control)
+	{
+		if (let form = control as Form)
+		{
+#if BF_PLATFORM_WASM
+			// SDL2's Emscripten driver binds every window to the same browser canvas.
+			if (!mSessions.IsEmpty)
+				Runtime.FatalError("The Emscripten SDL2 driver supports a single browser canvas");
+#endif
+			if (!mInitialized)
+			{
+				if (SDL.InitSubSystem(.Video) != 0 || SDLTTF.Init() != 0)
+					Runtime.FatalError(scope $"Could not initialize SDL: {StringView(SDL.GetError())}");
+				mInitialized = true;
+				mRedrawEvent = (.)SDL.RegisterEvents(1);
+				SDL.GetVersion(var version);
+				mWheelHasPosition = version.major > 2 || version.minor >= 26;
+			}
+			let session = new SDLWindowSession(this, form, mWheelHasPosition);
+			mSessions.Add(session);
+			mControls[form] = session;
+		}
+		else if (let session = GetSession(control.Parent))
+			mControls[control] = session;
+		using (let current = UseSession(control))
+		{
+			let session = current.Session;
+			session?.CreateControl(control);
+			if (control is Form) mWindows[SDL.GetWindowID(session.mWindow)] = session;
+		}
 	}
 
 	public override void DestroyControl(Control control)
 	{
-		RequestRedraw();
-		if (let progress = control as ProgressBar) mMarqueeStarts.Remove(progress);
-		if (Control.IsAncestorOf(control, mFocused)) Focus(null);
-		if (Control.IsAncestorOf(control, mCaptured)) SetCapture(mCaptured, false);
-		if (mPressed == control) mPressed = null;
-		if (Control.IsAncestorOf(control, mHovered)) Hover(null);
-		mRenderer?.Forget(control);
-		if (control == mForm)
+		using (let current = UseSession(control))
 		{
-			DestroyWindow();
-			mForm = null;
+			let session = current.Session;
+			if (session == null) return;
+			let generation = control.HandleGeneration;
+			let windowID = (control is Form) ? SDL.GetWindowID(session.mWindow) : 0;
+			session.DestroyControl(control);
+			if (GetSession(control) == session && control.HandleGeneration.IsCurrent(generation))
+				mControls.Remove(control);
+			if (control is Form)
+			{
+				mWindows.Remove(windowID);
+				mSessions.Remove(session);
+				session.ReleaseRef();
+			}
 		}
-		control.SetNativeHandle(null);
 	}
 
 	public override void UpdateControl(Control control, ControlChange change)
 	{
-		RequestRedraw();
-		if (change == .Appearance || change == .All)
-			if (let progress = control as ProgressBar) UpdateMarquee(progress);
-		if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)
+		using (let current = UseSession(control))
 		{
-			if (Control.IsAncestorOf(control, mFocused)) Focus(null);
-			if (Control.IsAncestorOf(control, mCaptured)) SetCapture(mCaptured, false);
-			if (Control.IsAncestorOf(control, mPressed)) mPressed = null;
-			if (Control.IsAncestorOf(control, mHovered)) Hover(null);
+			let session = current.Session;
+			session?.UpdateControl(control, change);
 		}
-		if (control == mForm && mWindow != null)
-		{
-			if (change == .Visibility)
-			{
-				if (control.Visible) Show(mForm);
-				else
-				{
-					mShowPending = false;
-					SDL.HideWindow(mWindow);
-				}
-			}
-			if (change == .Text)
-				SDL.SetWindowTitle(mWindow, control.Text);
-			if (change == .Constraints) ApplyMinimumSize(mForm);
-			if (change == .Bounds)
-			{
-				SetFormSize(mForm, control.Size);
-				let location = GetFormLocation();
-				if (location.x != control.Location.x || location.y != control.Location.y)
-					SetFormLocation(control.Location);
-			}
-		}
-		if (change == .Scroll || change == .Bounds || change == .Visibility || change == .Enabled || change == .ZOrder)
-			UpdateHover();
 	}
 
 	public override Size GetClientSize(Form form)
 	{
-		if (mWindow == null) return form.Size;
-		SDL.GetWindowSize(mWindow, var width, var height);
-		return .(width, height);
+		let session = GetSession(form);
+		return session == null ? form.Size : session.GetClientSize(form);
 	}
 	public override Rectangle GetScreenWorkingArea()
 	{
@@ -205,134 +182,211 @@ internal class SDLBackend : FormsBackend
 		SDL.GetDisplayUsableBounds(display, var area);
 		return .(area.x, area.y, area.w, area.h);
 	}
-	private Point GetFormLocation()
-	{
-		SDL.GetWindowPosition(mWindow, var x, var y);
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		return .(x - left, y - top);
-	}
-	private void SetFormLocation(Point location)
-	{
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		SDL.SetWindowPosition(mWindow, location.x + left, location.y + top);
-	}
-	private Size GetFormSize()
-	{
-		let client = GetClientSize(mForm);
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		return .(client.width + left + right, client.height + top + bottom);
-	}
-	private void UpdateFormSize()
-	{
-		let size = GetFormSize();
-		if (size.width == mForm.Size.width && size.height == mForm.Size.height) return;
-		mForm.NotifyResize(size);
-		RequestRedraw();
-	}
-	private void SetFormSize(Form form, Size size)
-	{
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		SetClientSize(form, .(Math.Max(1, size.width - left - right), Math.Max(1, size.height - top - bottom)));
-	}
-	public override Size MeasureText(Control control) => mRenderer.MeasureText(control);
-	public override int32 GetTextBoxHeight(TextBoxBase editor) => mRenderer.LineHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
-	private Size GetMinimumClientSize(Form form)
-	{
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		return .(Math.Max(0, form.MinimumSize.width - left - right), Math.Max(0, form.MinimumSize.height - top - bottom));
-	}
-	private void ApplyMinimumSize(Form form)
-	{
-		let minimum = GetMinimumClientSize(form);
-		SDL.SetWindowMinimumSize(mWindow, minimum.width, minimum.height);
-		let size = GetClientSize(form);
-		SetClientSize(form, size);
-	}
 	public override void SetClientSize(Form form, Size size)
 	{
-		let minimum = GetMinimumClientSize(form);
-		SDL.SetWindowSize(mWindow, Math.Max(1, Math.Max(size.width, minimum.width)), Math.Max(1, Math.Max(size.height, minimum.height)));
-		form.NotifyResize(GetFormSize());
+		using (let current = UseSession(form))
+		{
+			let session = current.Session;
+			session?.SetClientSize(form, size);
+		}
 	}
 	public override void Show(Form form)
 	{
-		ApplyMinimumSize(form);
-		mRunning = true;
-		mShowPending = (SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Hidden) != 0;
-		RequestRedraw();
+		using (let current = UseSession(form))
+		{
+			let session = current.Session;
+			session?.Show(form);
+		}
 	}
 	public override void Close(Form form)
 	{
-		mRunning = false;
-		WakeEventLoop();
+		using (let current = UseSession(form))
+		{
+			let session = current.Session;
+			session?.Close(form);
+		}
+	}
+	public override bool FocusControl(Control control)
+	{
+		using (let current = UseSession(control))
+		{
+			let session = current.Session;
+			if (session == null) return false;
+			return session.FocusControl(control);
+		}
+	}
+	public override bool IsFocused(Control control) => GetSession(control)?.IsFocused(control) ?? false;
+	public override bool HasCapture(Control control) => GetSession(control)?.HasCapture(control) ?? false;
+	public override void SetCapture(Control control, bool capture)
+	{
+		using (let current = UseSession(control))
+		{
+			let session = current.Session;
+			if (session == null) return;
+			if (capture && (!control.IsHandleCreated || control.IsDisposingOrDisposed ||
+				!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)) return;
+			if (capture)
+			{
+				let sessions = scope List<SDLWindowSession>();
+				Snapshot(sessions);
+				defer { for (let other in sessions) other.ReleaseRef(); }
+				for (let other in sessions)
+					if (other != session) other.ReleaseCapture();
+			}
+			session.SetCapture(control, capture);
+		}
+	}
+	public override Size MeasureText(Control control)
+	{
+		using (let current = UseSession(control))
+		{
+			let session = current.Session;
+			return session == null ? .(0, 0) : session.MeasureText(control);
+		}
+	}
+	public override int32 GetTextBoxHeight(TextBoxBase editor)
+	{
+		using (let current = UseSession(editor))
+		{
+			let session = current.Session;
+			return session == null ? editor.Size.height : session.GetTextBoxHeight(editor);
+		}
 	}
 
-	private void WakeEventLoop()
+	internal void WakeEventLoop()
 	{
 		SDL.Event input = .();
 		input.type = mRedrawEvent;
 		SDL.PushEvent(ref input);
 	}
 
-	private void RequestRedraw()
-	{
-		if (mRedrawRequested) return;
-		mRedrawRequested = true;
-		if (mRunning) WakeEventLoop();
-	}
-
 #if !BF_PLATFORM_WASM
 	public override void Run(Form form)
 	{
+		mFrames = 0;
 		mRenderThreadId = Thread.CurrentThreadId;
 		SDL.AddEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
 		defer SDL.DelEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
-		while (mRunning)
+		while (form.IsHandleCreated)
 		{
 			let frames = mFrames;
 			DoEvents();
-			if (!mRunning) break;
+			if (!form.IsHandleCreated || (FrameLimit > 0 && mFrames >= FrameLimit)) break;
 			if (FrameLimit > 0 && mFrames != frames) continue;
 			let timeout = GetRedrawTimeout();
 			if (timeout == 0) continue;
 			SDL.Event input = ?;
-			if (SDL.WaitEventTimeout(out input, timeout) != 0 && mWindow != null)
-				ProcessEvent(ref input);
+			if (SDL.WaitEventTimeout(out input, timeout) != 0) ProcessEvents(input);
 		}
-		mRunning = false;
 	}
 #endif
 
+	private int32 GetRedrawTimeout()
+	{
+		int32 timeout = -1;
+		for (let session in mSessions)
+		{
+			let next = session.GetRedrawTimeout();
+			if (next >= 0 && (timeout < 0 || next < timeout)) timeout = next;
+		}
+		return timeout;
+	}
+
 	public override void DoEvents()
 	{
-		if (mWindow == null || !mRunning || mPumpingEvents || mRendering) return;
+		if (mPumpingEvents || IsRendering) return;
 		mPumpingEvents = true;
 		defer { mPumpingEvents = false; }
-		let snapshot = mWindowGeneration;
 		ProcessEvents();
-		if (!IsCurrentWindow(snapshot)) return;
 		let capture = CapturePath != null && (FrameLimit == 0 || mFrames + 1 == FrameLimit);
-		// Explicit frame limits also advance static forms for capture and smoke tests.
-		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && IsCurrentWindow(snapshot) && FrameLimit > 0 && ++mFrames >= FrameLimit)
-			mRunning = false;
+		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && FrameLimit > 0) mFrames++;
 	}
 
-	internal void ProcessEvents()
+	private bool IsRendering
 	{
-		let snapshot = mWindowGeneration;
-		SDL.Event input = ?;
-		while (IsCurrentWindow(snapshot) && SDL.PollEvent(out input) != 0)
-			ProcessEvent(ref input);
+		get { for (let session in mSessions) if (session.Rendering) return true; return false; }
 	}
 
-	// Close is synchronous. A callback may even replace the window before returning.
-	private bool IsCurrentWindow(Generation snapshot) => mWindowGeneration.IsCurrent(snapshot) && mRunning &&
-		mWindow != null && mForm != null && mForm.IsHandleCreated && !mForm.IsDisposingOrDisposed;
+	private bool RenderIfNeeded(bool force = false, bool capture = false)
+	{
+		let sessions = scope List<SDLWindowSession>();
+		Snapshot(sessions);
+		defer { for (let session in sessions) session.ReleaseRef(); }
+		using (ContextScope(this))
+		{
+			bool rendered = false;
+			for (let session in sessions)
+			{
+				session.MakeCurrent();
+				rendered |= session.RenderIfNeeded(force, capture && CapturePath != null);
+			}
+			return rendered;
+		}
+	}
 
-	private bool IsCurrentControl(Control control, Generation snapshot) => IsCurrentWindow(snapshot) &&
-		control != null && control.IsHandleCreated && !control.IsDisposingOrDisposed;
+	internal void ProcessEvents(SDL.Event? first = null)
+	{
+		// StopTextInput flushes SDL's global text queue. Capture pending events before
+		// callbacks can close a different window or change the active text editor.
+		let pending = scope List<SDL.Event>();
+		if (first.HasValue) pending.Add(first.Value);
+		SDL.Event input = ?;
+		while (true)
+		{
+			while (SDL.PollEvent(out input) != 0) pending.Add(input);
+			if (pending.IsEmpty) break;
+			for (var queued in pending) ProcessEvent(ref queued);
+			pending.Clear();
+		}
+	}
 
-	private bool IsCurrentControl(Control control, Generation snapshot, Generation handleSnapshot) =>
-		IsCurrentWindow(snapshot) && control != null && control.IsCurrentHandle(handleSnapshot);
+	private static uint32 EventWindowID(SDL.Event input)
+	{
+		switch (input.type)
+		{
+		case .WindowEvent: return input.window.windowID;
+		case .KeyDown, .KeyUp: return input.key.windowID;
+		case .TextInput: return input.text.windowID;
+		case .MouseMotion: return input.motion.windowID;
+		case .MouseButtonDown, .MouseButtonUp: return input.button.windowID;
+		case .MouseWheel: return input.wheel.windowID;
+		default: return 0;
+		}
+	}
 
+	private void ProcessEvent(ref SDL.Event input)
+	{
+		if (input.type == .Quit)
+		{
+			Application.Exit();
+			return;
+		}
+		if (!mWindows.TryGetValue(EventWindowID(input), let session)) return;
+		using (ContextScope(this, session))
+		{
+			if (input.type == .WindowEvent && input.window.windowEvent == .FocusGained)
+			{
+				let sessions = scope List<SDLWindowSession>();
+				Snapshot(sessions);
+				defer { for (let other in sessions) other.ReleaseRef(); }
+				for (let other in sessions)
+					if (other != session) other.Deactivate();
+			}
+			session.ProcessEvent(ref input);
+		}
+	}
+
+	private static int32 WatchWindowEvents(void* userData, SDL.Event* input)
+	{
+		if (input.type != .WindowEvent || input.window.windowEvent != .Exposed) return 0;
+		let backend = (SDLBackend)Internal.UnsafeCastToObject(userData);
+		// SDL may invoke watches from another thread or inside a modal resize loop.
+		if (Thread.CurrentThreadId != backend.mRenderThreadId || backend.IsRendering) return 0;
+		if (!backend.mWindows.TryGetValue(input.window.windowID, let session)) return 0;
+		using (ContextScope(backend, session))
+		{
+			session.HandleExposure(input.window.timestamp);
+			return 0;
+		}
+	}
 }

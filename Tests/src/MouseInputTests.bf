@@ -42,9 +42,9 @@ class MouseInputTests
 			input.button.clicks = 2;
 			input.button.x = 20;
 			input.button.y = 20;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			input.type = .MouseButtonUp;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			backend.ProcessEvents();
 		}
 #if BF_PLATFORM_WINDOWS

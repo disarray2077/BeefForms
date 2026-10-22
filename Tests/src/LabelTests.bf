@@ -30,7 +30,7 @@ class LabelTests
 		{
 			sdl.FrameLimit = 1;
 			sdl.Run(form);
-			Test.Assert(BeefGL.GL.glGetError() == BeefGL.GL.GL_NO_ERROR);
+			SDLTestInput.AssertNoGLError(form);
 		}
 #if BF_PLATFORM_WINDOWS
 		else

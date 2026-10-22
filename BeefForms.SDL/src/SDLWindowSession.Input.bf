@@ -9,7 +9,7 @@ using internal BeefForms.Backends;
 
 namespace BeefForms.Backends;
 
-extension SDLBackend
+extension SDLWindowSession
 {
 	private Control HitTest(Control control, int x, int y)
 	{
@@ -41,9 +41,9 @@ extension SDLBackend
 		return result;
 	}
 
-	public override bool IsFocused(Control control) => mActive && mFocused == control;
-	public override bool HasCapture(Control control) => mCaptured == control;
-	public override void SetCapture(Control control, bool capture)
+	public bool IsFocused(Control control) => mActive && mFocused == control;
+	public bool HasCapture(Control control) => mCaptured == control;
+	public void SetCapture(Control control, bool capture)
 	{
 		if (!capture && mCaptured != control)
 			return;
@@ -52,13 +52,20 @@ extension SDLBackend
 		SDL.CaptureMouse(capture ? .True : .False);
 	}
 
-	public override bool FocusControl(Control control)
+	public bool FocusControl(Control control)
 	{
 		if (!control.CanSelect)
 			return false;
 		Focus(control);
 		return true;
 	}
+
+	internal void ReleaseCapture()
+	{
+		if (mCaptured != null) SetCapture(mCaptured, false);
+	}
+
+	internal void Deactivate() => SetActive(false);
 
 	private void Focus(Control control)
 	{
@@ -102,11 +109,11 @@ extension SDLBackend
 			SDL.Rect input = .(-point.x, -point.y, mFocused.Size.width, mFocused.Size.height);
 			SDL.SetTextInputRect(&input);
 		}
-		else
+		else if (SDL.GetKeyboardFocus() == mWindow || SDL.GetKeyboardFocus() == null)
 			SDL.StopTextInput();
 	}
 
-	private void Hover(Control control)
+	internal void Hover(Control control)
 	{
 		let previous = mHovered;
 		if (previous == control) return;
@@ -145,7 +152,7 @@ extension SDLBackend
 		}
 	}
 
-	private void ProcessEvent(ref SDL.Event input)
+	internal void ProcessEvent(ref SDL.Event input)
 	{
 		let snapshot = mWindowGeneration;
 		if (!IsCurrentWindow(snapshot)) return;
@@ -212,7 +219,7 @@ extension SDLBackend
 				if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 				if (mCaptured == null)
 				{
-					SetCapture(target, true);
+					mBackend.SetCapture(target, true);
 					mAutomaticCapture = true;
 				}
 				if (let editor = target as TextBoxBase)

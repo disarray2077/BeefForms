@@ -81,11 +81,33 @@ public class Form : ContainerControl
 		defer { mClosing = false; }
 		let args = scope FormClosingEventArgs(.UserClosing);
 		OnFormClosing(args);
-		if (args.Cancel) return;
+		if (args.Cancel || mClosed || IsDisposingOrDisposed) return;
+		CompleteClose(.UserClosing);
+		Dispose();
+	}
+
+	internal bool QueryApplicationExit()
+	{
+		if (mClosed || IsDisposingOrDisposed) return false;
+		let args = scope FormClosingEventArgs(.ApplicationExitCall);
+		OnFormClosing(args);
+		return args.Cancel;
+	}
+
+	internal void CloseForApplicationExit()
+	{
+		if (mClosed || IsDisposingOrDisposed) return;
+		let closing = mClosing;
+		mClosing = true;
+		defer { mClosing = closing; }
+		CompleteClose(.ApplicationExitCall);
+	}
+
+	private void CompleteClose(CloseReason reason)
+	{
 		mClosed = true;
 		if (IsHandleCreated) Application.Backend.Close(this);
 		DestroyHandle();
-		OnFormClosed(scope .(.UserClosing));
-		Dispose();
+		OnFormClosed(scope .(reason));
 	}
 }

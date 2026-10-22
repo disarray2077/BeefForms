@@ -6,7 +6,7 @@ using SDL2;
 
 namespace BeefForms.Backends;
 
-extension SDLBackend
+extension SDLWindowSession
 {
 	private Dictionary<ProgressBar, uint64> mMarqueeStarts = new .() ~ delete _;
 

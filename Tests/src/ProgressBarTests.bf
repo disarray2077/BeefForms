@@ -43,7 +43,8 @@ class ProgressBarTests
 		progress.Style = .Continuous;
 		form.Show();
 		backend.Run(form);
-		Test.Assert(progress.Value == 42 && BeefGL.GL.glGetError() == BeefGL.GL.GL_NO_ERROR);
+		Test.Assert(progress.Value == 42);
+		SDLTestInput.AssertNoGLError(form);
 	}
 
 #if BF_PLATFORM_WINDOWS

@@ -262,7 +262,7 @@ internal class Win32Backend : FormsBackend
 	public override void Run(Form form)
 	{
 		Win32.MSG message = ?;
-		while (Win32.GetMessage(out message, null, 0, 0) > 0)
+		while (form.IsHandleCreated && Win32.GetMessage(out message, null, 0, 0) > 0)
 		{
 			Win32.TranslateMessage(message);
 			Win32.DispatchMessage(message);
@@ -306,7 +306,6 @@ internal class Win32Backend : FormsBackend
 			return 0;
 		case Win32.WM_DESTROY:
 			form.SetNativeHandle(null);
-			Win32.PostQuitMessage(0);
 			return 0;
 		default:
 		}

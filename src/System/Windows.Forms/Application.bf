@@ -1,4 +1,5 @@
 using BeefForms.Backends;
+using System.Collections;
 
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
@@ -16,7 +17,12 @@ public static class Application
 	internal static FormsBackend Backend = FormsBackendFactory.Instance.CreateDefaultBackend() ~ delete _;
 	private static bool sRunning;
 	private static bool sProcessingEvents;
+	private static bool sExiting;
 	private static Form sMainForm;
+	private static List<Form> sOpenForms = new .() ~ delete _;
+
+	internal static void RegisterForm(Form form) => sOpenForms.Add(form);
+	internal static void UnregisterForm(Form form) => sOpenForms.Remove(form);
 
 #if BF_PLATFORM_WASM
 	[CLink]
@@ -40,6 +46,10 @@ public static class Application
 	{
 		let form = sMainForm;
 		sMainForm = null;
+		// Like WinForms thread teardown, dispose remaining windows after dispatch unwinds.
+		// Show() does not transfer ownership of their Beef allocations to Application.
+		while (!sOpenForms.IsEmpty)
+			sOpenForms.Back.Dispose();
 		delete form;
 		sRunning = false;
 	}
@@ -80,6 +90,36 @@ public static class Application
 
 	public static void EnableVisualStyles() => Backend.EnableVisualStyles();
 	public static void SetCompatibleTextRenderingDefault(bool defaultValue) {}
+
+	/// Closes the open forms only after all FormClosing handlers accept application exit.
+	public static void Exit()
+	{
+		if (sExiting) return;
+		sExiting = true;
+		defer { sExiting = false; }
+		let queried = scope HashSet<Form>();
+		while (true)
+		{
+			Form next = null;
+			for (int i = sOpenForms.Count - 1; i >= 0; i--)
+				if (!queried.Contains(sOpenForms[i])) { next = sOpenForms[i]; break; }
+			if (next == null) break;
+			queried.Add(next);
+			if (next.QueryApplicationExit()) return;
+		}
+
+		// Closed notifications precede disposal. Callbacks can change the open-form list.
+		let closed = scope List<Form>();
+		while (!sOpenForms.IsEmpty)
+		{
+			let form = sOpenForms.Back;
+			closed.Add(form);
+			form.CloseForApplicationExit();
+			UnregisterForm(form);
+		}
+		for (let form in closed)
+			if (!form.IsDisposingOrDisposed) form.Dispose();
+	}
 
 	/// Processes pending input and draws any due frame without waiting for more events.
 	/// Must be called from the UI thread.

@@ -33,11 +33,11 @@ class SDLRenderingTests
 		exposure.type = .WindowEvent;
 		exposure.window.windowEvent = .Exposed;
 		exposure.window.windowID = SDL.GetWindowID((SDL.Window*)form.Handle);
-		let frame = backend.[Friend]mFrameTicks;
+		let frame = backend.GetSession(form).[Friend]mFrameTicks;
 		SDL.Delay(2);
-		SDL.PushEvent(ref exposure);
+		SDLTestInput.PushEvent(ref exposure);
 		backend.ProcessEvents();
-		Test.Assert(backend.[Friend]mFrameTicks == frame);
+		Test.Assert(backend.GetSession(form).[Friend]mFrameTicks == frame);
 		Test.Assert(!backend.[Friend]RenderIfNeeded());
 
 		int paints = 0;
@@ -47,7 +47,7 @@ class SDLRenderingTests
 			if (paints == 1) panel.Invalidate();
 		});
 		panel.Invalidate();
-		SDL.PushEvent(ref exposure);
+		SDLTestInput.PushEvent(ref exposure);
 		Test.Assert(paints == 1);
 		backend.ProcessEvents();
 		Test.Assert(backend.[Friend]RenderIfNeeded());
@@ -74,14 +74,14 @@ class SDLRenderingTests
 		backend.[Friend]mRenderThreadId = Thread.CurrentThreadId;
 		SDL.AddEventWatch(=> SDLBackend.[Friend]WatchWindowEvents, Internal.UnsafeCastToPtr(backend));
 		defer SDL.DelEventWatch(=> SDLBackend.[Friend]WatchWindowEvents, Internal.UnsafeCastToPtr(backend));
-		let frame = backend.[Friend]mFrameTicks;
+		let frame = backend.GetSession(form).[Friend]mFrameTicks;
 		SDL.Delay(550);
 		SDL.Event exposure = .();
 		exposure.type = .WindowEvent;
 		exposure.window.windowEvent = .Exposed;
 		exposure.window.windowID = SDL.GetWindowID((SDL.Window*)form.Handle);
-		SDL.PushEvent(ref exposure);
-		Test.Assert(backend.[Friend]mFrameTicks > frame);
+		SDLTestInput.PushEvent(ref exposure);
+		Test.Assert(backend.GetSession(form).[Friend]mFrameTicks > frame);
 		backend.ProcessEvents();
 		Test.Assert(!backend.[Friend]RenderIfNeeded());
 		Test.Assert(!progress.NeedsPaint);
@@ -165,6 +165,10 @@ class SDLRenderingTests
 		newer.Style = .Marquee;
 		backend.[Friend]RenderIfNeeded();
 		uint8[4] olderPixel = .(), newerPixel = .();
+		let window = SDL.GL_GetCurrentWindow();
+		let context = SDL.GL_GetCurrentContext();
+		backend.GetSession(form).MakeCurrent();
+		defer { Test.Assert(SDL.GL_MakeCurrent(window, context) == 0); }
 		GL.glReadBuffer(GL.GL_FRONT);
 		defer GL.glReadBuffer(GL.GL_BACK);
 		GL.glReadPixels(9, 109, 1, 1, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, &olderPixel);

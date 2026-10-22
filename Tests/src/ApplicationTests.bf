@@ -39,7 +39,7 @@ class ApplicationTests
 		SDL.Event input = .();
 		input.type = .TextInput;
 		input.text.text[0] = (uint8)'x';
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		Application.DoEvents();
 		Test.Assert(editor.Text == "x");
 		let painted = paints;
@@ -50,7 +50,7 @@ class ApplicationTests
 		Test.Assert(paints == painted + 1);
 		input = .();
 		input.type = .Quit;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		Application.DoEvents();
 		Test.Assert(!form.IsHandleCreated);
 		Application.DoEvents(); // A callback may still run after Close.
@@ -69,7 +69,7 @@ class ApplicationTests
 
 #if BF_PLATFORM_WINDOWS
 	[Test]
-	public static void NativeDoEventsPaintsAndPreservesQuitForRun()
+	public static void NativeDoEventsPaintsAndPreservesExplicitQuitForRun()
 	{
 		Application.UseBackend(.Win32);
 		let form = scope Form();
@@ -84,9 +84,11 @@ class ApplicationTests
 		panel.Invalidate();
 		Application.DoEvents();
 		Test.Assert(paints == 1);
-		form.Close();
+		Win32.PostQuitMessage(0);
 		Application.DoEvents();
 		Application.Backend.Run(form); // Must still see the queued WM_QUIT.
+		Test.Assert(form.IsHandleCreated);
+		form.Close();
 	}
 #endif
 

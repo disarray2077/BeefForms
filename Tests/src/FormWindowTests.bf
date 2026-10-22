@@ -122,7 +122,7 @@ class FormWindowTests
 			SDL.Event input = .();
 			input.type = .WindowEvent;
 			input.window.windowEvent = .Close;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			sdl.ProcessEvents();
 		}
 #if BF_PLATFORM_WINDOWS

@@ -42,9 +42,9 @@ class VisibilityTests
 			input.button.button = 1;
 			input.button.x = 30;
 			input.button.y = 30;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			input.type = .MouseButtonUp;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 		};
 
 		click();
@@ -76,7 +76,7 @@ class VisibilityTests
 		SDL.Event tab = .();
 		tab.type = .KeyDown;
 		tab.key.keysym.sym = .TAB;
-		SDL.PushEvent(ref tab);
+		SDLTestInput.PushEvent(ref tab);
 		backend.ProcessEvents();
 		Test.Assert(first.Focused && !second.Focus());
 		backend.FrameLimit = 1;

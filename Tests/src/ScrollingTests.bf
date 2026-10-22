@@ -60,9 +60,9 @@ class ScrollingTests
 		input.button.button = 1;
 		input.button.x = 20;
 		input.button.y = 110;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		input.type = .MouseButtonUp;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		backend.ProcessEvents();
 		Test.Assert(clicks == 1 && button.Location.y == 180);
 
@@ -71,20 +71,20 @@ class ScrollingTests
 		input.type = .MouseButtonDown;
 		input.button.x = 10 + thumb.X + 2;
 		input.button.y = 10 + thumb.Y + 2;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		backend.ProcessEvents();
 		Test.Assert(panel.Capture);
 		input = .();
 		input.type = .MouseMotion;
 		input.motion.x = 10 + thumb.X + 2;
 		input.motion.y = 110;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		input = .();
 		input.type = .MouseButtonUp;
 		input.button.button = 1;
 		input.button.x = 10 + thumb.X + 2;
 		input.button.y = 110;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		backend.ProcessEvents();
 		Test.Assert(panel.ScrollPosition.y > 0 && !panel.Capture);
 		backend.FrameLimit = 1;

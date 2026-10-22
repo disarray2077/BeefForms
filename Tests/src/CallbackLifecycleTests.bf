@@ -74,8 +74,8 @@ class CallbackLifecycleTests
 		if (let sdl = Application.Backend as SDLBackend)
 		{
 			Test.Assert(sdl.[Friend]RenderIfNeeded());
-			Test.Assert(sdl.[Friend]mRenderer == null && sdl.[Friend]mWindow == null);
-			Test.Assert(!sdl.[Friend]mRendering && !sdl.[Friend]RenderIfNeeded());
+			Test.Assert(sdl.GetSession(form) == null);
+			Test.Assert(!sdl.[Friend]IsRendering && !sdl.[Friend]RenderIfNeeded());
 			Test.Assert(childPaints == 0);
 		}
 #if BF_PLATFORM_WINDOWS
@@ -117,7 +117,7 @@ class CallbackLifecycleTests
 		editor.SelectAll();
 		if (kind == .MouseEnter)
 		{
-			if (sdl != null) sdl.[Friend]Hover(null);
+			if (sdl != null) sdl.GetSession(form).Hover(null);
 #if BF_PLATFORM_WINDOWS
 			else Win32.SendMessage(editor.Handle, Win32.WM_MOUSELEAVE, null, null);
 #endif
@@ -130,6 +130,7 @@ class CallbackLifecycleTests
 			down.button.clicks = 1;
 			down.button.x = 10;
 			down.button.y = 10;
+			SDLTestInput.SetWindow(ref down, form);
 			sdl.[Friend]ProcessEvent(ref down);
 		}
 
@@ -178,9 +179,9 @@ class CallbackLifecycleTests
 				let typed = "ab";
 				Internal.MemCpy(&input.text.text, typed.Ptr, typed.Length);
 			}
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			Application.DoEvents();
-			Test.Assert(sdl.[Friend]mFocused == null && sdl.[Friend]mCaptured == null && sdl.[Friend]mPressed == null);
+			Test.Assert(sdl.GetSession(form) == null);
 		}
 #if BF_PLATFORM_WINDOWS
 		else
@@ -247,7 +248,7 @@ class CallbackLifecycleTests
 		second.GotFocus.Add(new [&] (sender, args) => { gotFocus++; });
 		second.Focus();
 		Test.Assert(events == "BCDSR" && gotFocus == 0);
-		Test.Assert(backend.[Friend]mFocused == null);
+		Test.Assert(backend.GetSession(form) == null);
 	}
 
 	private static void VerifyCancelledClose(ApplicationBackend backend)

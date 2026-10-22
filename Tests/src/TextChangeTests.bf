@@ -211,6 +211,7 @@ class TextChangeTests
 			SDL.Event input = .();
 			input.type = .KeyDown;
 			input.key.keysym.sym = .BACKSPACE;
+			SDLTestInput.SetWindow(ref input, (Form)editor.Parent);
 			sdl.[Friend]ProcessEvent(ref input);
 		}
 #if BF_PLATFORM_WINDOWS

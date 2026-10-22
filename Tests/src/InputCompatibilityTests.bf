@@ -17,7 +17,7 @@ class InputCompatibilityTests
 			SDL.Event input = .();
 			input.type = .KeyDown;
 			input.key.keysym.sym = .TAB;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			backend.ProcessEvents();
 		}
 #if BF_PLATFORM_WINDOWS
@@ -89,9 +89,9 @@ class InputCompatibilityTests
 			input.button.button = 1;
 			input.button.x = (control is Form) ? x : control.Location.x + x;
 			input.button.y = (control is Form) ? y : control.Location.y + y;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			input.type = .MouseButtonUp;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			backend.ProcessEvents();
 		}
 #if BF_PLATFORM_WINDOWS

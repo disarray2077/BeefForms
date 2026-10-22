@@ -42,15 +42,15 @@ class CheckBoxTests
 			input.button.button = 1;
 			input.button.x = 10;
 			input.button.y = 10;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			input.type = .MouseButtonUp;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			sdl.ProcessEvents();
 			Test.Assert(check.Checked);
 			input = .();
 			input.type = .KeyDown;
 			input.key.keysym.sym = .SPACE;
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			sdl.ProcessEvents();
 			Test.Assert(!check.Checked);
 			sdl.FrameLimit = 1;

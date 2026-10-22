@@ -142,7 +142,7 @@ class ControlLifetimeTests
 		Test.Assert(paints == 1 && siblingPaints == 1 && panel.IsDisposed && editor.IsDisposed);
 		Test.Assert(form.IsHandleCreated && !form.IsDisposed && !editor.CanSelect);
 		let backend = (SDLBackend)Application.Backend;
-		Test.Assert(backend.[Friend]HitTest(form, 10, 10) == form);
+		Test.Assert(backend.GetSession(form).[Friend]HitTest(form, 10, 10) == form);
 		Test.Assert(Control.NextTabControl(form, null, false) == null);
 		panel.Invalidate();
 		sibling.Invalidate();

@@ -82,20 +82,20 @@ class InputTests
 		input.type = .MouseMotion;
 		input.motion.x = 250;
 		input.motion.y = 150;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		input = .();
 		input.type = .MouseWheel;
 		input.wheel.mouseX = 20;
 		input.wheel.mouseY = 20;
 		input.wheel.y = 1;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		input = .();
 		input.type = .KeyDown;
 		input.key.keysym.sym = .A;
 		input.key.keysym.mod = .LCtrl;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		input.type = .KeyUp;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		backend.ProcessEvents();
 		Test.Assert(probe.Capture && probe.Moves > 0 && probe.WheelDelta == 120);
 		Test.Assert(probe.LastKey == (.A | .Control) && probe.KeyUps == 1);
@@ -119,11 +119,11 @@ class InputTests
 		SDL.Event input = .();
 		input.type = .TextInput;
 		Internal.MemCpy(&input.text.text, "B!".Ptr, 2);
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		input = .();
 		input.type = .KeyDown;
 		input.key.keysym.sym = .BACKSPACE;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		backend.ProcessEvents();
 		Test.Assert(editor.Text == "B");
 	}

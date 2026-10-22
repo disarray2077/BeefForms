@@ -62,7 +62,7 @@ class ScrollLayoutTests
 		input.type = .MouseMotion;
 		input.motion.x = 20;
 		input.motion.y = 20;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		backend.ProcessEvents();
 		Test.Assert(first.IsMouseOver);
 		int leaves = 0, enters = 0;
@@ -76,7 +76,7 @@ class ScrollLayoutTests
 		input.wheel.mouseX = 20;
 		input.wheel.mouseY = 20;
 		input.wheel.y = 1;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		backend.ProcessEvents();
 		Test.Assert(first.IsMouseOver && !second.IsMouseOver);
 	}

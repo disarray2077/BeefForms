@@ -319,6 +319,7 @@ public class Control : System.ComponentModel.Component
 	{
 		if (!mCreated) return;
 		mCreated = false;
+		if (let form = this as Form) Application.UnregisterForm(form);
 		mHandleGeneration.Advance();
 		for (let child in Controls) child.DestroyHandle();
 		Application.Backend.DestroyControl(this);
@@ -461,6 +462,7 @@ public class Control : System.ComponentModel.Component
 		Application.Backend.CreateControl(this);
 		UpdateClientSize();
 		mCreated = true;
+		if (let form = this as Form) Application.RegisterForm(form);
 		UpdateAutoSize();
 		for (let child in Controls)
 		{

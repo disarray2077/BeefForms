@@ -96,9 +96,9 @@ class SDLBackendTests
 		input.button.button = 1;
 		input.button.x = x;
 		input.button.y = y;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 		input.type = .MouseButtonUp;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 	}
 
 	private static void PushKey(SDL.Keycode key, SDL.KeyMod modifiers = .None)
@@ -107,7 +107,7 @@ class SDLBackendTests
 		input.type = .KeyDown;
 		input.key.keysym.sym = key;
 		input.key.keysym.mod = modifiers;
-		SDL.PushEvent(ref input);
+		SDLTestInput.PushEvent(ref input);
 	}
 
 	[Test]
@@ -129,7 +129,7 @@ class SDLBackendTests
 			SDL.Event input = .();
 			input.type = .TextInput;
 			Internal.MemCpy(&input.text.text, "Beef".Ptr, 4);
-			SDL.PushEvent(ref input);
+			SDLTestInput.PushEvent(ref input);
 			PushKey(.LEFT);
 			PushKey(.BACKSPACE);
 			PushKey(.TAB);
@@ -144,7 +144,7 @@ class SDLBackendTests
 			SDL.GetWindowPosition((SDL.Window*)form.Handle, var actualX, var actualY);
 			SDL.GetWindowBordersSize((SDL.Window*)form.Handle, var top, var left, var bottom, var right);
 			Test.Assert(form.Location.x == actualX - left && form.Location.y == actualY - top);
-			Test.Assert(GL.glGetError() == GL.GL_NO_ERROR);
+			SDLTestInput.AssertNoGLError(form);
 		}
 #if BF_PLATFORM_WINDOWS
 		Application.UseBackend(.Win32);

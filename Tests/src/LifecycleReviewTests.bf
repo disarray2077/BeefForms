@@ -177,6 +177,7 @@ class LifecycleReviewTests
 			input.button.clicks = 2;
 			input.button.x = 10;
 			input.button.y = 10;
+			SDLTestInput.SetWindow(ref input, form);
 			sdl.[Friend]ProcessEvent(ref input);
 		}
 #if BF_PLATFORM_WINDOWS

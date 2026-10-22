@@ -5,7 +5,7 @@ using internal System.Windows.Forms;
 
 namespace BeefForms.Backends;
 
-extension SDLBackend
+extension SDLWindowSession
 {
 	private void RenderLabel(Label label, Rectangle bounds)
 	{

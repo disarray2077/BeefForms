@@ -11,31 +11,21 @@ using internal BeefForms.Backends;
 
 namespace BeefForms.Backends;
 
-extension SDLBackend
+extension SDLWindowSession
 {
-	private static int32 WatchWindowEvents(void* userData, SDL.Event* input)
+	internal void HandleExposure(uint32 timestamp)
 	{
-		if (input.type != .WindowEvent || input.window.windowEvent != .Exposed)
-			return 0;
-		let backend = (SDLBackend)Internal.UnsafeCastToObject(userData);
-		// Windows keeps pumping expose events inside its modal resize loop.
-		// Event watches can also run on other threads; OpenGL must stay on its owner thread.
-		if (Thread.CurrentThreadId == backend.mRenderThreadId && backend.mRunning && !backend.mRendering && backend.CanRender &&
-			input.window.windowID == SDL.GetWindowID(backend.mWindow))
-		{
-			// SDL coalesces pending exposures; the queued copy must not invalidate this frame again.
-			backend.mHandledExposureTimestamp = input.window.timestamp;
-			backend.UpdateFormSize();
-			backend.RenderIfNeeded();
-		}
-		return 0;
+		if (!CanRender) return;
+		mHandledExposureTimestamp = timestamp;
+		UpdateFormSize();
+		RenderIfNeeded();
 	}
 
 	private bool CanRender => IsCurrentWindow(mWindowGeneration) && mForm.IsEffectivelyVisible &&
 		(SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Minimized) == 0 &&
 		(mShowPending || (SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Hidden) == 0);
 
-	private int32 GetRedrawTimeout()
+	internal int32 GetRedrawTimeout()
 	{
 		if (!CanRender) return -1;
 		if (mRedrawRequested) return 0;
@@ -44,7 +34,7 @@ extension SDLBackend
 		return now >= mNextAnimationTick ? 0 : (int32)Math.Min(mNextAnimationTick - now, (uint64)int32.MaxValue);
 	}
 
-	private bool RenderIfNeeded(bool force = false, bool capture = false)
+	internal bool RenderIfNeeded(bool force = false, bool capture = false)
 	{
 		if (mRendering || !CanRender || (!force && GetRedrawTimeout() != 0)) return false;
 		RenderFrame(capture);
@@ -68,8 +58,8 @@ extension SDLBackend
 		if (!IsCurrentWindow(snapshot)) return;
 		if (capture)
 		{
-			mRenderer.Capture(CapturePath);
-			CapturePath = null;
+			mRenderer.Capture(mBackend.CapturePath);
+			mBackend.CapturePath = null;
 		}
 		SDL.GL_SwapWindow(mWindow);
 		if (mShowPending && mForm.IsEffectivelyVisible)
