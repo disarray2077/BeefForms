@@ -136,6 +136,165 @@ class OwnershipTests
 	}
 
 	[Test]
+	public static void ChildrenAddedByDisposalCallbacksJoinTheCascade()
+	{
+		int deletions = 0;
+		let parent = new Control();
+		let first = new CountedControl(&deletions);
+		let sibling = new CountedControl(&deletions);
+		Control added = null, descendant = null, last = null;
+		let events = scope String();
+		parent.Controls.Add(first);
+		parent.Controls.Add(sibling);
+		first.Disposed.Add(new [&] (sender, args) =>
+		{
+			events.Append('1');
+			added = new CountedControl(&deletions);
+			descendant = new CountedControl(&deletions);
+			added.Controls.Add(descendant);
+			descendant.Disposed.Add(new (sender, args) => { events.Append('D'); });
+			added.Disposed.Add(new [&] (sender, args) =>
+			{
+				events.Append('A');
+				last = new CountedControl(&deletions);
+				last.Disposed.Add(new (sender, args) => { events.Append('L'); });
+				parent.Controls.Add(last);
+			});
+			parent.Controls.Add(added);
+		});
+		sibling.Disposed.Add(new (sender, args) => { events.Append('2'); });
+		parent.Dispose();
+		Test.Assert(events == "12DAL" && parent.Controls.IsEmpty && deletions == 0);
+		Test.Assert(added.IsDisposed && descendant.IsDisposed && last.IsDisposed);
+		Test.Assert(added.Parent == null && descendant.Parent == null && last.Parent == null);
+		delete parent;
+		Test.Assert(deletions == 5 && events == "12DAL");
+	}
+
+	private static void VerifyReparentingDuringDisposal(Control destination, bool deleteChildFirst)
+	{
+		int deletions = 0, notifications = 0;
+		bool reparent = true;
+		let original = new Control();
+		let child = new CountedControl(&deletions);
+		child.Size = .(40, 20);
+		original.Controls.Add(child);
+		child.Disposed.Add(new [&] (sender, args) =>
+		{
+			notifications++;
+			if (reparent)
+			{
+				reparent = false;
+				Test.Assert(child.Disposing && !child.IsDisposed && child.Parent == null);
+				destination.Controls.Add(child);
+			}
+		});
+		original.Dispose();
+		Test.Assert(child.IsDisposed && !child.Disposing && notifications == 1);
+		Test.Assert(child.Parent == destination && destination.Controls.Count == 1);
+		Test.Assert(child.IsHandleCreated == destination.IsHandleCreated);
+		if (deleteChildFirst)
+		{
+			delete child;
+			Test.Assert(destination.Controls.IsEmpty && deletions == 1 && notifications == 1);
+			delete original;
+			Test.Assert(deletions == 1);
+		}
+		else
+		{
+			delete original;
+			Test.Assert(deletions == 0 && destination.Controls.Count == 1);
+			child.Text = "still owned by the destination";
+			destination.Dispose();
+			Test.Assert(child.Parent == null && destination.Controls.IsEmpty && !child.IsHandleCreated);
+			Test.Assert(notifications == 2 && deletions == 0);
+			// The disposed destination retains the allocation until its own deletion.
+			delete child;
+			Test.Assert(deletions == 1 && notifications == 2);
+		}
+	}
+
+	[Test]
+	public static void ReparentingDuringDisposalTransfersDeletionOwnership()
+	{
+		let destination = scope Control();
+		VerifyReparentingDuringDisposal(destination, false);
+	}
+
+	[Test]
+	public static void DeletingTheDestinationDeletesTheTransferredChildExactlyOnce()
+	{
+		int deletions = 0;
+		let original = new Control();
+		let destination = new Control();
+		let child = new CountedControl(&deletions);
+		original.Controls.Add(child);
+		child.Disposed.Add(new (sender, args) =>
+		{
+			if (!child.IsDisposed) destination.Controls.Add(child);
+		});
+		original.Dispose();
+		delete original;
+		Test.Assert(deletions == 0 && child.Parent == destination);
+		delete destination;
+		Test.Assert(deletions == 1);
+	}
+
+	[Test]
+	public static void DeletingATransferredDisposedChildDetachesFromItsDestination()
+	{
+		let destination = scope Control();
+		VerifyReparentingDuringDisposal(destination, true);
+	}
+
+	private static void VerifyCreatedDestination(ApplicationBackend backend, bool deleteChildFirst)
+	{
+		Application.UseBackend(backend);
+		let form = scope Form();
+		form.ClientSize = .(240, 160);
+		let destination = new Panel();
+		defer delete destination;
+		destination.Size = .(150, 100);
+		form.Controls.Add(destination);
+		form.Show();
+		defer { form.Close(); Application.Backend.Run(form); }
+		VerifyReparentingDuringDisposal(destination, deleteChildFirst);
+	}
+
+	[Test]
+	public static void SDLReparentingDuringDisposalToACreatedDestination() => VerifyCreatedDestination(.SDL2OpenGL, false);
+	[Test]
+	public static void SDLDeletingATransferredDisposedChildDestroysItsRecreatedHandle() => VerifyCreatedDestination(.SDL2OpenGL, true);
+#if BF_PLATFORM_WINDOWS
+	[Test]
+	public static void NativeReparentingDuringDisposalToACreatedDestination() => VerifyCreatedDestination(.Win32, false);
+	[Test]
+	public static void NativeDeletingATransferredDisposedChildDestroysItsRecreatedHandle() => VerifyCreatedDestination(.Win32, true);
+#endif
+
+	[Test]
+	public static void DeletionCleansUpChildrenAddedAfterTheDisposalCascade()
+	{
+		int deletions = 0, notifications = 0;
+		let parent = new Control();
+		Control addedInNotification = null;
+		parent.Disposed.Add(new [&] (sender, args) =>
+		{
+			notifications++;
+			addedInNotification = new CountedControl(&deletions);
+			parent.Controls.Add(addedInNotification);
+		});
+		parent.Dispose();
+		let addedAfterDisposal = new CountedControl(&deletions);
+		parent.Controls.Add(addedAfterDisposal);
+		Test.Assert(parent.Controls.Count == 2 && notifications == 1);
+		Test.Assert(addedInNotification.Parent == parent && !addedInNotification.IsDisposed);
+		Test.Assert(addedAfterDisposal.Parent == parent && !addedAfterDisposal.IsDisposed);
+		delete parent;
+		Test.Assert(deletions == 2 && notifications == 1);
+	}
+
+	[Test]
 	public static void CyclesAreRejectedBeforeChangingEitherTree()
 	{
 		let outer = scope Control();

@@ -40,6 +40,7 @@ public class Control : System.ComponentModel.Component
 			if (Control.IsAncestorOf(value, mOwner)) return .Err;
 			if (value.Parent == mOwner) return .Ok;
 			value.Parent?.Controls.Remove(value);
+			value.ReleaseDisposalOwner();
 			mItems.Insert(index, value);
 			value.mParent = mOwner;
 			value.UpdateAnchorDistances();
@@ -86,6 +87,12 @@ public class Control : System.ComponentModel.Component
 			value.UpdateBackend(.ZOrder);
 		}
 		internal void ClearAfterDisposal() => mItems.Clear();
+		internal Control TakeLastForDeletion()
+		{
+			let child = mItems.PopBack();
+			child.mParent = null;
+			return child;
+		}
 
 		public Enumerator GetEnumerator() => .(this);
 		public struct Enumerator : IEnumerator<Control>
@@ -246,7 +253,13 @@ public class Control : System.ComponentModel.Component
 	public ~this()
 	{
 		if (!mDisposed) Dispose();
-		mDisposalOwner?.mDisposedChildren.Remove(this);
+		// Disposal callbacks can reparent this control and even recreate its handle.
+		DestroyHandle();
+		Parent?.Controls.Remove(this);
+		ReleaseDisposalOwner();
+		// The owner's Disposed event can add children after the logical cascade ends.
+		while (!Controls.IsEmpty)
+			delete Controls.TakeLastForDeletion();
 		if (mDisposedChildren != null)
 			while (!mDisposedChildren.IsEmpty)
 			{
@@ -256,27 +269,45 @@ public class Control : System.ComponentModel.Component
 			}
 	}
 
+	private void ReleaseDisposalOwner()
+	{
+		mDisposalOwner?.mDisposedChildren.Remove(this);
+		mDisposalOwner = null;
+	}
+
 	protected override void Dispose(bool disposing)
 	{
 		if (!disposing || mDisposing) return;
 		mDisposing = true;
 		defer { mDisposing = false; mDisposed = true; }
-		let children = scope List<Control>();
-		for (let child in Controls) children.Add(child);
 		DestroyHandle();
 		Parent?.Controls.Remove(this);
-		for (let child in children)
+		DisposeChildren();
+		base.Dispose(disposing);
+	}
+
+	private void DisposeChildren()
+	{
+		let children = scope List<Control>();
+		while (true)
 		{
-			if (child.Parent != this) continue;
-			// Match WinForms: clear Parent before notifying, clear Controls after the cascade.
-			child.mParent = null;
-			if (mDisposedChildren == null) mDisposedChildren = new .();
-			mDisposedChildren.Add(child);
-			child.mDisposalOwner = this;
-			child.Dispose();
+			children.Clear();
+			for (let child in Controls)
+				if (child.Parent == this) children.Add(child);
+			if (children.IsEmpty) break;
+			for (let child in children)
+			{
+				if (child.Parent != this) continue;
+				// Match WinForms: clear Parent before notifying, clear Controls after the cascade.
+				child.mParent = null;
+				if (mDisposedChildren == null) mDisposedChildren = new .();
+				mDisposedChildren.Add(child);
+				child.mDisposalOwner = this;
+				child.Dispose();
+			}
+			// Callbacks may have added children or moved pending ones to another parent.
 		}
 		Controls.ClearAfterDisposal();
-		base.Dispose(disposing);
 	}
 	private void UpdateClientSize() => mClientSize = .(Math.Max(0, mSize.width - BorderWidth * 2), Math.Max(0, mSize.height - BorderWidth * 2));
 
@@ -408,7 +439,7 @@ public class Control : System.ComponentModel.Component
 
 	protected internal virtual void CreateHandle()
 	{
-		if (IsDisposingOrDisposed)
+		if (IsDisposed)
 			Runtime.FatalError("Cannot create a handle for a disposed control");
 		if (mCreated)
 			return;
