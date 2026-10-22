@@ -382,7 +382,14 @@ extension SDLBackend
 		}
 		switch (symbol)
 		{
-		case .BACKSPACE: editor.DeleteText(true);
+		case .BACKSPACE:
+			let snapshot = mWindowGeneration;
+			let handleSnapshot = editor.HandleGeneration;
+			let press = scope KeyPressEventArgs('\b');
+			editor.DispatchInput(.KeyPress, press);
+			if (!IsCurrentControl(editor, snapshot, handleSnapshot) || press.Handled) return;
+			if (press.KeyChar == '\b') editor.DeleteText(true);
+			else if (press.KeyChar >= ' ') editor.ReplaceSelection(scope String()..Append(press.KeyChar));
 		case .DELETE: editor.DeleteText(false);
 		case .LEFT, .RIGHT:
 			let forward = symbol == .RIGHT;

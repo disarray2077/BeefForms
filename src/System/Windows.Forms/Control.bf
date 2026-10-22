@@ -151,13 +151,23 @@ public class Control : System.ComponentModel.Component
 		get => mText;
 		set
 		{
-			if (mText == value)
-				return;
-			mText.Set(value ?? String.Empty);
+			if (!SetTextValue(value ?? String.Empty)) return;
 			UpdateBackend(.Text);
-			UpdateAutoSize();
-			TextChanged.Invoke(this, .Empty);
+			NotifyTextChanged();
 		}
+	}
+
+	protected bool SetTextValue(StringView text)
+	{
+		if (mText == text) return false;
+		mText.Set(text);
+		return true;
+	}
+
+	protected void NotifyTextChanged()
+	{
+		UpdateAutoSize();
+		TextChanged.Invoke(this, .Empty);
 	}
 
 	public virtual Font Font
@@ -384,13 +394,9 @@ public class Control : System.ComponentModel.Component
 		mLocation = location;
 		OnLocationChanged(.Empty);
 	}
-	internal void NotifyText(String text)
+	internal void NotifyText(String text, bool forceNotification = false)
 	{
-		if (mText == text)
-			return;
-		mText.Set(text);
-		UpdateAutoSize();
-		TextChanged.Invoke(this, .Empty);
+		if (SetTextValue(text) || forceNotification) NotifyTextChanged();
 	}
 	internal void NotifyResize(Size size)
 	{

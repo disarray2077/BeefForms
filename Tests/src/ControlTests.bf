@@ -119,7 +119,7 @@ class ControlTests
 		Test.Assert(editor.Text == "aéxz");
 		editor.SetCaret(3, false);
 		editor.Text = "éé";
-		Test.Assert(editor.SelectionStart == 1);
+		Test.Assert(editor.SelectionStart == 2); // Preserve UTF-16 position, not the old UTF-8 byte offset.
 		editor.DeleteText(true);
 		Test.Assert(editor.Text == "é");
 		editor.SelectionStart = int.MaxValue;

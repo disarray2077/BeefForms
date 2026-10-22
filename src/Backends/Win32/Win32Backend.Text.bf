@@ -26,17 +26,23 @@ extension Win32Backend
 	private char16 mHighSurrogate;
 	private Control mSurrogateControl;
 	private bool mInsertingText;
+	private bool mInsertedTextChanged;
 
-	private void NotifyNativeText(Control control)
+	private void NotifyNativeText(Control control, bool forceNotification = true)
 	{
-		if (mInsertingText) return;
+		if (mInsertingText)
+		{
+			mInsertedTextChanged = true;
+			return;
+		}
+		if (control is TextBoxBase && ((TextBoxBase)control).UpdatingText) return;
 		let length = Win32.GetWindowTextLength(control.Handle);
 		let buffer = scope char16[length + 1] (?);
 		let copied = Win32.GetWindowText(control.Handle, buffer.Ptr, (int32)buffer.Count);
 		let text = scope String(Span<char16>(buffer.Ptr, copied));
 		if (let editor = control as TextBoxBase)
 			SynchronizeNativeSelection(editor, text);
-		control.NotifyText(text);
+		control.NotifyText(text, forceNotification);
 	}
 
 	private void ApplyCharacter(Control control, char32 character, int32* lParam)
@@ -58,6 +64,7 @@ extension Win32Backend
 		if (accepted.IsEmpty || control.Handle != window || !control.IsCurrentHandle(snapshot)) return;
 		// Publish one text change after the accepted text has reached the native editor.
 		mInsertingText = true;
+		mInsertedTextChanged = false;
 		let units = accepted.ToScopedNativeWChar!();
 		for (var cursor = units; *cursor != 0; cursor++)
 		{
@@ -65,7 +72,9 @@ extension Win32Backend
 			DefaultCharacter(control, window, *cursor, lParam);
 		}
 		mInsertingText = false;
-		if (control.Handle == window && control.IsCurrentHandle(snapshot) && control is TextBoxBase) NotifyNativeText(control);
+		let changed = mInsertedTextChanged;
+		mInsertedTextChanged = false;
+		if (control.Handle == window && control.IsCurrentHandle(snapshot) && control is TextBoxBase) NotifyNativeText(control, changed);
 	}
 
 	private static void DefaultCharacter(Control control, void* window, char16 character, int32* lParam)

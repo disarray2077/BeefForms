@@ -11,7 +11,7 @@ extension Win32Backend
 {
 	private void SynchronizeNativeSelection(TextBoxBase editor, StringView text)
 	{
-		if (editor.Handle == null || mInsertingText) return;
+		if (editor.Handle == null || mInsertingText || editor.UpdatingText) return;
 		uint32 nativeStart = 0, nativeEnd = 0;
 		Win32.SendMessage(editor.Handle, Win32.EM_GETSEL, (uint*)&nativeStart, (int*)&nativeEnd);
 		let start = TextBoxBase.Utf8Offset(text, nativeStart);

@@ -54,17 +54,33 @@ public class TextBoxBase : Control
 	internal int32 ScrollY;
 	private int mCaret;
 	private int mAnchor;
+	internal bool UpdatingText { get; private set; }
 
 	public override String Text
 	{
 		get => base.Text;
 		set
 		{
-			base.Text = value;
-			mCaret = CharacterBoundary(mCaret);
-			mAnchor = CharacterBoundary(mAnchor);
-			UpdateBackend(.Selection);
+			let text = value ?? String.Empty;
+			if (Text == text) return;
+			// Created WinForms editors reset selection; unrealized editors retain UTF-16 positions.
+			let anchor = IsHandleCreated ? 0 : Utf8Offset(text, Utf16Offset(Text, mAnchor));
+			let caret = IsHandleCreated ? 0 : Utf8Offset(text, Utf16Offset(Text, mCaret));
+			CommitText(text, anchor, caret);
 		}
+	}
+
+	private void CommitText(StringView text, int anchor, int caret, bool forceNotification = false)
+	{
+		let changed = SetTextValue(text);
+		mAnchor = CharacterBoundary(anchor);
+		mCaret = CharacterBoundary(caret);
+		UpdatingText = true;
+		if (changed) UpdateBackend(.Text);
+		UpdateBackend(.Selection);
+		UpdatingText = false;
+		// No selection writes after notification: reentrant handlers own their final state.
+		if (changed || forceNotification) NotifyTextChanged();
 	}
 
 	/// Selects text by UTF-16 indices; positions inside surrogate pairs snap to the character's start.
@@ -134,10 +150,8 @@ public class TextBoxBase : Control
 		text.Append(Text, 0, start);
 		text.Append(value);
 		text.Append(Text, start + SelectionByteLength);
-		Text = text;
-		mCaret = start + value.Length;
-		mAnchor = mCaret;
-		UpdateBackend(.Selection);
+		let caret = start + value.Length;
+		CommitText(text, caret, caret, true);
 	}
 
 	internal void DeleteText(bool backward)
@@ -146,8 +160,10 @@ public class TextBoxBase : Control
 			return;
 		if (SelectionByteLength == 0)
 		{
+			let adjacent = AdjacentPosition(mCaret, !backward);
+			if (adjacent == mCaret) return;
 			mAnchor = mCaret;
-			mCaret = AdjacentPosition(mCaret, !backward);
+			mCaret = adjacent;
 		}
 		ReplaceSelection("");
 	}
