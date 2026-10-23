@@ -16,7 +16,6 @@ internal class SDLBackend : FormsBackend
 
 	private append List<SDLWindowSession> mSessions = .();
 	private append Dictionary<uint32, SDLWindowSession> mWindows = .();
-	private append Dictionary<Control, SDLWindowSession> mControls = .();
 
 	private bool mInitialized, mWheelHasPosition, mPumpingEvents;
 	private int mRenderThreadId, mFrames;
@@ -51,7 +50,9 @@ internal class SDLBackend : FormsBackend
 
 	internal SDLWindowSession GetSession(Control control)
 	{
-		return mControls.TryGetValue(control, let session) ? session : null;
+		// Creation and teardown also need this lookup before/after IsHandleCreated is true.
+		let session = control?.FindForm()?.SDLSession;
+		return session?.Backend == this ? session : null;
 	}
 
 	private struct ContextSnapshot
@@ -137,10 +138,8 @@ internal class SDLBackend : FormsBackend
 			}
 			let session = new SDLWindowSession(this, form, mWheelHasPosition);
 			mSessions.Add(session);
-			mControls[form] = session;
+			form.SDLSession = session;
 		}
-		else if (let session = GetSession(control.Parent))
-			mControls[control] = session;
 		using (let current = UseSession(control))
 		{
 			let session = current.Session;
@@ -158,10 +157,10 @@ internal class SDLBackend : FormsBackend
 			let generation = control.HandleGeneration;
 			let windowID = (control is Form) ? SDL.GetWindowID(session.mWindow) : 0;
 			session.DestroyControl(control);
-			if (GetSession(control) == session && control.HandleGeneration.IsCurrent(generation))
-				mControls.Remove(control);
-			if (control is Form)
+			if (let form = control as Form)
 			{
+				if (form.SDLSession == session && form.HandleGeneration.IsCurrent(generation))
+					form.SDLSession = null;
 				mWindows.Remove(windowID);
 				mSessions.Remove(session);
 				session.ReleaseRef();

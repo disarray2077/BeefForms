@@ -136,6 +136,15 @@ public class Control : System.ComponentModel.Component
 	public bool IsDisposed => mDisposed;
 	internal bool IsDisposingOrDisposed => mDisposing || mDisposed;
 	public Control Parent => mParent;
+
+	/// Returns the nearest containing form, including this control, or null if there is none.
+	public Form FindForm()
+	{
+		for (var control = this; control != null; control = control.Parent)
+			if (let form = control as Form) return form;
+		return null;
+	}
+
 	protected internal virtual Point ContentOffset => .(0, 0);
 	protected internal virtual Size ViewportSize => ClientSize;
 	protected internal virtual Size LayoutSize => ClientSize;

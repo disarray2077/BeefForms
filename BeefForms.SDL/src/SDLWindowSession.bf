@@ -16,6 +16,7 @@ internal class SDLWindowSession : RefCounted
 	private struct WindowInsets : this(int32 Top, int32 Left, int32 Bottom, int32 Right);
 
 	private SDLBackend mBackend;
+	internal SDLBackend Backend => mBackend;
 	public this(SDLBackend backend, Form form, bool wheelHasPosition)
 	{
 		mBackend = backend;
@@ -53,6 +54,7 @@ internal class SDLWindowSession : RefCounted
 
 	public ~this()
 	{
+		if (mForm?.SDLSession == this) mForm.SDLSession = null;
 		DestroyWindow();
 	}
 
