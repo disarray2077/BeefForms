@@ -32,7 +32,9 @@ internal class SDLWindowSession : RefCounted
 
 	internal SDL.Window* mWindow;
 	internal SDL.SDL_GLContext mContext;
-	private SDLRenderer mRenderer;
+	private SDLCanvas mCanvas;
+	private SDLTextRenderer mTextRenderer;
+	private SDLControlRenderer mControlRenderer;
 	internal Form mForm;
 	private Control mFocused, mPressed, mHovered;
 	private Point mPointerPosition;
@@ -59,7 +61,8 @@ internal class SDLWindowSession : RefCounted
 		RequestRedraw();
 		if (!(control is Form))
 		{
-			if (let progress = control as ProgressBar) UpdateMarquee(progress);
+			if (let progress = control as ProgressBar) progress.RestartMarquee(SDL.GetTicks64());
+			if (let editor = control as TextBoxBase) editor.InvalidateScroll();
 			return;
 		}
 		mForm = (Form)control;
@@ -91,7 +94,9 @@ internal class SDLWindowSession : RefCounted
 #if !BF_PLATFORM_WASM
 		SDL.GL_SetSwapInterval(1);
 #endif
-		mRenderer = new .(mBackend.TextService);
+		mCanvas = new .();
+		mTextRenderer = new .(mCanvas, mBackend.TextService);
+		mControlRenderer = new .(mCanvas, mTextRenderer, mBackend.TextService);
 		control.SetNativeHandle(mWindow);
 		if (!mForm.HasInitialClientSize) SetFormSize(mForm, size);
 		control.NotifyResize(GetFormSize());
@@ -107,8 +112,12 @@ internal class SDLWindowSession : RefCounted
 		mWindowGeneration.Advance();
 		if (mActive) SDL.StopTextInput();
 		MakeCurrent();
-		delete mRenderer;
-		mRenderer = null;
+		delete mControlRenderer;
+		mControlRenderer = null;
+		delete mTextRenderer;
+		mTextRenderer = null;
+		delete mCanvas;
+		mCanvas = null;
 		SDL.GL_DeleteContext(mContext);
 		mContext = default;
 		SDL.DestroyWindow(mWindow);
@@ -125,12 +134,11 @@ internal class SDLWindowSession : RefCounted
 	{
 		let generation = control.HandleGeneration;
 		RequestRedraw();
-		if (let progress = control as ProgressBar) mMarqueeStarts.Remove(progress);
 		if (Control.IsAncestorOf(control, mFocused)) Focus(null);
 		if (Control.IsAncestorOf(control, mCaptured)) SetCapture(mCaptured, false);
 		if (mPressed == control) mPressed = null;
 		if (Control.IsAncestorOf(control, mHovered)) Hover(null);
-		mRenderer?.Forget(control);
+		mTextRenderer?.Forget(control);
 		if (control == mForm)
 		{
 			DestroyWindow();
@@ -143,7 +151,17 @@ internal class SDLWindowSession : RefCounted
 	{
 		RequestRedraw();
 		if (change == .Appearance || change == .All)
-			if (let progress = control as ProgressBar) UpdateMarquee(progress);
+			if (let progress = control as ProgressBar) progress.RestartMarquee(SDL.GetTicks64());
+		if (let editor = control as TextBoxBase)
+		{
+			if (change == .Text || change == .Font || change == .Bounds || change == .Border || change == .All)
+				editor.InvalidateScroll();
+			if (IsFocused(editor) && (change == .Text || change == .Selection || change == .ReadOnly))
+			{
+				editor.RestartCaretBlink(SDL.GetTicks64());
+				if (change != .ReadOnly) editor.RequestCaretReveal();
+			}
+		}
 		if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)
 		{
 			if (Control.IsAncestorOf(control, mFocused)) Focus(null);

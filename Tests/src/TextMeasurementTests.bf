@@ -67,7 +67,7 @@ class TextMeasurementTests
 		form.Show();
 		let backend = (SDLBackend)Application.Backend;
 		let session = backend.GetSession(form);
-		let renderer = session.[Friend]mRenderer;
+		let renderer = session.[Friend]mTextRenderer;
 		session.MakeCurrent();
 		defer SDL.GL_MakeCurrent(null, default);
 		int32 boundTexture = 0;
@@ -91,7 +91,7 @@ class TextMeasurementTests
 		let label = new Label(); label.AutoSize = false; form.Controls.Add(label); form.Show();
 		let backend = (SDLBackend)Application.Backend;
 		let session = backend.GetSession(form);
-		let renderer = session.[Friend]mRenderer;
+		let renderer = session.[Friend]mTextRenderer;
 		let samples = scope String[]("Hello", "two\nlines", "a\r\nb", "a\n", "a\n\nb", " words  with spaces ", "supercalifragilistic", "\u{E9}\u{1F600} \u{6F22}\u{5B57} text", "one\ttwo", "\u{FEFF}BOM text", "");
 		for (let style in scope FontStyle[](.Regular, .Bold | .Italic))
 		{
@@ -108,7 +108,7 @@ class TextMeasurementTests
 								let measured = backend.MeasureText(label);
 								session.MakeCurrent();
 								let texture = renderer.[Friend]GetText(label);
-								let padding = text.IsEmpty ? 0 : renderer.LabelPadding(label) * 2;
+								let padding = text.IsEmpty ? 0 : backend.TextService.LabelPadding(label) * 2;
 								Test.Assert(measured.width == texture.Width + padding && measured.height == texture.Height);
 								Test.Assert(GL.glGetError() == GL.GL_NO_ERROR);
 								SDL.GL_MakeCurrent(null, default);

@@ -29,6 +29,16 @@ extension SDLWindowSession
 	}
 
 	public bool IsFocused(Control control) => mActive && mFocused == control;
+
+	private void PrepareEditorFocus()
+	{
+		if (let editor = mFocused as TextBoxBase)
+		{
+			editor.RestartCaretBlink(SDL.GetTicks64());
+			editor.RequestCaretReveal();
+		}
+	}
+
 	public bool HasCapture(Control control) => mCaptured == control;
 	public void SetCapture(Control control, bool capture)
 	{
@@ -69,7 +79,11 @@ extension SDLWindowSession
 		mFocused = control;
 		RequestRedraw();
 		UpdateTextInput();
-		if (mActive) mFocused?.NotifyFocus(true);
+		if (mActive)
+		{
+			PrepareEditorFocus();
+			mFocused?.NotifyFocus(true);
+		}
 	}
 
 	private void SetActive(bool active)
@@ -84,6 +98,7 @@ extension SDLWindowSession
 		mActive = active;
 		RequestRedraw();
 		UpdateTextInput();
+		if (active) PrepareEditorFocus();
 		mFocused?.NotifyFocus(active);
 	}
 
@@ -181,7 +196,7 @@ extension SDLWindowSession
 					if (let editor = mPressed as TextBoxBase)
 					{
 						let position = editor.RootToLocalPoint(.(input.motion.x, input.motion.y));
-						editor.SetCaret(mRenderer.HitText(editor, position.x, position.y), true);
+						editor.SetCaret(mBackend.TextService.HitText(editor, position.x, position.y), true);
 					}
 			}
 		case .MouseButtonDown:
@@ -212,7 +227,7 @@ extension SDLWindowSession
 				if (let editor = target as TextBoxBase)
 				{
 					if (args.Clicks >= 2) editor.SelectAll();
-					else editor.SetCaret(mRenderer.HitText(editor, point.x, point.y), (SDL.GetModState() & .SHIFT) != 0);
+					else editor.SetCaret(mBackend.TextService.HitText(editor, point.x, point.y), (SDL.GetModState() & .SHIFT) != 0);
 				}
 			}
 		case .MouseButtonUp:
@@ -396,10 +411,10 @@ extension SDLWindowSession
 			let end = editor.Text.IndexOf('\n', editor.Caret);
 			editor.SetCaret(symbol == .HOME ? start : end < 0 ? editor.Text.Length : end, shift);
 		case .UP, .DOWN:
-			let position = mRenderer.TextPosition(editor, editor.Caret);
+			let position = mBackend.TextService.TextPosition(editor, editor.Caret);
 			let delta = symbol == .DOWN ? 1 : -1;
-			editor.SetCaret(mRenderer.HitText(editor, position.x + SDLTextService.EditorTextInset - editor.BorderWidth - editor.ScrollX,
-				position.y + delta * mRenderer.LineHeight(editor) + SDLTextService.EditorTextInset - editor.BorderWidth - editor.ScrollY), shift);
+			editor.SetCaret(mBackend.TextService.HitText(editor, position.x + SDLTextService.EditorTextInset - editor.BorderWidth - editor.ScrollX,
+				position.y + delta * mBackend.TextService.LineHeight(editor) + SDLTextService.EditorTextInset - editor.BorderWidth - editor.ScrollY), shift);
 		case .RETURN:
 			if (editor is RichTextBox) editor.ReplaceSelection("\n");
 		default:

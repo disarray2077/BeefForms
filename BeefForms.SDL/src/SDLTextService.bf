@@ -18,6 +18,7 @@ internal class SDLTextService
 {
 	// Shared by painting, hit testing, and keyboard navigation in logical pixels.
 	public const int32 EditorTextInset = 4;
+	public static Size EditorScrollMargin => .(10, 8);
 	private const int32 FontStyleStride = 32;
 
 	private append Dictionary<int32, SDLTTF.Font*> mFonts = .();
@@ -112,6 +113,14 @@ internal class SDLTextService
 		GetDisplayText(control, display);
 		let size = LayoutText(control, display);
 		return .(size.width + ((control is Label) ? LabelPadding(control) * 2 : 0), size.height);
+	}
+
+	public Size MeasureEditorContent(TextBoxBase editor)
+	{
+		let size = MeasureText(editor);
+		// Layout's rendered bounds can omit a trailing empty line; the caret can occupy it.
+		let end = TextPosition(editor, editor.Text.Length);
+		return .(Math.Max(size.width, end.x), Math.Max(size.height, end.y + LineHeight(editor)));
 	}
 
 	public struct TextLine

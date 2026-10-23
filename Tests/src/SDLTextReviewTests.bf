@@ -66,7 +66,7 @@ class SDLTextReviewTests
 			}
 		}
 		editor.Text = "first\n\u{E9}\u{1F600} last\n";
-		editor.ScrollX = 7; editor.ScrollY = service.LineHeight(editor);
+		editor.SetScrollOffset(.(7, service.LineHeight(editor)));
 		let lineEnd = editor.Text.IndexOf('\n', 6);
 		Test.Assert(service.HitText(editor, -100, 4 - editor.BorderWidth) == 6);
 		Test.Assert(service.HitText(editor, 1000, 4 - editor.BorderWidth) == lineEnd);
@@ -98,11 +98,12 @@ class SDLTextReviewTests
 		let backend = (SDLBackend)Application.Backend;
 		let session = backend.GetSession(form);
 		session.MakeCurrent(); defer SDL.GL_MakeCurrent(null, default);
-		let renderer = session.[Friend]mRenderer;
-		renderer.Begin(session.mWindow);
+		let renderer = session.[Friend]mTextRenderer;
+		let canvas = session.[Friend]mCanvas;
+		canvas.Begin(session.mWindow);
 		// Exercise drawable/logical ratios independently of the test monitor's DPI.
-		renderer.[Friend]mWidth = 240; renderer.[Friend]mHeight = 160;
-		renderer.[Friend]mPixelWidth = 240; renderer.[Friend]mPixelHeight = 160;
+		canvas.[Friend]mMetrics.Width = 240; canvas.[Friend]mMetrics.Height = 160;
+		canvas.[Friend]mMetrics.PixelWidth = 240; canvas.[Friend]mMetrics.PixelHeight = 160;
 		let measured = backend.MeasureText(label);
 		let texture = renderer.[Friend]GetText(label);
 		let width = texture.Width, height = texture.Height;
@@ -110,9 +111,9 @@ class SDLTextReviewTests
 		{
 			label.TextAlign = align;
 			let logicalSize = backend.MeasureText(label);
-			renderer.[Friend]mPixelWidth = (.)(240 * scale); renderer.[Friend]mPixelHeight = (.)(160 * scale);
+			canvas.[Friend]mMetrics.PixelWidth = (.)(240 * scale); canvas.[Friend]mMetrics.PixelHeight = (.)(160 * scale);
 			let scaled = renderer.[Friend]GetText(label);
-			GL.glBindTexture(GL.GL_TEXTURE_2D, scaled.Texture);
+			GL.glBindTexture(GL.GL_TEXTURE_2D, scaled.Image.Handle);
 			int32 pixelWidth = 0, pixelHeight = 0;
 			GL.glGetTexLevelParameteriv(GL.GL_TEXTURE_2D, 0, GL.GL_TEXTURE_WIDTH, &pixelWidth);
 			GL.glGetTexLevelParameteriv(GL.GL_TEXTURE_2D, 0, GL.GL_TEXTURE_HEIGHT, &pixelHeight);
@@ -121,17 +122,17 @@ class SDLTextReviewTests
 			// Blank explicit lines and wrapped line count must survive rasterization.
 			let pixels = scope uint8[pixelWidth * pixelHeight * 4];
 			GL.glGetTexImage(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, pixels.Ptr);
-			let lineHeight = renderer.LineHeight(label);
+			let lineHeight = backend.TextService.LineHeight(label);
 			let lastStart = (int32)Math.Ceiling((height - lineHeight) * scale);
 			bool lastLine = false;
 			for (int y = lastStart; y < pixelHeight; y++)
 				for (int x < pixelWidth) lastLine |= pixels[(y * pixelWidth + x) * 4 + 3] != 0;
 			Test.Assert(lastLine && GL.glGetError() == GL.GL_NO_ERROR);
 		}
-		renderer.[Friend]mPixelWidth = 240; renderer.[Friend]mPixelHeight = 160;
+		canvas.[Friend]mMetrics.PixelWidth = 240; canvas.[Friend]mMetrics.PixelHeight = 160;
 		label.TextAlign = .TopLeft;
 		let restored = renderer.[Friend]GetText(label);
-		GL.glBindTexture(GL.GL_TEXTURE_2D, restored.Texture);
+		GL.glBindTexture(GL.GL_TEXTURE_2D, restored.Image.Handle);
 		int32 restoredWidth = 0;
 		GL.glGetTexLevelParameteriv(GL.GL_TEXTURE_2D, 0, GL.GL_TEXTURE_WIDTH, &restoredWidth);
 		Test.Assert(restoredWidth == width && backend.MeasureText(label) == measured);
