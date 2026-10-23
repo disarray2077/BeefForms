@@ -54,7 +54,7 @@ internal class SDLTextService
 	public static int32 FontKey(Control control, float rasterScale = 1)
 	{
 		let font = control.Font;
-		let pixels = font == null ? 12 : Math.Max(1, (int32)(font.Size * (font.Unit == .Point ? 96.0f / 72 : 1)));
+		let pixels = font == null ? 12 : Math.Max(1, (int32)font.GetPixelSize(96));
 		return (int32)Math.Ceiling(pixels * rasterScale) * FontStyleStride + (font == null ? 0 : (int32)font.Style);
 	}
 
