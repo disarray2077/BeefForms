@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Drawing;
+using System.Text;
 using System.Windows.Forms;
 
 using internal System.Windows.Forms;
@@ -13,7 +14,7 @@ internal class Win32Backend : FormsBackend
 {
 	public override ApplicationBackend Type => .Win32;
 
-	private Dictionary<void*, Control> mControls = new .() ~ delete _;
+	private append Dictionary<void*, Control> mControls = .();
 	private bool mRegistered;
 	private Control mHovered;
 	private bool mSuppressChars;
@@ -97,7 +98,7 @@ internal class Win32Backend : FormsBackend
 		{
 			Win32.WNDCLASSEX definition = .(
 				sizeof(Win32.WNDCLASSEX), Win32.CS_DBLCLKS, => WindowProc, 0, 0, Win32.GetModuleHandle(null),
-				null, Win32.LoadCursor(null, (int*)(void*)32512), (void*)16, null, (char16*)&Win32.FORM_CLASS, null);
+				null, Win32.LoadCursor(null, (int*)(void*)Win32.IDC_ARROW), (void*)(Win32.COLOR_BTNFACE + 1), null, (char16*)&Win32.FORM_CLASS, null);
 			Win32.RegisterClassEx(definition);
 			mRegistered = true;
 		}
@@ -200,15 +201,15 @@ internal class Win32Backend : FormsBackend
 			if (let progress = control as ProgressBar) UpdateProgressBar(progress, change);
 		if (change == .Value || change == .All)
 			if (let checkBox = control as CheckBox)
-				Win32.SendMessage(control.Handle, Win32.BM_SETCHECK, (uint*)(void*)(int)(checkBox.Checked ? 1 : 0), null);
+				Win32.SendMessage(control.Handle, Win32.BM_SETCHECK, (uint*)(void*)(checkBox.Checked ? 1 : 0), null);
 		if (let editor = control as TextBoxBase)
 		{
 			if (change == .ReadOnly || change == .All)
-				Win32.SendMessage(control.Handle, Win32.EM_SETREADONLY, (uint*)(void*)(int)(editor.ReadOnly ? 1 : 0), null);
+				Win32.SendMessage(control.Handle, Win32.EM_SETREADONLY, (uint*)(void*)(editor.ReadOnly ? 1 : 0), null);
 			if (change == .Selection || change == .All)
 				Win32.SendMessage(control.Handle, Win32.EM_SETSEL,
-					(uint*)(void*)TextBoxBase.Utf16Offset(editor.Text, editor.SelectionAnchor),
-					(int*)(void*)TextBoxBase.Utf16Offset(editor.Text, editor.Caret));
+					(uint*)(void*)TextEncodingHelper.ToUtf16Offset(editor.Text, editor.SelectionAnchor),
+					(int*)(void*)TextEncodingHelper.ToUtf16Offset(editor.Text, editor.Caret));
 		}
 		Win32.InvalidateRect(control.Handle, null, true);
 	}

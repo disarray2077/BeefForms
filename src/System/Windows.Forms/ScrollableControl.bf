@@ -8,7 +8,7 @@ public class ScrollableControl : Control
 {
 	private bool mAutoScroll;
 	private Size mMinimumSize, mContentSize;
-	private System.Drawing.Point mScrollPosition;
+	private Point mScrollPosition;
 	private bool mHorizontalScroll, mVerticalScroll;
 	private bool mDragging, mDragHorizontal;
 	private int32 mDragOffset;
@@ -25,15 +25,16 @@ public class ScrollableControl : Control
 		get => mMinimumSize;
 		set { mMinimumSize = value; UpdateScrollBounds(); }
 	}
-	public System.Drawing.Point ScrollPosition
+	public Point ScrollPosition
 	{
 		get => mScrollPosition;
 		set
 		{
 			let viewport = ViewportSize;
-			let position = System.Drawing.Point(
+			let position = Point(
 				Math.Clamp(value.x, 0, Math.Max(0, mContentSize.width - viewport.width)),
-				Math.Clamp(value.y, 0, Math.Max(0, mContentSize.height - viewport.height)));
+				Math.Clamp(value.y, 0, Math.Max(0, mContentSize.height - viewport.height))
+			);
 			if (position.x == mScrollPosition.x && position.y == mScrollPosition.y) return;
 			mScrollPosition = position;
 			UpdateBackend(.Scroll);
@@ -43,7 +44,7 @@ public class ScrollableControl : Control
 	public bool HorizontalScrollVisible => mHorizontalScroll;
 	public bool VerticalScrollVisible => mVerticalScroll;
 	internal Size ScrollContentSize => mContentSize;
-	protected internal override System.Drawing.Point ContentOffset => mScrollPosition;
+	protected internal override Point ContentOffset => mScrollPosition;
 	protected internal override Size LayoutSize => Application.Backend.GetScrollClientSize(this);
 	protected internal override Size ViewportSize
 	{
@@ -116,9 +117,6 @@ public class ScrollableControl : Control
 		return result;
 	}
 
-	private static bool Contains(Rectangle rect, int32 x, int32 y) =>
-		x >= rect.X && y >= rect.Y && x < rect.X + rect.Width && y < rect.Y + rect.Height;
-
 	protected override void OnMouseWheel(MouseEventArgs args)
 	{
 		base.OnMouseWheel(args);
@@ -138,11 +136,11 @@ public class ScrollableControl : Control
 		if (args.Handled || IsDisposingOrDisposed || args.Button != .Left) return;
 		for (let horizontal in scope bool[](true, false))
 		{
-			if (!Contains(ScrollTrack(horizontal), args.X, args.Y)) continue;
+			if (!ScrollTrack(horizontal).Contains(args.X, args.Y)) continue;
 			let thumb = ScrollThumb(horizontal);
 			let coordinate = horizontal ? args.X : args.Y;
 			let start = horizontal ? thumb.X : thumb.Y;
-			if (Contains(thumb, args.X, args.Y))
+			if (thumb.Contains(args.X, args.Y))
 			{
 				mDragging = true;
 				mDragHorizontal = horizontal;

@@ -8,7 +8,7 @@ namespace BeefForms.Backends;
 
 extension SDLWindowSession
 {
-	private Dictionary<ProgressBar, uint64> mMarqueeStarts = new .() ~ delete _;
+	private append Dictionary<ProgressBar, uint64> mMarqueeStarts = .();
 
 	private void UpdateMarquee(ProgressBar progress)
 	{
@@ -22,7 +22,7 @@ extension SDLWindowSession
 	{
 		mRenderer.Fill(bounds, 230f / 255, 230f / 255, 230f / 255);
 		let track = Rectangle(bounds.X + 1, bounds.Y + 1, Math.Max(0, bounds.Width - 2), Math.Max(0, bounds.Height - 2));
-		mRenderer.Clip(Intersect(clip, track));
+		mRenderer.Clip(clip.Intersect(track));
 		if (progress.Style == .Marquee)
 		{
 			if (progress.MarqueeAnimationSpeed > 0 && track.Width > 0 && track.Height > 0)

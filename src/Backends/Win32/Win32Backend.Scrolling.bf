@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Windows;
 using System.Windows.Forms;
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
@@ -36,17 +37,17 @@ extension Win32Backend
 		Point delta = .(0, 0);
 		for (let horizontal in scope bool[](true, false))
 		{
-			Win32.SCROLLINFO info = .(sizeof(Win32.SCROLLINFO), 4, 0, 0, 0, 0, 0);
-			Win32.GetScrollInfo(control.Handle, horizontal ? 0 : 1, ref info);
+			Win32.SCROLLINFO info = .(sizeof(Win32.SCROLLINFO), Win32.SIF_POS, 0, 0, 0, 0, 0);
+			Win32.GetScrollInfo(control.Handle, horizontal ? Win32.SB_HORZ : Win32.SB_VERT, ref info);
 			if (horizontal) delta.x = info.nPos - control.ScrollPosition.x;
 			else delta.y = info.nPos - control.ScrollPosition.y;
 			info = .(
-				sizeof(Win32.SCROLLINFO), 7, 0,
+				sizeof(Win32.SCROLLINFO), Win32.SIF_RANGE | Win32.SIF_PAGE | Win32.SIF_POS, 0,
 				Math.Max(0, (horizontal ? content.width : content.height) - 1),
 				(uint32)(horizontal ? viewport.width : viewport.height),
 				horizontal ? control.ScrollPosition.x : control.ScrollPosition.y, 0);
-			Win32.SetScrollInfo(control.Handle, horizontal ? 0 : 1, ref info, 1);
-			Win32.ShowScrollBar(control.Handle, horizontal ? 0 : 1,
+			Win32.SetScrollInfo(control.Handle, horizontal ? Win32.SB_HORZ : Win32.SB_VERT, ref info, 1);
+			Win32.ShowScrollBar(control.Handle, horizontal ? Win32.SB_HORZ : Win32.SB_VERT,
 				(horizontal ? control.HorizontalScrollVisible : control.VerticalScrollVisible) ? 1 : 0);
 		}
 		if (delta.x != 0 || delta.y != 0)
@@ -70,16 +71,16 @@ extension Win32Backend
 		let page = horizontal ? scrollable.ViewportSize.width : scrollable.ViewportSize.height;
 		switch (command)
 		{
-		case 0: value -= 16;
-		case 1: value += 16;
-		case 2: value -= page;
-		case 3: value += page;
-		case 4, 5:
-			Win32.SCROLLINFO info = .(sizeof(Win32.SCROLLINFO), 0x10, 0, 0, 0, 0, 0);
-			Win32.GetScrollInfo(control.Handle, horizontal ? 0 : 1, ref info);
+		case Win32.SB_LINEUP: value -= 16;
+		case Win32.SB_LINEDOWN: value += 16;
+		case Win32.SB_PAGEUP: value -= page;
+		case Win32.SB_PAGEDOWN: value += page;
+		case Win32.SB_THUMBPOSITION, Win32.SB_THUMBTRACK:
+			Win32.SCROLLINFO info = .(sizeof(Win32.SCROLLINFO), Win32.SIF_TRACKPOS, 0, 0, 0, 0, 0);
+			Win32.GetScrollInfo(control.Handle, horizontal ? Win32.SB_HORZ : Win32.SB_VERT, ref info);
 			value = info.nTrackPos;
-		case 6: value = 0;
-		case 7: value = int32.MaxValue;
+		case Win32.SB_TOP: value = 0;
+		case Win32.SB_BOTTOM: value = int32.MaxValue;
 		default: return true;
 		}
 		if (horizontal) position.x = value;

@@ -294,24 +294,24 @@ class OwnershipTests
 		Test.Assert(deletions == 2 && notifications == 1);
 	}
 
-	[Test]
-	public static void CyclesAreRejectedBeforeChangingEitherTree()
+	[Test(ShouldFail=true)]
+	public static void InsertingAncestorAsChildIsFatal()
 	{
 		let outer = scope Control();
 		let ancestor = new Control();
 		let descendant = new Control();
 		outer.Controls.Add(ancestor);
 		ancestor.Controls.Add(descendant);
-		// Exercise the insertion operation without the public API's fatal-error policy.
-		Test.Assert(descendant.Controls.[Friend]TryInsert(0, descendant) case .Err);
-		Test.Assert(descendant.Parent == ancestor && ancestor.Controls.Count == 1);
-		Test.Assert(descendant.Controls.[Friend]TryInsert(0, ancestor) case .Err);
-		Test.Assert(ancestor.Parent == outer && descendant.Parent == ancestor);
-		Test.Assert(outer.Controls.Count == 1 && ancestor.Controls.Count == 1 && descendant.Controls.IsEmpty);
-		let sibling = new Control();
-		outer.Controls.Add(sibling);
-		sibling.Controls.Add(descendant);
-		Test.Assert(ancestor.Controls.IsEmpty && descendant.Parent == sibling);
+		descendant.Controls.Insert(0, ancestor);
+	}
+
+	[Test(ShouldFail=true)]
+	public static void InsertingSelfAsChildIsFatal()
+	{
+		let ancestor = new Control();
+		let descendant = new Control();
+		ancestor.Controls.Add(descendant);
+		descendant.Controls.Insert(0, descendant);
 	}
 
 	[Test(ShouldFail = true)]

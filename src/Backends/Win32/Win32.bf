@@ -13,6 +13,20 @@ static class Win32
 		public this(uint32 size, uint32 mask, int32 minimum, int32 maximum, uint32 page, int32 position, int32 track)
 		{ cbSize = size; fMask = mask; nMin = minimum; nMax = maximum; nPage = page; nPos = position; nTrackPos = track; }
 	}
+	public const int32 SB_HORZ = 0;
+	public const int32 SB_VERT = 1;
+	public const uint32 SIF_RANGE = 0x1;
+	public const uint32 SIF_PAGE = 0x2;
+	public const uint32 SIF_POS = 0x4;
+	public const uint32 SIF_TRACKPOS = 0x10;
+	public const uint32 SB_LINEUP = 0;
+	public const uint32 SB_LINEDOWN = 1;
+	public const uint32 SB_PAGEUP = 2;
+	public const uint32 SB_PAGEDOWN = 3;
+	public const uint32 SB_THUMBPOSITION = 4;
+	public const uint32 SB_THUMBTRACK = 5;
+	public const uint32 SB_TOP = 6;
+	public const uint32 SB_BOTTOM = 7;
 	[Import("user32.dll"), CLink]
 	public static extern int32 SetScrollInfo(void* window, int32 bar, ref SCROLLINFO info, BOOL redraw);
 	[Import("user32.dll"), CLink]
@@ -33,6 +47,16 @@ static class Win32
 	public const int32 SM_CXVSCROLL = 2;
 	public const int32 SM_CYHSCROLL = 3;
 	public const int32 SM_CYBORDER = 6;
+	public const uint32 BN_CLICKED = 0;
+	public const uint32 EN_CHANGE = 0x0300;
+	public const int32 VK_SHIFT = 0x10;
+	public const int32 VK_CONTROL = 0x11;
+	public const int32 VK_MENU = 0x12;
+	public const int IDC_ARROW = 32512;
+	public const int COLOR_BTNFACE = 15;
+	public const int32 COLOR_GRAYTEXT = 17;
+	public const int32 COLOR_BTNTEXT = 18;
+	public const uint32 TME_LEAVE = 0x00000002;
 
 	[CRepr]
 	public struct GdiplusStartupInput

@@ -70,13 +70,6 @@ extension SDLWindowSession
 		}
 	}
 
-	private static Rectangle Intersect(Rectangle a, Rectangle b)
-	{
-		let x = Math.Max(a.X, b.X), y = Math.Max(a.Y, b.Y);
-		return .(x, y, Math.Max(0, Math.Min(a.X + a.Width, b.X + b.Width) - x),
-			Math.Max(0, Math.Min(a.Y + a.Height, b.Y + b.Height) - y));
-	}
-
 	private static void InvalidateTree(Control control)
 	{
 		control.Invalidate();
@@ -86,7 +79,7 @@ extension SDLWindowSession
 	private void RenderControl(Control control, Rectangle bounds, Rectangle parentClip, Generation snapshot)
 	{
 		if (!IsCurrentControl(control, snapshot) || !control.IsEffectivelyVisible) return;
-		var clip = Intersect(bounds, parentClip);
+		var clip = bounds.Intersect(parentClip);
 		if (clip.Width == 0 || clip.Height == 0)
 			return;
 		mRenderer.Clip(clip);
@@ -139,7 +132,7 @@ extension SDLWindowSession
 
 		let viewport = control.ViewportSize;
 		int32 border = (control is Form) ? 0 : control.BorderWidth;
-		let childClip = Intersect(clip, .(bounds.X + border, bounds.Y + border, viewport.width, viewport.height));
+		let childClip = clip.Intersect(.(bounds.X + border, bounds.Y + border, viewport.width, viewport.height));
 		let children = scope List<Control>();
 		for (let child in control.Controls) children.Add(child);
 		for (let child in children)
@@ -167,12 +160,13 @@ extension SDLWindowSession
 
 	private void RenderEditor(TextBoxBase editor, Rectangle bounds, Rectangle parentClip)
 	{
+		const int32 textInset = SDLTextService.EditorTextInset;
 		let background = editor.ReadOnly ? 240f / 255 : 1f;
 		mRenderer.Fill(bounds, background, background, background);
 		if (editor.BorderStyle != .None)
 			if (IsFocused(editor)) mRenderer.Border(bounds, 0, 120f / 255, 215f / 255);
 			else mRenderer.Border(bounds, 0.68f, 0.68f, 0.68f);
-		let clip = Intersect(parentClip, .(bounds.X + 2, bounds.Y + 2, Math.Max(0, bounds.Width - 4), Math.Max(0, bounds.Height - 4)));
+		let clip = parentClip.Intersect(.(bounds.X + 2, bounds.Y + 2, Math.Max(0, bounds.Width - 4), Math.Max(0, bounds.Height - 4)));
 		mRenderer.Clip(clip);
 		let caret = mRenderer.TextPosition(editor, editor.Caret);
 		if (IsFocused(editor))
@@ -189,7 +183,7 @@ extension SDLWindowSession
 					if (lineEnd < 0 || lineEnd > end) lineEnd = end;
 					let a = mRenderer.TextPosition(editor, start);
 					let b = mRenderer.TextPosition(editor, lineEnd);
-					mRenderer.Fill(.(bounds.X + 4 + a.x - editor.ScrollX, bounds.Y + 4 + a.y - editor.ScrollY,
+					mRenderer.Fill(.(bounds.X + textInset + a.x - editor.ScrollX, bounds.Y + textInset + a.y - editor.ScrollY,
 						Math.Max(2, b.x - a.x), mRenderer.LineHeight(editor)), 0.65f, 0.8f, 1);
 					start = lineEnd + 1;
 				}
@@ -199,11 +193,11 @@ extension SDLWindowSession
 				let phase = mFrameTicks % 1000;
 				mNextAnimationTick = Math.Min(mNextAnimationTick, mFrameTicks + (phase < 550 ? 550 - phase : 1000 - phase));
 				if (phase < 550)
-					mRenderer.Fill(.(bounds.X + 4 + caret.x - editor.ScrollX, bounds.Y + 4 + caret.y - editor.ScrollY,
+					mRenderer.Fill(.(bounds.X + textInset + caret.x - editor.ScrollX, bounds.Y + textInset + caret.y - editor.ScrollY,
 						1, mRenderer.LineHeight(editor)), 0.1f, 0.1f, 0.1f);
 			}
 		}
-		mRenderer.Text(editor, bounds.X + 4 - editor.ScrollX, bounds.Y + 4 - editor.ScrollY);
+		mRenderer.Text(editor, bounds.X + textInset - editor.ScrollX, bounds.Y + textInset - editor.ScrollY);
 	}
 
 }

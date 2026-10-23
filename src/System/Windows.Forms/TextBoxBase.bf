@@ -1,6 +1,5 @@
-
-
 using System.Text;
+using BeefForms.Backends;
 
 using internal System.Windows.Forms;
 using internal BeefForms.Backends;
@@ -21,6 +20,7 @@ public class TextBoxBase : Control
 			base.Size = size;
 		}
 	}
+
 	private bool mReadOnly;
 	public bool ReadOnly
 	{
@@ -30,7 +30,7 @@ public class TextBoxBase : Control
 	/// Selection positions and lengths use UTF-16 code units.
 	public int SelectionStart
 	{
-		get => Utf16Offset(Text, SelectionByteStart);
+		get => TextEncodingHelper.ToUtf16Offset(Text, SelectionByteStart);
 		set
 		{
 			if (value < 0) Runtime.FatalError("SelectionStart must not be negative");
@@ -39,7 +39,7 @@ public class TextBoxBase : Control
 	}
 	public int SelectionLength
 	{
-		get => Utf16Offset(Text, SelectionByteStart + SelectionByteLength) - SelectionStart;
+		get => TextEncodingHelper.ToUtf16Offset(Text, SelectionByteStart + SelectionByteLength) - SelectionStart;
 		set
 		{
 			if (value < 0) Runtime.FatalError("SelectionLength must not be negative");
@@ -56,16 +56,16 @@ public class TextBoxBase : Control
 	private int mAnchor;
 	internal bool UpdatingText { get; private set; }
 
-	public override String Text
+	public override StringView Text
 	{
 		get => base.Text;
 		set
 		{
-			let text = value ?? String.Empty;
+			let text = value;
 			if (Text == text) return;
 			// Created WinForms editors reset selection; unrealized editors retain UTF-16 positions.
-			let anchor = IsHandleCreated ? 0 : Utf8Offset(text, Utf16Offset(Text, mAnchor));
-			let caret = IsHandleCreated ? 0 : Utf8Offset(text, Utf16Offset(Text, mCaret));
+			let anchor = IsHandleCreated ? 0 : TextEncodingHelper.ToUtf8Offset(text, TextEncodingHelper.ToUtf16Offset(Text, mAnchor));
+			let caret = IsHandleCreated ? 0 : TextEncodingHelper.ToUtf8Offset(text, TextEncodingHelper.ToUtf16Offset(Text, mCaret));
 			CommitText(text, anchor, caret);
 		}
 	}
@@ -73,8 +73,8 @@ public class TextBoxBase : Control
 	private void CommitText(StringView text, int anchor, int caret, bool forceNotification = false)
 	{
 		let changed = SetTextValue(text);
-		mAnchor = CharacterBoundary(anchor);
-		mCaret = CharacterBoundary(caret);
+		mAnchor = TextEncodingHelper.CharacterBoundary(Text, anchor);
+		mCaret = TextEncodingHelper.CharacterBoundary(Text, caret);
 		UpdatingText = true;
 		if (changed) UpdateBackend(.Text);
 		UpdateBackend(.Selection);
@@ -88,15 +88,15 @@ public class TextBoxBase : Control
 	{
 		let textLength = UTF16.GetEncodedLen(Text);
 		let position = Math.Clamp(start, 0, textLength);
-		mAnchor = Utf8Offset(Text, position);
-		mCaret = Utf8Offset(Text, position + Math.Clamp(length, -position, textLength - position));
+		mAnchor = TextEncodingHelper.ToUtf8Offset(Text, position);
+		mCaret = TextEncodingHelper.ToUtf8Offset(Text, position + Math.Clamp(length, -position, textLength - position));
 		UpdateBackend(.Selection);
 	}
 	public void SelectAll() => Select(0, UTF16.GetEncodedLen(Text));
 
 	internal void SetCaret(int position, bool extend)
 	{
-		mCaret = CharacterBoundary(position);
+		mCaret = TextEncodingHelper.CharacterBoundary(Text, position);
 		if (!extend)
 			mAnchor = mCaret;
 		UpdateBackend(.Selection);
@@ -108,38 +108,7 @@ public class TextBoxBase : Control
 		mCaret = caret;
 	}
 
-	internal static int Utf16Offset(StringView text, int utf8Offset) =>
-		UTF16.GetEncodedLen(text.Substring(0, utf8Offset));
-
-	internal static int Utf8Offset(StringView text, int utf16Offset)
-	{
-		int units = 0, bytes = 0;
-		for (let character in text.DecodedChars)
-		{
-			let length = UTF16.GetEncodedLength(character);
-			// Keep whole characters when an index falls between a surrogate pair.
-			if (units + length > utf16Offset) break;
-			units += length;
-			bytes += UTF8.GetEncodedLength(character);
-		}
-		return bytes;
-	}
-
-	private int CharacterBoundary(int position)
-	{
-		var result = Math.Clamp(position, 0, Text.Length);
-		while (result > 0 && result < Text.Length && ((uint8)Text[result] & 0xC0) == 0x80)
-			result--;
-		return result;
-	}
-
-	internal int AdjacentPosition(int position, bool forward)
-	{
-		var result = position + (forward ? 1 : -1);
-		while (result > 0 && result < Text.Length && ((uint8)Text[result] & 0xC0) == 0x80)
-			result += forward ? 1 : -1;
-		return Math.Clamp(result, 0, Text.Length);
-	}
+	internal int AdjacentPosition(int position, bool forward) => TextEncodingHelper.AdjacentPosition(Text, position, forward);
 
 	internal void ReplaceSelection(StringView value)
 	{

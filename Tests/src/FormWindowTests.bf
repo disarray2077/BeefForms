@@ -168,7 +168,7 @@ class FormWindowTests
 		form.Show();
 		defer { form.Close(); Application.Backend.Run(form); }
 		form.ClientSize = .(100, 80);
-		if (let sdl = Application.Backend as SDLBackend)
+		if (Application.Backend is SDLBackend)
 		{
 			let window = (SDL.Window*)form.Handle;
 			SDL.GetWindowSize(window, var width, var height);

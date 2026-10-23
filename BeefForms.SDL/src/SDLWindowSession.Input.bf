@@ -28,19 +28,6 @@ extension SDLWindowSession
 		return control;
 	}
 
-	private static Point PositionIn(Control control, int x, int y)
-	{
-		var result = Point((.)x, (.)y);
-		for (var current = control; current.Parent != null; current = current.Parent)
-		{
-			int32 border = (current.Parent is Form) ? 0 : current.Parent.BorderWidth;
-			result.x -= current.Location.x + border - current.Parent.ContentOffset.x;
-			result.y -= current.Location.y + border - current.Parent.ContentOffset.y;
-		}
-		if (!(control is Form)) { result.x -= control.BorderWidth; result.y -= control.BorderWidth; }
-		return result;
-	}
-
 	public bool IsFocused(Control control) => mActive && mFocused == control;
 	public bool HasCapture(Control control) => mCaptured == control;
 	public void SetCapture(Control control, bool capture)
@@ -105,8 +92,8 @@ extension SDLWindowSession
 		if (mActive && mFocused is TextBoxBase)
 		{
 			SDL.StartTextInput();
-			let point = PositionIn(mFocused, 0, 0);
-			SDL.Rect input = .(-point.x, -point.y, mFocused.Size.width, mFocused.Size.height);
+			let point = mFocused.LocalToRootPoint(.(0, 0));
+			SDL.Rect input = .(point.x, point.y, mFocused.Size.width, mFocused.Size.height);
 			SDL.SetTextInputRect(&input);
 		}
 		else if (SDL.GetKeyboardFocus() == mWindow || SDL.GetKeyboardFocus() == null)
@@ -186,14 +173,14 @@ extension SDLWindowSession
 			if (target != null)
 			{
 				let handleSnapshot = target.HandleGeneration;
-				let point = PositionIn(target, input.motion.x, input.motion.y);
+				let point = target.RootToLocalPoint(.(input.motion.x, input.motion.y));
 				let args = scope MouseEventArgs(.None, 0, point.x, point.y);
 				target.DispatchInput(.MouseMove, args);
 				if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
 				if (!args.Handled)
 					if (let editor = mPressed as TextBoxBase)
 					{
-						let position = PositionIn(editor, input.motion.x, input.motion.y);
+						let position = editor.RootToLocalPoint(.(input.motion.x, input.motion.y));
 						editor.SetCaret(mRenderer.HitText(editor, position.x, position.y), true);
 					}
 			}
@@ -203,7 +190,7 @@ extension SDLWindowSession
 			let target = mCaptured ?? mHovered;
 			if (target == null) break;
 			let handleSnapshot = target.HandleGeneration;
-			let point = PositionIn(target, input.button.x, input.button.y);
+			let point = target.RootToLocalPoint(.(input.button.x, input.button.y));
 			let args = scope MouseEventArgs(MouseButton(input.button.button), input.button.clicks, point.x, point.y);
 			target.DispatchInput(.MouseDown, args);
 			if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
@@ -235,7 +222,7 @@ extension SDLWindowSession
 			let target = mCaptured ?? hit;
 			if (target == null) break;
 			let handleSnapshot = target.HandleGeneration;
-			let point = PositionIn(target, input.button.x, input.button.y);
+			let point = target.RootToLocalPoint(.(input.button.x, input.button.y));
 			let args = scope MouseEventArgs(MouseButton(input.button.button), input.button.clicks, point.x, point.y);
 			target.DispatchInput(.MouseUp, args);
 			if (!IsCurrentControl(target, snapshot, handleSnapshot)) break;
@@ -263,7 +250,7 @@ extension SDLWindowSession
 			let target = mHovered;
 			if (target != null)
 			{
-				let point = PositionIn(target, x, y);
+				let point = target.RootToLocalPoint(.(x, y));
 				let direction = input.wheel.direction == 1 ? -120 : 120;
 				let args = scope MouseEventArgs(.None, 0, point.x, point.y, (int32)(input.wheel.y * direction), (int32)(input.wheel.x * direction));
 				target.DispatchMouseWheel(args);
@@ -411,8 +398,8 @@ extension SDLWindowSession
 		case .UP, .DOWN:
 			let position = mRenderer.TextPosition(editor, editor.Caret);
 			let delta = symbol == .DOWN ? 1 : -1;
-				editor.SetCaret(mRenderer.HitText(editor, position.x + 4 - editor.BorderWidth - editor.ScrollX,
-					position.y + delta * mRenderer.LineHeight(editor) + 4 - editor.BorderWidth - editor.ScrollY), shift);
+			editor.SetCaret(mRenderer.HitText(editor, position.x + SDLTextService.EditorTextInset - editor.BorderWidth - editor.ScrollX,
+				position.y + delta * mRenderer.LineHeight(editor) + SDLTextService.EditorTextInset - editor.BorderWidth - editor.ScrollY), shift);
 		case .RETURN:
 			if (editor is RichTextBox) editor.ReplaceSelection("\n");
 		default:

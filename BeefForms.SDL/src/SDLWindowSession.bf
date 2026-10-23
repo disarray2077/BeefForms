@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Drawing;
+using System.Windows;
 using System.Windows.Forms;
 using SDL2;
 using BeefGL;
@@ -12,6 +13,8 @@ namespace BeefForms.Backends;
 
 internal class SDLWindowSession : RefCounted
 {
+	private struct WindowInsets : this(int32 Top, int32 Left, int32 Bottom, int32 Right);
+
 	private SDLBackend mBackend;
 	public this(SDLBackend backend, Form form, bool wheelHasPosition)
 	{
@@ -71,7 +74,7 @@ internal class SDLWindowSession : RefCounted
 		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_CORE);
 #endif
 		SDL.GL_SetAttribute(.GL_DOUBLEBUFFER, 1);
-		mWindow = SDL.CreateWindow(control.Text, (.)control.Location.x, (.)control.Location.y,
+		mWindow = SDL.CreateWindow(control.Text.ToScopeCStr!(), (.)control.Location.x, (.)control.Location.y,
 			Math.Max(1, size.width), Math.Max(1, size.height), .OpenGL | .Resizable | .AllowHighDPI | .Hidden);
 		if (mWindow == null)
 			Runtime.FatalError(scope $"Could not create SDL window: {StringView(SDL.GetError())}");
@@ -160,7 +163,7 @@ internal class SDLWindowSession : RefCounted
 				}
 			}
 			if (change == .Text)
-				SDL.SetWindowTitle(mWindow, control.Text);
+				SDL.SetWindowTitle(mWindow, control.Text.ToScopeCStr!());
 			if (change == .Constraints) ApplyMinimumSize(mForm);
 			if (change == .Bounds)
 			{
@@ -180,22 +183,27 @@ internal class SDLWindowSession : RefCounted
 		SDL.GetWindowSize(mWindow, var width, var height);
 		return .(width, height);
 	}
+	private WindowInsets GetWindowInsets()
+	{
+		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
+		return .(top, left, bottom, right);
+	}
 	private Point GetFormLocation()
 	{
 		SDL.GetWindowPosition(mWindow, var x, var y);
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		return .(x - left, y - top);
+		let insets = GetWindowInsets();
+		return .(x - insets.Left, y - insets.Top);
 	}
 	private void SetFormLocation(Point location)
 	{
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		SDL.SetWindowPosition(mWindow, location.x + left, location.y + top);
+		let insets = GetWindowInsets();
+		SDL.SetWindowPosition(mWindow, location.x + insets.Left, location.y + insets.Top);
 	}
 	private Size GetFormSize()
 	{
 		let client = GetClientSize(mForm);
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		return .(client.width + left + right, client.height + top + bottom);
+		let insets = GetWindowInsets();
+		return .(client.width + insets.Left + insets.Right, client.height + insets.Top + insets.Bottom);
 	}
 	private void UpdateFormSize()
 	{
@@ -206,13 +214,13 @@ internal class SDLWindowSession : RefCounted
 	}
 	private void SetFormSize(Form form, Size size)
 	{
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		SetClientSize(form, .(Math.Max(1, size.width - left - right), Math.Max(1, size.height - top - bottom)));
+		let insets = GetWindowInsets();
+		SetClientSize(form, .(Math.Max(1, size.width - insets.Left - insets.Right), Math.Max(1, size.height - insets.Top - insets.Bottom)));
 	}
 	private Size GetMinimumClientSize(Form form)
 	{
-		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
-		return .(Math.Max(0, form.MinimumSize.width - left - right), Math.Max(0, form.MinimumSize.height - top - bottom));
+		let insets = GetWindowInsets();
+		return .(Math.Max(0, form.MinimumSize.width - insets.Left - insets.Right), Math.Max(0, form.MinimumSize.height - insets.Top - insets.Bottom));
 	}
 	private void ApplyMinimumSize(Form form)
 	{

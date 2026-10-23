@@ -14,12 +14,14 @@ internal class SDLBackend : FormsBackend
 {
 	public override ApplicationBackend Type => .SDL2OpenGL;
 
-	private List<SDLWindowSession> mSessions = new .() ~ delete _;
-	private Dictionary<uint32, SDLWindowSession> mWindows = new .() ~ delete _;
-	private Dictionary<Control, SDLWindowSession> mControls = new .() ~ delete _;
+	private append List<SDLWindowSession> mSessions = .();
+	private append Dictionary<uint32, SDLWindowSession> mWindows = .();
+	private append Dictionary<Control, SDLWindowSession> mControls = .();
+
 	private bool mInitialized, mWheelHasPosition, mPumpingEvents;
 	private int mRenderThreadId, mFrames;
 	private SDL.EventType mRedrawEvent;
+
 	private SDLTextService mTextService;
 	internal SDLTextService TextService
 	{
@@ -94,13 +96,11 @@ internal class SDLBackend : FormsBackend
 	// Owns both session references until synchronous callbacks have unwound.
 	private struct ContextScope : IDisposable
 	{
-		private SDLBackend mBackend;
 		private ContextSnapshot mPrevious;
 		public SDLWindowSession Session;
 
 		public this(SDLBackend backend, SDLWindowSession session = null)
 		{
-			mBackend = backend;
 			mPrevious = ContextSnapshot.CaptureContext(backend);
 			Session = session;
 			Session?.AddRef();
@@ -116,11 +116,6 @@ internal class SDLBackend : FormsBackend
 	}
 
 	private ContextScope UseSession(Control control) => .(this, GetSession(control));
-
-	private void Snapshot(List<SDLWindowSession> sessions)
-	{
-		for (let session in mSessions) { session.AddRef(); sessions.Add(session); }
-	}
 
 	public override void CreateControl(Control control)
 	{
@@ -241,9 +236,7 @@ internal class SDLBackend : FormsBackend
 				!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)) return;
 			if (capture)
 			{
-				let sessions = scope List<SDLWindowSession>();
-				Snapshot(sessions);
-				defer { for (let other in sessions) other.ReleaseRef(); }
+				let sessions = ToScopedArray!(mSessions);
 				for (let other in sessions)
 					if (other != session) other.ReleaseCapture();
 			}
@@ -309,12 +302,10 @@ internal class SDLBackend : FormsBackend
 
 	private bool RenderIfNeeded(bool force = false, bool capture = false)
 	{
-		let sessions = scope List<SDLWindowSession>();
-		Snapshot(sessions);
-		defer { for (let session in sessions) session.ReleaseRef(); }
 		using (ContextScope(this))
 		{
 			bool rendered = false;
+			let sessions = ToScopedArray!(mSessions);
 			for (let session in sessions)
 			{
 				session.MakeCurrent();
@@ -366,9 +357,7 @@ internal class SDLBackend : FormsBackend
 		{
 			if (input.type == .WindowEvent && input.window.windowEvent == .FocusGained)
 			{
-				let sessions = scope List<SDLWindowSession>();
-				Snapshot(sessions);
-				defer { for (let other in sessions) other.ReleaseRef(); }
+				let sessions = ToScopedArray!(mSessions);
 				for (let other in sessions)
 					if (other != session) other.Deactivate();
 			}

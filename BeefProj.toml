@@ -2,7 +2,3 @@ FileVersion = 1
 
 [Project]
 Name = "BeefForms"
-TargetType = "BeefLib"
-
-[Dependencies]
-corlib = "*"

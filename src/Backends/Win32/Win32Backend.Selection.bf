@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using System.Windows.Forms;
 
 using internal System.Windows.Forms;
@@ -14,8 +15,8 @@ extension Win32Backend
 		if (editor.Handle == null || mInsertingText || editor.UpdatingText) return;
 		uint32 nativeStart = 0, nativeEnd = 0;
 		Win32.SendMessage(editor.Handle, Win32.EM_GETSEL, (uint*)&nativeStart, (int*)&nativeEnd);
-		let start = TextBoxBase.Utf8Offset(text, nativeStart);
-		let end = TextBoxBase.Utf8Offset(text, nativeEnd);
+		let start = TextEncodingHelper.ToUtf8Offset(text, nativeStart);
+		let end = TextEncodingHelper.ToUtf8Offset(text, nativeEnd);
 		var caretAtStart = start != end && editor.SelectionAnchor == end;
 		// EM_GETSEL sorts the endpoints; the visible caret identifies the active end.
 		if (start != end && IsFocused(editor) && Win32.GetCaretPos(var caret))

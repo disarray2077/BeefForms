@@ -62,8 +62,8 @@ public class KeyPressEventArgs : InputEventArgs
 
 public class TextInputEventArgs : InputEventArgs
 {
-	public readonly String Text ~ delete _;
-	public this(StringView text) { Text = new .(text); }
+	public append String Text = .();
+	public this(StringView text) { Text.Set(text); }
 }
 
 public delegate void MouseEventHandler(Object sender, MouseEventArgs args);

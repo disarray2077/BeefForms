@@ -39,7 +39,7 @@ extension Win32Backend
 			{
 				// Native group boxes leave background erasure to their host.
 				Win32.GetClientRect(window, var bounds);
-				Win32.FillRect(wParam, ref bounds, (void*)16);
+				Win32.FillRect(wParam, ref bounds, (void*)(Win32.COLOR_BTNFACE + 1));
 				return 1;
 			}
 			if (backend.DispatchNativeInput(control, message, wParam, lParam))
@@ -80,18 +80,18 @@ extension Win32Backend
 			return;
 		let notification = (uint)(void*)wParam >> 16;
 		if (let button = control as ButtonBase)
-			if (notification == 0)
+			if (notification == Win32.BN_CLICKED)
 				button.PerformClick();
-		if (control is TextBoxBase && notification == 0x300)
+		if (control is TextBoxBase && notification == Win32.EN_CHANGE)
 			NotifyNativeText(control);
 	}
 
 	private static Keys KeyboardModifiers()
 	{
 		Keys result = .None;
-		if (Win32.GetKeyState(16) < 0) result |= .Shift;
-		if (Win32.GetKeyState(17) < 0) result |= .Control;
-		if (Win32.GetKeyState(18) < 0) result |= .Alt;
+		if (Win32.GetKeyState(Win32.VK_SHIFT) < 0) result |= .Shift;
+		if (Win32.GetKeyState(Win32.VK_CONTROL) < 0) result |= .Control;
+		if (Win32.GetKeyState(Win32.VK_MENU) < 0) result |= .Alt;
 		return result;
 	}
 
@@ -170,7 +170,7 @@ extension Win32Backend
 				Control.UpdateMouseOver(mHovered, control);
 				if (control.Handle != window || !control.IsCurrentHandle(snapshot)) return true;
 				mHovered = control;
-				Win32.TRACKMOUSEEVENT tracking = .(sizeof(Win32.TRACKMOUSEEVENT), 2, control.Handle, 0);
+				Win32.TRACKMOUSEEVENT tracking = .(sizeof(Win32.TRACKMOUSEEVENT), Win32.TME_LEAVE, control.Handle, 0);
 				Win32.TrackMouseEvent(ref tracking);
 			}
 			let delta = wheel ? (int16)(((uint)(void*)wParam >> 16) & 0xFFFF) : 0;

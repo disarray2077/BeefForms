@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Drawing;
+using System.Windows;
 using System.Windows.Forms;
 using SDL2;
 using BeefGL;
@@ -15,17 +16,18 @@ internal class SDLRenderer
 	private class TextTexture
 	{
 		public uint32 Texture;
-		public int32 Width, Height, FontKey, LayoutWidth, Alignment;
+		public int32 Width, Height, FontKey, LayoutWidth;
+		public HorizontalAlignment Alignment;
 		public float RasterScale;
 		public bool Ellipsis;
-		public String Text = new .() ~ delete _;
+		public append String Text = .();
 		public ~this() { if (Texture != 0) GL.glDeleteTextures(1, &Texture); }
 	}
 
 	private uint32 mProgram, mBuffer, mVertexArray, mWhiteTexture;
 	private int mViewportUniform, mColorUniform;
 	private SDLTextService mTextService;
-	private Dictionary<Control, TextTexture> mText = new .() ~ DeleteDictionaryAndValues!(_);
+	private append Dictionary<Control, TextTexture> mText = .() ~ DeleteDictionaryValues!(_);
 	private int32 mWidth, mHeight, mPixelWidth, mPixelHeight;
 
 	public this(SDLTextService textService)
@@ -197,8 +199,8 @@ internal class SDLRenderer
 		let alignment = SDLTextService.Alignment(control);
 		if (scale == 1)
 		{
-			SDLTTF.SetFontWrappedAlign(font, alignment);
-			defer SDLTTF.SetFontWrappedAlign(font, 0);
+			SDLTTF.SetFontWrappedAlign(font, (int32)alignment);
+			defer SDLTTF.SetFontWrappedAlign(font, (int32)HorizontalAlignment.Left);
 			return SDLTTF.RenderUTF8_Blended_Wrapped(font, text, .(255, 255, 255, 255),
 				SDLTextService.HasEllipsis(control) ? 0 : (uint32)mTextService.LayoutWidth(control));
 		}
@@ -219,7 +221,7 @@ internal class SDLRenderer
 			let rendered = SDLTTF.RenderUTF8_Blended(font, content, .(255, 255, 255, 255));
 			if (rendered == null) Runtime.FatalError(scope $"Could not render UI text: {StringView(SDL.GetError())}");
 			defer SDL.FreeSurface(rendered);
-			let x = alignment == 1 ? (size.width - line.Width) / 2 : alignment == 2 ? size.width - line.Width : 0;
+			let x = alignment == .Center ? (size.width - line.Width) / 2 : alignment == .Right ? size.width - line.Width : 0;
 			SDL.Rect destination = .((.)Math.Round(x * scale), (.)Math.Round(row * lineSkip * scale),
 				(.)Math.Ceiling(line.Width * scale), (.)Math.Ceiling(line.Height * scale));
 			if (SDL.SetSurfaceBlendMode(rendered, .None) != 0 || SDL.BlitScaled(rendered, null, surface, &destination) != 0)

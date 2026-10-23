@@ -3,19 +3,26 @@ using System.Collections;
 using System.Drawing;
 using System.IO;
 using System.Text;
+using System.Windows;
 using System.Windows.Forms;
 using SDL2;
 
 using internal System.Windows.Forms;
+using internal System.Drawing;
+using internal BeefForms.Backends;
 
 namespace BeefForms.Backends;
 
 // Font metrics and text layout have no window or OpenGL resources.
 internal class SDLTextService
 {
-	private Dictionary<int32, SDLTTF.Font*> mFonts = new .() ~ delete _;
-	private String mConfiguredPath = new .() ~ delete _;
-	private String mFontPath = new .() ~ delete _;
+	// Shared by painting, hit testing, and keyboard navigation in logical pixels.
+	public const int32 EditorTextInset = 4;
+	private const int32 FontStyleStride = 32;
+
+	private append Dictionary<int32, SDLTTF.Font*> mFonts = .();
+	private append String mConfiguredPath = .();
+	private append String mFontPath = .();
 
 	public this(StringView fontPath)
 	{
@@ -48,16 +55,16 @@ internal class SDLTextService
 	{
 		let font = control.Font;
 		let pixels = font == null ? 12 : Math.Max(1, (int32)(font.Size * (font.Unit == .Point ? 96.0f / 72 : 1)));
-		return (int32)Math.Ceiling(pixels * rasterScale) * 32 + (font == null ? 0 : (int32)font.Style);
+		return (int32)Math.Ceiling(pixels * rasterScale) * FontStyleStride + (font == null ? 0 : (int32)font.Style);
 	}
 
 	public SDLTTF.Font* GetFont(Control control, float rasterScale = 1)
 	{
 		let key = FontKey(control, rasterScale);
 		if (mFonts.TryGetValue(key, let font)) return font;
-		let result = SDLTTF.OpenFont(mFontPath, key / 32);
+		let result = SDLTTF.OpenFont(mFontPath, key / FontStyleStride);
 		if (result == null) Runtime.FatalError(scope $"Could not open UI font: {StringView(SDL.GetError())}");
-		SDLTTF.SetFontStyle(result, key % 32);
+		SDLTTF.SetFontStyle(result, key % FontStyleStride);
 		mFonts.Add(key, result);
 		return result;
 	}
@@ -65,7 +72,7 @@ internal class SDLTextService
 	public int32 LineHeight(Control control) => SDLTTF.FontLineSkip(GetFont(control));
 	public int32 LabelPadding(Control control) => (LineHeight(control) + 5) / 6;
 	public int32 LayoutWidth(Control control) => control is Label && !control.AutoSize ? Math.Max(1, control.ClientSize.width - LabelPadding(control) * 2) : 0;
-	public static int32 Alignment(Control control) => (int32)((control as Label)?.HorizontalTextAlignment ?? 0);
+	public static HorizontalAlignment Alignment(Control control) => (control as Label)?.TextAlign.Horizontal ?? .Left;
 	public static bool HasEllipsis(Control control) => (control as Label)?.AutoEllipsis == true && !control.AutoSize;
 
 	public void GetDisplayText(Control control, String display)
@@ -76,7 +83,8 @@ internal class SDLTextService
 		if (Measure(control, display) <= width) return;
 		let available = width - Measure(control, "...");
 		let boundaries = scope List<int>();
-		GetBoundaries(display, boundaries);
+		// Search complete prefixes so SDL_ttf retains kerning and glyph bounds.
+		TextEncodingHelper.GetCharacterBoundaries(display, boundaries);
 		int low = 0, high = boundaries.Count - 1;
 		while (low < high)
 		{
@@ -120,7 +128,7 @@ internal class SDLTextService
 		MeasureWrapped(GetFont(control), display, HasEllipsis(control) ? 0 : LayoutWidth(control), Alignment(control), lines);
 
 	// Match SDL_ttf's wrapped surface bounds using metrics, without rasterizing pixels.
-	private Size MeasureWrapped(SDLTTF.Font* font, String text, int32 wrapWidth, int32 alignment, List<TextLine> lines)
+	private Size MeasureWrapped(SDLTTF.Font* font, String text, int32 wrapWidth, HorizontalAlignment alignment, List<TextLine> lines)
 	{
 		if (SDLTTF.SizeUTF8(font, text, var fullWidth, var fullHeight) != 0)
 			Runtime.FatalError(scope $"Could not measure UI text: {StringView(SDL.GetError())}");
@@ -163,7 +171,7 @@ internal class SDLTextService
 		}
 		let lineSkip = SDLTTF.FontLineSkip(font);
 		let width = wrapWidth == 0 ? (rows > 1 ? Math.Max(1, widest) : fullWidth)
-			: (rows <= 1 && alignment == 0 ? Math.Min(wrapWidth, fullWidth) : wrapWidth);
+			: (rows <= 1 && alignment == .Left ? Math.Min(wrapWidth, fullWidth) : wrapWidth);
 		return .((int32)width, (int32)(Math.Max(fullHeight, lineSkip) + lineSkip * Math.Max(0, rows - 1)));
 	}
 
@@ -177,7 +185,7 @@ internal class SDLTextService
 
 	public int HitText(TextBoxBase control, int x, int y)
 	{
-		let line = Math.Max(0, (y + control.BorderWidth + control.ScrollY - 4) / LineHeight(control));
+		let line = Math.Max(0, (y + control.BorderWidth + control.ScrollY - EditorTextInset) / LineHeight(control));
 		int start = 0;
 		for (int i < line)
 		{
@@ -189,8 +197,8 @@ internal class SDLTextService
 		if (end < 0) end = control.Text.Length;
 		let text = StringView(control.Text, start, end - start);
 		let boundaries = scope List<int>();
-		GetBoundaries(text, boundaries);
-		let target = x + control.BorderWidth + control.ScrollX - 4;
+		TextEncodingHelper.GetCharacterBoundaries(text, boundaries);
+		let target = x + control.BorderWidth + control.ScrollX - EditorTextInset;
 		int low = 0, high = boundaries.Count - 1;
 		while (low < high)
 		{
@@ -203,16 +211,4 @@ internal class SDLTextService
 		return start + boundaries[low];
 	}
 
-	// Search complete UTF-8 prefixes, retaining SDL_ttf's kerning and glyph bounds.
-	// Only logarithmically many prefixes are measured per hit or ellipsis request.
-	private static void GetBoundaries(StringView text, List<int> boundaries)
-	{
-		boundaries.Add(0);
-		int position = 0;
-		for (let character in text.DecodedChars)
-		{
-			position += UTF8.GetEncodedLength(character);
-			boundaries.Add(position);
-		}
-	}
 }

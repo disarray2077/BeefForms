@@ -200,8 +200,8 @@ class MockDownloadRow : Panel
 		let title = scope String();
 		title.AppendF("#{}  {}", id, url);
 		mTitle.Text = title;
-		mStatus.Text.Set(status);
-		mDestination.Text.Set(destination);
+		mStatus.Text = status;
+		mDestination.Text = destination;
 		mProgress.Value = progress;
 		if (active)
 		{

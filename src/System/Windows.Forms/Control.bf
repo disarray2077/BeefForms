@@ -18,7 +18,7 @@ public class Control : System.ComponentModel.Component
 	public class ControlCollection : IEnumerable<Control>
 	{
 		private Control mOwner;
-		private List<Control> mItems = new .() ~ delete _;
+		private append List<Control> mItems = .();
 
 		public this(Control owner) { mOwner = owner; }
 		public int Count => mItems.Count;
@@ -31,14 +31,10 @@ public class Control : System.ComponentModel.Component
 		public void Add(Control value) => Insert(Count, value);
 		public void Insert(int index, Control value)
 		{
-			if (TryInsert(index, value) case .Err)
-				Runtime.FatalError("A control cannot be parented to itself or its descendant");
-		}
-		private Result<void> TryInsert(int index, Control value)
-		{
 			// Validate before detaching from the old parent.
-			if (Control.IsAncestorOf(value, mOwner)) return .Err;
-			if (value.Parent == mOwner) return .Ok;
+			if (Control.IsAncestorOf(value, mOwner))
+				Runtime.FatalError("A control cannot be parented to itself or its descendant");
+			if (value.Parent == mOwner) return;
 			value.Parent?.Controls.Remove(value);
 			value.ReleaseDisposalOwner();
 			mItems.Insert(index, value);
@@ -48,7 +44,6 @@ public class Control : System.ComponentModel.Component
 			if (mOwner.IsHandleCreated) value.CreateHandle();
 			mOwner.PerformLayout();
 			value.UpdateBackend(.ZOrder);
-			return .Ok;
 		}
 		/// Detaches without disposal or deletion; ownership returns to the caller.
 		public bool Remove(Control value)
@@ -112,9 +107,9 @@ public class Control : System.ComponentModel.Component
 	// Cascaded disposal detaches the public tree but keeps allocations alive until delete.
 	private List<Control> mDisposedChildren ~ delete _;
 	private Control mDisposalOwner;
-	private String mText = new .() ~ delete _;
+	private append String mText = .();
 	private Font mFont ~ _?.Release();
-	private System.Drawing.Point mLocation;
+	private Point mLocation;
 	private Size mSize, mClientSize;
 	private AnchorInfo mAnchorInfo;
 	private uint32 mLayoutSuspendCount;
@@ -141,7 +136,7 @@ public class Control : System.ComponentModel.Component
 	public bool IsDisposed => mDisposed;
 	internal bool IsDisposingOrDisposed => mDisposing || mDisposed;
 	public Control Parent => mParent;
-	protected internal virtual System.Drawing.Point ContentOffset => .(0, 0);
+	protected internal virtual Point ContentOffset => .(0, 0);
 	protected internal virtual Size ViewportSize => ClientSize;
 	protected internal virtual Size LayoutSize => ClientSize;
 	internal bool LayoutSuspended => mLayoutSuspendCount > 0;
@@ -151,6 +146,29 @@ public class Control : System.ComponentModel.Component
 	}
 
 	internal int32 BorderWidth => BorderStyle == .None ? 0 : BorderStyle == .FixedSingle ? 1 : 2;
+
+	internal Point RootToLocalPoint(Point point)
+	{
+		var result = point;
+		for (var current = this; current.Parent != null; current = current.Parent)
+		{
+			int32 border = (current.Parent is Form) ? 0 : current.Parent.BorderWidth;
+			result.x -= current.Location.x + border - current.Parent.ContentOffset.x;
+			result.y -= current.Location.y + border - current.Parent.ContentOffset.y;
+		}
+		if (!(this is Form))
+		{
+			result.x -= BorderWidth;
+			result.y -= BorderWidth;
+		}
+		return result;
+	}
+	internal Point LocalToRootPoint(Point point)
+	{
+		let origin = RootToLocalPoint(.(0, 0));
+		return .(point.x - origin.x, point.y - origin.y);
+	}
+
 	public virtual Size ClientSize
 	{
 		get => mClientSize;
@@ -158,12 +176,12 @@ public class Control : System.ComponentModel.Component
 	}
 	public bool IsEffectivelyEnabled => Enabled;
 
-	public virtual String Text
+	public virtual StringView Text
 	{
 		get => mText;
 		set
 		{
-			if (!SetTextValue(value ?? String.Empty)) return;
+			if (!SetTextValue(value)) return;
 			UpdateBackend(.Text);
 			NotifyTextChanged();
 		}
@@ -196,7 +214,7 @@ public class Control : System.ComponentModel.Component
 		}
 	}
 
-	public System.Drawing.Point Location
+	public Point Location
 	{
 		get => mLocation;
 		set
@@ -239,7 +257,10 @@ public class Control : System.ComponentModel.Component
 		get => mAutoSize;
 		set { mAutoSize = value; UpdateAutoSize(); }
 	}
+
+	// Keep separate: an appended ControlCollection causes a compiler type-layout cycle :(
 	public readonly ControlCollection Controls ~ delete _;
+
 	public virtual BorderStyle BorderStyle
 	{
 		get => mBorderStyle;
@@ -272,6 +293,9 @@ public class Control : System.ComponentModel.Component
 				child.mDisposalOwner = null;
 				delete child;
 			}
+#if TEST
+		GC.Collect(false);
+#endif
 	}
 
 	private void ReleaseDisposalOwner()
@@ -314,6 +338,7 @@ public class Control : System.ComponentModel.Component
 		}
 		Controls.ClearAfterDisposal();
 	}
+
 	private void UpdateClientSize() => mClientSize = .(Math.Max(0, mSize.width - BorderWidth * 2), Math.Max(0, mSize.height - BorderWidth * 2));
 
 	internal void DestroyHandle()
@@ -435,7 +460,7 @@ public class Control : System.ComponentModel.Component
 	}
 
 	internal void SetNativeHandle(void* handle) => mHandle = handle;
-	internal void NotifyMove(System.Drawing.Point location)
+	internal void NotifyMove(Point location)
 	{
 		mLocation = location;
 		OnLocationChanged(.Empty);

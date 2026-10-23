@@ -14,7 +14,7 @@ extension Win32Backend
 		public int32 Height;
 		public this(void* handle, int32 height) { Handle = handle; Height = height; }
 	}
-	private Dictionary<String, NativeFont> mFonts = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
+	private append Dictionary<String, NativeFont> mFonts = .() ~ DeleteDictionaryKeysAndValues!(_);
 	private uint mGdiPlusToken;
 
 	private NativeFont GetNativeFont(Control control)
@@ -25,7 +25,7 @@ extension Win32Backend
 		let size = font == null ? 9f : font.Size;
 		let pixels = font != null && font.Unit == .Pixel ? size : size * dpi / 72;
 		let style = font == null ? FontStyle.Regular : font.Style;
-		let key = scope String()..AppendF("{}:{}:{}:{}", family, pixels, style, dpi);
+		let key = scope $"{family}:{pixels}:{style}:{dpi}";
 		if (mFonts.TryGetValue(key, let cached)) return cached;
 
 		let handle = Win32.CreateFont(-(int32)Math.Round(pixels), 0, 0, 0, style.HasFlag(.Bold) ? 700 : 400,
