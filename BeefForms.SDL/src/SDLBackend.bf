@@ -264,7 +264,7 @@ internal class SDLBackend : FormsBackend
 			DoEvents();
 			if (!form.IsHandleCreated || (FrameLimit > 0 && mFrames >= FrameLimit)) break;
 			if (FrameLimit > 0 && mFrames != frames) continue;
-			let timeout = GetRedrawTimeout();
+			let timeout = GetEventWaitTimeout();
 			if (timeout == 0) continue;
 			SDL.Event input = ?;
 			if (SDL.WaitEventTimeout(out input, timeout) != 0) ProcessEvents(input);
@@ -272,9 +272,9 @@ internal class SDLBackend : FormsBackend
 	}
 #endif
 
-	private int32 GetRedrawTimeout()
+	private int32 GetEventWaitTimeout()
 	{
-		int32 timeout = -1;
+		int32 timeout = TimerScheduler.GetNextTimeout();
 		for (let session in mSessions)
 		{
 			let next = session.GetRedrawTimeout();
@@ -288,6 +288,7 @@ internal class SDLBackend : FormsBackend
 		if (mPumpingEvents || IsRendering) return;
 		mPumpingEvents = true;
 		defer { mPumpingEvents = false; }
+		TimerScheduler.Process();
 		ProcessEvents();
 		let capture = CapturePath != null && (FrameLimit == 0 || mFrames + 1 == FrameLimit);
 		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && FrameLimit > 0) mFrames++;

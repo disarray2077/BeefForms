@@ -17,10 +17,6 @@ class MessageBoxTests
 	private static bool sHandled;
 
 	[Import("user32.dll"), CLink]
-	private static extern uint SetTimer(void* window, uint id, uint32 interval, function void(void*, uint32, uint, uint32) callback);
-	[Import("user32.dll"), CLink]
-	private static extern bool KillTimer(void* window, uint id);
-	[Import("user32.dll"), CLink]
 	private static extern void* GetDlgItem(void* window, int32 id);
 
 	// The native modal loop dispatches this timer on the test thread.
@@ -29,10 +25,10 @@ class MessageBoxTests
 		sInspect = inspect;
 		sTicks = 0;
 		sHandled = false;
-		let timer = SetTimer(null, 0, 20, => InspectDialog);
+		let timer = Win32.SetTimer(null, 0, 20, => InspectDialog);
 		defer
 		{
-			KillTimer(null, timer);
+			Win32.KillTimer(null, timer);
 			sInspect = null;
 		}
 		Test.Assert(timer != 0);

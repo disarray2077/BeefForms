@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Windows.Forms;
 using System.Drawing;
 
@@ -12,6 +13,8 @@ class DownloaderMockForm : Form
 	private Label mSummary;
 	private Panel mDownloads;
 	private int mNextId;
+	private append Timer mTimer = .();
+	private int64 mLastTick;
 
 	public this()
 	{
@@ -70,9 +73,32 @@ class DownloaderMockForm : Form
 		mDownloads.BorderStyle = .FixedSingle;
 		Controls.Add(mDownloads);
 
+		mTimer.Interval = 100;
+		mTimer.Tick.Add(new => OnTick);
+
+		Load.Add(new (sender, args) => UpdateSummary());
+
 		AddDownload("https://www.beeflang.org/img/Beef384.png", "Downloading 256 KB / 1.2 MB", "File: C:\\Downloads\\Beef384.png", 21, true);
 		AddDownload("https://example.com/archive.zip", "Completed  4.8 MB", "Memory only (no file)", 100, false);
 		AddDownload("https://example.com/missing.dat", "Failed: server returned 404", "Memory only (no file)", 0, false);
+		UpdateSummary();
+	}
+
+	public ~this() { Dispose(); }
+
+	protected override void Dispose(bool disposing)
+	{
+		if (disposing) mTimer.Stop();
+		base.Dispose(disposing);
+	}
+
+	private void OnTick(Object sender, EventArgs args)
+	{
+		let now = Stopwatch.GetTimestamp();
+		let elapsed = (now - mLastTick) / 1'000'000.0;
+		mLastTick = now;
+		for (let control in mDownloads.Controls)
+			if (let row = control as MockDownloadRow) row.Advance(elapsed);
 		UpdateSummary();
 	}
 
@@ -140,6 +166,12 @@ class DownloaderMockForm : Form
 		summary.AppendF("{} active   |   {} completed   |   {} failed   |   {} cancelled", active, completed, failed, cancelled);
 		mSummary.Text = summary;
 		mClearFinished.Enabled = completed + failed + cancelled > 0;
+		if (active == 0) mTimer.Stop();
+		else if (Created && !mTimer.Enabled)
+		{
+			mLastTick = Stopwatch.GetTimestamp();
+			mTimer.Start();
+		}
 	}
 }
 
@@ -151,6 +183,9 @@ class MockDownloadRow : Panel
 	private Label mTitle, mStatus, mDestination;
 	private ProgressBar mProgress;
 	private Button mCancel;
+	private append Random mRandom = .();
+	private int mTotalKB, mBaseSpeed, mSpeed;
+	private double mDownloadedKB, mConnectingSeconds, mNetworkSeconds;
 	public MockDownloadState State { get; private set; }
 	public bool IsFinished => State != .Downloading;
 
@@ -205,7 +240,11 @@ class MockDownloadRow : Panel
 		mProgress.Value = progress;
 		if (active)
 		{
-			mProgress.Style = .Marquee;
+			mTotalKB = mRandom.Next(1200, 12000);
+			mBaseSpeed = mRandom.Next(350, 1200);
+			mDownloadedKB = mTotalKB * progress / 100.0;
+			mConnectingSeconds = progress == 0 ? mRandom.Next(3, 13) / 10.0 : 0;
+			mProgress.Style = progress == 0 ? .Marquee : .Blocks;
 			State = .Downloading;
 		}
 		else if (progress == 100)
@@ -213,6 +252,41 @@ class MockDownloadRow : Panel
 		else
 			State = .Failed;
 		mCancel.Enabled = active;
+		if (active) Advance(0);
+	}
+
+	public void Advance(double elapsed)
+	{
+		var elapsed;
+		if (IsFinished) return;
+		if (mConnectingSeconds > 0)
+		{
+			mConnectingSeconds -= elapsed;
+			if (mConnectingSeconds > 0) return;
+			elapsed = -mConnectingSeconds;
+			mProgress.Style = .Blocks;
+		}
+		mNetworkSeconds -= elapsed;
+		if (mNetworkSeconds <= 0)
+		{
+			let stalled = mRandom.Next(5) == 0;
+			mSpeed = stalled ? 0 : mBaseSpeed * mRandom.Next(25, 150) / 100;
+			mNetworkSeconds = stalled ? mRandom.Next(8, 25) / 10.0 : mRandom.Next(6, 20) / 10.0;
+		}
+		mDownloadedKB = Math.Min((double)mTotalKB, mDownloadedKB + mSpeed * elapsed);
+		mProgress.Value = (int)(100 * mDownloadedKB / mTotalKB);
+		let status = scope String();
+		if (mDownloadedKB >= mTotalKB)
+		{
+			State = .Completed;
+			mCancel.Enabled = false;
+			status.AppendF("Completed  {} KB", mTotalKB);
+		}
+		else if (mSpeed == 0)
+			status.AppendF("Network stalled — retrying...  {} / {} KB", (int)mDownloadedKB, mTotalKB);
+		else
+			status.AppendF("Downloading {} / {} KB  |  {} KB/s", (int)mDownloadedKB, mTotalKB, mSpeed);
+		mStatus.Text = status;
 	}
 
 	private void OnCancel(Object sender, EventArgs args)

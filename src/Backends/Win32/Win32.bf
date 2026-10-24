@@ -3,6 +3,10 @@ namespace System;
 
 static class Win32
 {
+	[Import("user32.dll"), CLink]
+	public static extern uint SetTimer(void* window, uint id, uint32 interval, function void(void*, uint32, uint, uint32) callback);
+	[Import("user32.dll"), CLink]
+	public static extern BOOL KillTimer(void* window, uint id);
 	[Import("user32.dll"), LinkName("MessageBoxW")]
 	public static extern int32 MessageBox(void* owner, char16* text, char16* caption, uint32 type);
 	[Import("user32.dll"), CLink]
