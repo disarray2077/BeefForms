@@ -70,11 +70,12 @@ public static class Application
 	}
 
 	internal static int CreatedControlCount;
+	internal static int MessageBoxCount;
 
 	public static void UseBackend(ApplicationBackend backend)
 	{
-		if (sRunning || sProcessingEvents || CreatedControlCount != 0)
-			Runtime.FatalError("Dispose existing controls before changing the forms backend");
+		if (sRunning || sProcessingEvents || CreatedControlCount != 0 || MessageBoxCount != 0)
+			Runtime.FatalError("Cannot change the forms backend while controls, event processing, or message boxes are active");
 		
 		if (Backend.Type == backend)
 			return;

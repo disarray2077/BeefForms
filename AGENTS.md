@@ -9,6 +9,23 @@ Before starting substantial changes, inspect the working tree. If those changes 
 - If a path for the Beef compiler isn't given by the user, locate Beef in `%BEEFDIR%\IDE\dist` (Windows) or `$BEEFDIR/IDE/dist` (Unix) when using a source checkout, or `%PROGRAMFILES%\Beef\bin` for a Windows installation. Prefer the source checkout if available. Verify paths before using them.
 - Store temporary files in `$TMPDIR` (Unix) or `%TEMP%` (Windows). On Linux, avoid assuming that the `/tmp` directory is the directory in `$TMPDIR`, even if most of the times it will be.
 
+## Code comments
+
+Use comments to explain non-obvious intent, constraints, or invariants rather than information
+already apparent from the code. In particular, avoid:
+
+- **Restating the code.** Do not describe operations already clear from the statements, such as
+  incrementing a counter, calling a handler, or iterating over modules.
+- **Section headers inside functions.** Do not use comment banners or numbered steps to divide
+  a function into phases such as setup and cleanup. Let the code's structure make those phases clear.
+- **Narrating edits or reasoning.** Do not describe what changed, why an edit was made, or why
+  an implementation is safe as a message to the reviewer. Such comments quickly become stale.
+  If a constraint matters to future readers, document the constraint itself instead.
+- **Docstrings that repeat signatures.** Do not spell out a function's name, parameters, or
+  return type in prose when its declaration already provides that information.
+- **Obvious type or scope information.** Do not add comments that merely identify what a
+  declaration already makes clear, such as labeling a pointer to a process.
+
 ## Post-implementation Beef design review
 
 After implementing the requested behavior and verifying it as far as the environment allows, make
@@ -43,9 +60,17 @@ obvious.
   the snapshot type rather than the backend.
 - **Manual paired operations.** Replace hand-written setup/defer-cleanup pairs with the construct that
   fits what is being paired:
-  - **State pairs** (acquire/release, capture/restore, begin/end, lock/unlock): a small `IDisposable` struct
-    used with `using`, so the block visibly encloses the protected work. Prefer returning such struct from
-    a method instead of constructing it directly in the `using` statement.
+  - **State pairs** (acquire/release, capture/restore, begin/end, lock/unlock): use a small `IDisposable`
+    struct with `using` only when the enclosed work meaningfully depends on the acquired resource or state, directly or indirectly. For
+    example, the work runs while the lock is held, or it relies on the captured state until that state is
+    restored. The `using` block should visibly enclose the work that depends on the resource. Prefer
+    returning such a struct from a method instead of constructing it directly in the `using` statement.
+  - **Setup/cleanup around unrelated work:** when a pair only wraps work that never touches the resource
+    (for example, starting a timer at the beginning and cleaning it up at the end), do not model it as an
+    `IDisposable` struct. Instead, consider a method that does the setup, calls a delegate with the work,
+    and does the cleanup (using `defer` inside the method when needed), such as
+    `WithTimer(scope () => { ... });`. This keeps the pairing in one place without pretending the block
+    uses a resource.
   - **Plain allocations:** `scope`, or `new:ScopedAlloc!` when the size may be large or unbounded
     (for example, an array with a caller-chosen initial size).
   - **Allocations that need extra paired work**, such as retaining elements on capture and

@@ -17,6 +17,15 @@ internal class SDLWindowSession : RefCounted
 
 	private SDLBackend mBackend;
 	internal SDLBackend Backend => mBackend;
+
+	internal struct LifetimeScope : IDisposable
+	{
+		private SDLWindowSession mSession;
+		public this(SDLWindowSession session) { mSession = session; session.AddRef(); }
+		public void Dispose() => mSession.ReleaseRef();
+	}
+	internal LifetimeScope Retain() => .(this);
+
 	public this(SDLBackend backend, Form form, bool wheelHasPosition)
 	{
 		mBackend = backend;

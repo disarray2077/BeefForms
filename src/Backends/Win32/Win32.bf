@@ -3,6 +3,13 @@ namespace System;
 
 static class Win32
 {
+	[Import("user32.dll"), LinkName("MessageBoxW")]
+	public static extern int32 MessageBox(void* owner, char16* text, char16* caption, uint32 type);
+	[Import("user32.dll"), CLink]
+	public static extern void* GetActiveWindow();
+	[Import("user32.dll"), CLink]
+	public static extern void* GetAncestor(void* window, uint32 flags);
+	public const uint32 GA_ROOT = 2;
 	[CRepr]
 	public struct SCROLLINFO
 	{

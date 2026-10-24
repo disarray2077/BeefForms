@@ -98,62 +98,64 @@ internal class SDLBackend : FormsBackend
 	private struct ContextScope : IDisposable
 	{
 		private ContextSnapshot mPrevious;
-		public SDLWindowSession Session;
+		private SDLWindowSession mSession;
 
 		public this(SDLBackend backend, SDLWindowSession session = null)
 		{
 			mPrevious = ContextSnapshot.CaptureContext(backend);
-			Session = session;
-			Session?.AddRef();
-			Session?.MakeCurrent();
+			mSession = session;
+			mSession?.AddRef();
+			mSession?.MakeCurrent();
 		}
 
 		public void Dispose()
 		{
 			mPrevious.RestoreContext();
 			mPrevious.Owner?.ReleaseRef();
-			Session?.ReleaseRef();
+			mSession?.ReleaseRef();
 		}
 	}
 
-	private ContextScope UseSession(Control control) => .(this, GetSession(control));
+	private ContextScope UseContext(SDLWindowSession session = null) => .(this, session);
 
 	public override void CreateControl(Control control)
 	{
-		if (let form = control as Form)
+		if (!(control is Form))
 		{
-#if BF_PLATFORM_WASM
-			// SDL2's Emscripten driver binds every window to the same browser canvas.
-			if (!mSessions.IsEmpty)
-				Runtime.FatalError("The Emscripten SDL2 driver supports a single browser canvas");
-#endif
-			if (!mInitialized)
-			{
-				if (SDL.InitSubSystem(.Video) != 0)
-					Runtime.FatalError(scope $"Could not initialize SDL: {StringView(SDL.GetError())}");
-				mInitialized = true;
-				mRedrawEvent = (.)SDL.RegisterEvents(1);
-				SDL.GetVersion(var version);
-				mWheelHasPosition = version.major > 2 || version.minor >= 26;
-			}
-			let session = new SDLWindowSession(this, form, mWheelHasPosition);
-			mSessions.Add(session);
-			form.SDLSession = session;
+			GetSession(control)?.CreateControl(control);
+			return;
 		}
-		using (let current = UseSession(control))
+		let form = (Form)control;
+#if BF_PLATFORM_WASM
+		// SDL2's Emscripten driver binds every window to the same browser canvas.
+		if (!mSessions.IsEmpty)
+			Runtime.FatalError("The Emscripten SDL2 driver supports a single browser canvas");
+#endif
+		if (!mInitialized)
 		{
-			let session = current.Session;
-			session?.CreateControl(control);
-			if (control is Form) mWindows[SDL.GetWindowID(session.mWindow)] = session;
+			if (SDL.InitSubSystem(.Video) != 0)
+				Runtime.FatalError(scope $"Could not initialize SDL: {StringView(SDL.GetError())}");
+			mInitialized = true;
+			mRedrawEvent = (.)SDL.RegisterEvents(1);
+			SDL.GetVersion(var version);
+			mWheelHasPosition = version.major > 2 || version.minor >= 26;
+		}
+		let session = new SDLWindowSession(this, form, mWheelHasPosition);
+		mSessions.Add(session);
+		form.SDLSession = session;
+		using (UseContext(session))
+		{
+			session.CreateControl(form);
+			mWindows[SDL.GetWindowID(session.mWindow)] = session;
 		}
 	}
 
 	public override void DestroyControl(Control control)
 	{
-		using (let current = UseSession(control))
+		let session = GetSession(control);
+		if (session == null) return;
+		using (UseContext(session))
 		{
-			let session = current.Session;
-			if (session == null) return;
 			let generation = control.HandleGeneration;
 			let windowID = (control is Form) ? SDL.GetWindowID(session.mWindow) : 0;
 			session.DestroyControl(control);
@@ -170,10 +172,11 @@ internal class SDLBackend : FormsBackend
 
 	public override void UpdateControl(Control control, ControlChange change)
 	{
-		using (let current = UseSession(control))
+		let session = GetSession(control);
+		if (session == null) return;
+		using (session.Retain())
 		{
-			let session = current.Session;
-			session?.UpdateControl(control, change);
+			session.UpdateControl(control, change);
 		}
 	}
 
@@ -192,26 +195,33 @@ internal class SDLBackend : FormsBackend
 	}
 	public override void SetClientSize(Form form, Size size)
 	{
-		using (let current = UseSession(form))
+		let session = GetSession(form);
+		if (session == null) return;
+		using (session.Retain())
 		{
-			let session = current.Session;
-			session?.SetClientSize(form, size);
+			session.SetClientSize(form, size);
 		}
 	}
 	public override void Show(Form form)
 	{
-		using (let current = UseSession(form))
+		let session = GetSession(form);
+		if (session == null) return;
+		using (session.Retain())
 		{
-			let session = current.Session;
-			session?.Show(form);
+			session.Show(form);
 		}
 	}
+
+	public override DialogResult ShowMessageBox(Control owner, StringView text, StringView caption,
+		MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
+		=> SDLMessageBox.Show(owner, text, caption, buttons, icon, defaultButton);
+
 	public override bool FocusControl(Control control)
 	{
-		using (let current = UseSession(control))
+		let session = GetSession(control);
+		if (session == null) return false;
+		using (session.Retain())
 		{
-			let session = current.Session;
-			if (session == null) return false;
 			return session.FocusControl(control);
 		}
 	}
@@ -219,20 +229,17 @@ internal class SDLBackend : FormsBackend
 	public override bool HasCapture(Control control) => GetSession(control)?.HasCapture(control) ?? false;
 	public override void SetCapture(Control control, bool capture)
 	{
-		using (let current = UseSession(control))
+		let session = GetSession(control);
+		if (session == null) return;
+		if (capture && (!control.IsHandleCreated || control.IsDisposingOrDisposed ||
+			!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)) return;
+		if (capture)
 		{
-			let session = current.Session;
-			if (session == null) return;
-			if (capture && (!control.IsHandleCreated || control.IsDisposingOrDisposed ||
-				!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)) return;
-			if (capture)
-			{
-				let sessions = ToScopedArray!(mSessions);
-				for (let other in sessions)
-					if (other != session) other.ReleaseCapture();
-			}
-			session.SetCapture(control, capture);
+			let sessions = ToScopedArray!(mSessions);
+			for (let other in sessions)
+				if (other != session) other.ReleaseCapture();
 		}
+		session.SetCapture(control, capture);
 	}
 	public override Size MeasureText(Control control) => TextService.MeasureText(control);
 	public override int32 GetTextBoxHeight(TextBoxBase editor) => TextService.LineHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
@@ -293,7 +300,7 @@ internal class SDLBackend : FormsBackend
 
 	private bool RenderIfNeeded(bool force = false, bool capture = false)
 	{
-		using (ContextScope(this))
+		using (UseContext())
 		{
 			bool rendered = false;
 			let sessions = ToScopedArray!(mSessions);
@@ -344,7 +351,7 @@ internal class SDLBackend : FormsBackend
 			return;
 		}
 		if (!mWindows.TryGetValue(EventWindowID(input), let session)) return;
-		using (ContextScope(this, session))
+		using (session.Retain())
 		{
 			if (input.type == .WindowEvent && input.window.windowEvent == .FocusGained)
 			{
@@ -363,7 +370,7 @@ internal class SDLBackend : FormsBackend
 		// SDL may invoke watches from another thread or inside a modal resize loop.
 		if (Thread.CurrentThreadId != backend.mRenderThreadId || backend.IsRendering) return 0;
 		if (!backend.mWindows.TryGetValue(input.window.windowID, let session)) return 0;
-		using (ContextScope(backend, session))
+		using (backend.UseContext(session))
 		{
 			session.HandleExposure(input.window.timestamp);
 			return 0;

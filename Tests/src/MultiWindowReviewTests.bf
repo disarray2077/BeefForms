@@ -44,6 +44,8 @@ class MultiWindowReviewTests
 		form.ClientSize = .(200, 100);
 		let panel = new Panel(); panel.Size = .(180, 80); form.Controls.Add(panel);
 		let backend = (SDLBackend)Application.Backend;
+		let expectedWindow = external ? owner.Window : null;
+		SDL.SDL_GLContext expectedContext = external ? owner.Context : default;
 		int paints = 0, downs = 0;
 		panel.Paint.Add(new [&] (sender, args) =>
 		{
@@ -54,11 +56,10 @@ class MultiWindowReviewTests
 		{
 			downs++;
 			args.Handled = true;
-			Test.Assert(SDL.GL_GetCurrentWindow() == form.Handle);
+			Test.Assert(SDL.GL_GetCurrentContext() == expectedContext);
+			Test.Assert(SDL.GL_GetCurrentWindow() == expectedWindow);
 		});
 		if (operation != .Create) form.Show();
-		let expectedWindow = external ? owner.Window : null;
-		SDL.SDL_GLContext expectedContext = external ? owner.Context : default;
 		Test.Assert(SDL.GL_MakeCurrent(expectedWindow, expectedContext) == 0);
 		switch (operation)
 		{
@@ -82,10 +83,10 @@ class MultiWindowReviewTests
 
 	[Test] public static void CreationRestoresAnUnboundContext() => VerifyContext(.Create, false);
 	[Test] public static void RenderingRestoresAnUnboundContext() => VerifyContext(.Render, false);
-	[Test] public static void InputRestoresAnUnboundContext() => VerifyContext(.Input, false);
+	[Test] public static void InputPreservesAnUnboundContext() => VerifyContext(.Input, false);
 	[Test] public static void CreationRestoresAnExternalContext() => VerifyContext(.Create, true);
 	[Test] public static void RenderingRestoresAnExternalContext() => VerifyContext(.Render, true);
-	[Test] public static void InputRestoresAnExternalContext() => VerifyContext(.Input, true);
+	[Test] public static void InputPreservesAnExternalContext() => VerifyContext(.Input, true);
 
 	private static void VerifyDestroyedContext(bool duringPaint)
 	{
