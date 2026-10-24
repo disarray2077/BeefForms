@@ -8,6 +8,7 @@ namespace System.Windows.Forms;
 public class Form : ContainerControl
 {
 	private bool mLoaded, mClosing, mClosed;
+	private bool mShowCalled;
 	private System.Drawing.Size mMinimumSize;
 	private System.Drawing.Size mInitialClientSize;
 	internal bool HasInitialClientSize;
@@ -34,10 +35,13 @@ public class Form : ContainerControl
 	public bool KeyPreview { get; set; }
 	public FormStartPosition StartPosition { get; set; } = .Manual;
 
-	internal void NotifyLoad()
+	public this() { this.[Friend]mVisible = false; }
+
+	private void NotifyLoad()
 	{
-		if (mLoaded) return;
+		if (mLoaded || mClosing || mClosed || IsDisposingOrDisposed) return;
 		mLoaded = true;
+		Application.RegisterForm(this);
 		Load.Invoke(this, .Empty);
 	}
 
@@ -61,22 +65,49 @@ public class Form : ContainerControl
 	{
 		if (mClosed || IsDisposingOrDisposed) Runtime.FatalError("Cannot show a closed or disposed form");
 		Visible = true;
-		let created = IsHandleCreated;
-		CreateHandle();
-		if (mClosed || IsDisposingOrDisposed) return;
-		if (!created && StartPosition == .CenterScreen)
+	}
+
+	protected override void SetVisibleCore(bool value)
+	{
+		if (!value || (LocallyVisible && mShowCalled))
+		{
+			base.SetVisibleCore(value);
+			return;
+		}
+		if (mClosed || IsDisposingOrDisposed) Runtime.FatalError("Cannot show a closed or disposed form");
+		mShowCalled = true;
+		if (mLoaded) Application.RegisterForm(this);
+		base.SetVisibleCore(true);
+		if (!mClosed && !IsDisposingOrDisposed)
+		{
+			base.SetVisibleCore(true);
+			if (Visible && Created && IsHandleCreated && !mClosed && !IsDisposingOrDisposed)
+				Application.Backend.Show(this);
+		}
+	}
+
+	protected override void OnCreateControl()
+	{
+		base.OnCreateControl();
+		if (!mShowCalled || mLoaded || mClosing || mClosed || IsDisposingOrDisposed) return;
+		if (StartPosition == .CenterScreen)
 		{
 			let area = Application.Backend.GetScreenWorkingArea();
 			Location = .(area.X + Math.Max(0, area.Width - Size.width) / 2,
 				area.Y + Math.Max(0, area.Height - Size.height) / 2);
 		}
 		NotifyLoad();
-		if (!mClosed && !IsDisposingOrDisposed) Application.Backend.Show(this);
 	}
 
 	public void Close()
 	{
 		if (mClosing || mClosed || IsDisposingOrDisposed) return;
+		if (!IsHandleCreated)
+		{
+			mClosed = true;
+			Dispose();
+			return;
+		}
 		mClosing = true;
 		defer { mClosing = false; }
 		let args = scope FormClosingEventArgs(.UserClosing);
@@ -106,8 +137,7 @@ public class Form : ContainerControl
 	private void CompleteClose(CloseReason reason)
 	{
 		mClosed = true;
-		if (IsHandleCreated) Application.Backend.Close(this);
-		DestroyHandle();
+		Application.UnregisterForm(this);
 		OnFormClosed(scope .(reason));
 	}
 }

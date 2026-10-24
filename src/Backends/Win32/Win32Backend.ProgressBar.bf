@@ -11,19 +11,19 @@ extension Win32Backend
 	{
 		if (change != .Value)
 		{
-			Win32.SendMessage(progress.Handle, Win32.PBM_SETMARQUEE, null, null);
-			var style = (uint)(void*)Win32.GetWindowLongPtr(progress.Handle, Win32.GWL_STYLE);
+			Win32.SendMessage(progress.GetHandle(), Win32.PBM_SETMARQUEE, null, null);
+			var style = (uint)(void*)Win32.GetWindowLongPtr(progress.GetHandle(), Win32.GWL_STYLE);
 			style &= ~(Win32.PBS_SMOOTH | Win32.PBS_MARQUEE);
 			if (progress.Style == .Continuous) style |= Win32.PBS_SMOOTH;
 			if (progress.Style == .Marquee) style |= Win32.PBS_MARQUEE;
-			Win32.SetWindowLongPtr(progress.Handle, Win32.GWL_STYLE, (void*)style);
+			Win32.SetWindowLongPtr(progress.GetHandle(), Win32.GWL_STYLE, (void*)style);
 			if (progress.Style == .Marquee && progress.MarqueeAnimationSpeed > 0)
-				Win32.SendMessage(progress.Handle, Win32.PBM_SETMARQUEE, (uint*)(void*)1, (int*)(void*)(int)progress.MarqueeAnimationSpeed);
+				Win32.SendMessage(progress.GetHandle(), Win32.PBM_SETMARQUEE, (uint*)(void*)1, (int*)(void*)(int)progress.MarqueeAnimationSpeed);
 		}
 		if (progress.Style != .Marquee)
 		{
-			Win32.SendMessage(progress.Handle, Win32.PBM_SETRANGE32, (uint*)(void*)progress.Minimum, (int*)(void*)progress.Maximum);
-			Win32.SendMessage(progress.Handle, Win32.PBM_SETPOS, (uint*)(void*)progress.Value, null);
+			Win32.SendMessage(progress.GetHandle(), Win32.PBM_SETRANGE32, (uint*)(void*)progress.Minimum, (int*)(void*)progress.Maximum);
+			Win32.SendMessage(progress.GetHandle(), Win32.PBM_SETPOS, (uint*)(void*)progress.Value, null);
 		}
 	}
 }

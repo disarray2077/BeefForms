@@ -121,14 +121,14 @@ class VisibilityTests
 		hidden.VisibleChanged.Add(new [&] (sender, args) => { hiddenChanges++; });
 		parent.Hide();
 		parent.Show();
-		Test.Assert(panelChanges == 2 && childChanges == 2 && hiddenChanges == 0);
+		Test.Assert(panelChanges == 1 && childChanges == 1 && hiddenChanges == 0);
 		Test.Assert(child.Visible && !hidden.Visible);
 		parent.Hide();
 		child.Hide();
 		child.Show();
-		Test.Assert(childChanges == 3);
+		Test.Assert(childChanges == 2);
 		parent.Show();
-		Test.Assert(childChanges == 4 && hiddenChanges == 0);
+		Test.Assert(childChanges == 3 && hiddenChanges == 0);
 	}
 
 #if BF_PLATFORM_WINDOWS

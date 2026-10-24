@@ -12,9 +12,9 @@ extension Win32Backend
 {
 	private void SynchronizeNativeSelection(TextBoxBase editor, StringView text)
 	{
-		if (editor.Handle == null || mInsertingText || editor.UpdatingText) return;
+		if (editor.GetHandle() == null || mInsertingText || editor.UpdatingText) return;
 		uint32 nativeStart = 0, nativeEnd = 0;
-		Win32.SendMessage(editor.Handle, Win32.EM_GETSEL, (uint*)&nativeStart, (int*)&nativeEnd);
+		Win32.SendMessage(editor.GetHandle(), Win32.EM_GETSEL, (uint*)&nativeStart, (int*)&nativeEnd);
 		let start = TextEncodingHelper.ToUtf8Offset(text, nativeStart);
 		let end = TextEncodingHelper.ToUtf8Offset(text, nativeEnd);
 		var caretAtStart = start != end && editor.SelectionAnchor == end;
@@ -23,10 +23,10 @@ extension Win32Backend
 		{
 			// Let the edit control account for its border and text margins when locating the caret.
 			let point = (int*)(void*)(int)(((uint32)(uint16)caret.y << 16) | (uint16)caret.x);
-			let position = (uint)(void*)Win32.SendMessage(editor.Handle, Win32.EM_CHARFROMPOS, null, point);
+			let position = (uint)(void*)Win32.SendMessage(editor.GetHandle(), Win32.EM_CHARFROMPOS, null, point);
 			caretAtStart = (position & 0xFFFF) == nativeStart;
 		}
-		editor.NotifySelection(caretAtStart ? end : start, caretAtStart ? start : end);
+		editor.NotifySelection(caretAtStart ? end : start, caretAtStart ? start : end, text);
 	}
 
 	private void SynchronizeSelectionAfterMessage(TextBoxBase editor, uint32 message)

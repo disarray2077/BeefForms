@@ -386,6 +386,8 @@ static class Win32
 	public static extern void* GetWindow(void* window, uint32 command);
 	[Import("user32.dll"), CLink]
 	public static extern void* GetParent(void* window);
+	[Import("user32.dll"), CLink]
+	public static extern void* SetParent(void* window, void* parent);
 	[Import("user32.dll"), LinkName("GetClassLongW")]
 	public static extern uint32 GetClassLong(void* window, int32 index);
 	[Import("user32.dll"), LinkName("GetMessageW")]

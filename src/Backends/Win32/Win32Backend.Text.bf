@@ -12,8 +12,8 @@ extension Win32Backend
 {
 	public override Size MeasureText(Control control)
 	{
-		let context = Win32.GetDC(control.Handle);
-		defer Win32.ReleaseDC(control.Handle, context);
+		let context = Win32.GetDC(control.GetHandle());
+		defer Win32.ReleaseDC(control.GetHandle(), context);
 		let font = GetNativeFont(control).Handle;
 		let previous = Win32.SelectObject(context, font);
 		defer Win32.SelectObject(context, previous);
@@ -36,9 +36,9 @@ extension Win32Backend
 			return;
 		}
 		if (control is TextBoxBase && ((TextBoxBase)control).UpdatingText) return;
-		let length = Win32.GetWindowTextLength(control.Handle);
+		let length = Win32.GetWindowTextLength(control.GetHandle());
 		let buffer = scope char16[length + 1] (?);
-		let copied = Win32.GetWindowText(control.Handle, buffer.Ptr, (int32)buffer.Count);
+		let copied = Win32.GetWindowText(control.GetHandle(), buffer.Ptr, (int32)buffer.Count);
 		let text = scope String(Span<char16>(buffer.Ptr, copied));
 		if (let editor = control as TextBoxBase)
 			SynchronizeNativeSelection(editor, text);
@@ -47,7 +47,7 @@ extension Win32Backend
 
 	private void ApplyCharacter(Control control, char32 character, int32* lParam)
 	{
-		let window = control.Handle;
+		let window = control.GetHandle();
 		let snapshot = control.HandleGeneration;
 		let accepted = scope String();
 		if (character < ' ')
@@ -61,20 +61,20 @@ extension Win32Backend
 			let text = scope String()..Append(character);
 			control.FilterTextInput(text, accepted);
 		}
-		if (accepted.IsEmpty || control.Handle != window || !control.IsCurrentHandle(snapshot)) return;
+		if (accepted.IsEmpty || control.GetHandle() != window || !control.IsCurrentHandle(snapshot)) return;
 		// Publish one text change after the accepted text has reached the native editor.
 		mInsertingText = true;
 		mInsertedTextChanged = false;
 		let units = accepted.ToScopedNativeWChar!();
 		for (var cursor = units; *cursor != 0; cursor++)
 		{
-			if (control.Handle != window || !control.IsCurrentHandle(snapshot)) break;
+			if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot)) break;
 			DefaultCharacter(control, window, *cursor, lParam);
 		}
 		mInsertingText = false;
 		let changed = mInsertedTextChanged;
 		mInsertedTextChanged = false;
-		if (control.Handle == window && control.IsCurrentHandle(snapshot) && control is TextBoxBase) NotifyNativeText(control, changed);
+		if (control.GetHandle() == window && control.IsCurrentHandle(snapshot) && control is TextBoxBase) NotifyNativeText(control, changed);
 	}
 
 	private static void DefaultCharacter(Control control, void* window, char16 character, int32* lParam)

@@ -94,6 +94,7 @@ class SDLSessionAssociationTests
 		Test.Assert(form.SDLSession != null && form.SDLSession == backend.GetSession(form));
 		form.DestroyHandle();
 		Test.Assert(form.SDLSession == null && backend.GetSession(form) == null);
+		form.Hide();
 		form.Show();
 		Test.Assert(form.IsHandleCreated && form.SDLSession != null && form.SDLSession == backend.GetSession(form));
 		Application.DoEvents(); SDLTestInput.AssertNoGLError(form);

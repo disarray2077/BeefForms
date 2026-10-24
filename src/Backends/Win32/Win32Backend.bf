@@ -16,10 +16,12 @@ internal class Win32Backend : FormsBackend
 
 	private append Dictionary<void*, Control> mControls = .();
 	private bool mRegistered;
+	private void* mParkingWindow;
 	private Control mHovered;
 	private bool mSuppressChars;
 	public ~this()
 	{
+		if (mParkingWindow != null) Win32.DestroyWindow(mParkingWindow);
 		if (mWindowIcon != null) Win32.DestroyIcon(mWindowIcon);
 		if (mSmallWindowIcon != null) Win32.DestroyIcon(mSmallWindowIcon);
 		if (mGdiPlusToken != 0) Win32.GdiplusShutdown(mGdiPlusToken);
@@ -82,14 +84,24 @@ internal class Win32Backend : FormsBackend
 
 	private void UpdateBorderStyle(Control control)
 	{
-		let style = (uint)(void*)Win32.GetWindowLongPtr(control.Handle, Win32.GWL_STYLE);
-		let extendedStyle = (uint)(void*)Win32.GetWindowLongPtr(control.Handle, Win32.GWL_EXSTYLE);
-		Win32.SetWindowLongPtr(control.Handle, Win32.GWL_STYLE,
+		let style = (uint)(void*)Win32.GetWindowLongPtr(control.GetHandle(), Win32.GWL_STYLE);
+		let extendedStyle = (uint)(void*)Win32.GetWindowLongPtr(control.GetHandle(), Win32.GWL_EXSTYLE);
+		Win32.SetWindowLongPtr(control.GetHandle(), Win32.GWL_STYLE,
 			(void*)((style & ~Win32.WS_BORDER) | (GetWindowStyle(control) & Win32.WS_BORDER)));
-		Win32.SetWindowLongPtr(control.Handle, Win32.GWL_EXSTYLE,
+		Win32.SetWindowLongPtr(control.GetHandle(), Win32.GWL_EXSTYLE,
 			(void*)((extendedStyle & ~Win32.WS_EX_CLIENTEDGE) | (GetWindowExtendedStyle(control) & Win32.WS_EX_CLIENTEDGE)));
-		Win32.SetWindowPos(control.Handle, null, 0, 0, 0, 0,
+		Win32.SetWindowPos(control.GetHandle(), null, 0, 0, 0, 0,
 			Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOZORDER | Win32.SWP_NOACTIVATE | Win32.SWP_FRAMECHANGED);
+	}
+
+	private void* GetParentHandle(Control control)
+	{
+		let parent = control.Parent?.GetHandle();
+		if (parent != null || control is Form) return parent;
+		if (mParkingWindow == null)
+			mParkingWindow = Win32.CreateWindowEx(0, (char16*)&Win32.STATIC_CLASS, null, 0,
+				0, 0, 0, 0, null, null, Win32.GetModuleHandle(null), null);
+		return mParkingWindow;
 	}
 
 	public override void CreateControl(Control control)
@@ -103,6 +115,7 @@ internal class Win32Backend : FormsBackend
 			mRegistered = true;
 		}
 
+		let parent = GetParentHandle(control);
 		let style = GetWindowStyle(control);
 		let size = control.Size;
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
@@ -116,7 +129,7 @@ internal class Win32Backend : FormsBackend
 		let extendedStyle = GetWindowExtendedStyle(control);
 		let handle = Win32.CreateWindowEx(extendedStyle, GetWindowClass(control), control.Text.ToScopedNativeWChar!(), style,
 			control.Location.x, control.Location.y, bounds.right - bounds.left, bounds.bottom - bounds.top,
-			control.Parent?.Handle, null, Win32.GetModuleHandle(null), Internal.UnsafeCastToPtr(control));
+			parent, null, Win32.GetModuleHandle(null), Internal.UnsafeCastToPtr(control));
 		if (handle == null)
 			Runtime.FatalError("Could not create the Windows control");
 		control.SetNativeHandle(handle);
@@ -130,9 +143,11 @@ internal class Win32Backend : FormsBackend
 		if (!(control is Form))
 			Win32.SetWindowSubclass(handle, => ChildWindowProc, 1, 0);
 		UpdateControl(control, .All);
+		for (let child in control.Controls)
+			if (child.GetHandle() != null) UpdateControl(child, .Parent);
 	}
 
-	public override void DestroyControl(Control control)
+	private void ClearInputState(Control control)
 	{
 		if (mSurrogateControl == control)
 		{
@@ -141,21 +156,37 @@ internal class Win32Backend : FormsBackend
 		}
 		if (Control.IsAncestorOf(control, mHovered))
 		{
-			Control.UpdateMouseOver(mHovered, null);
+			let hovered = mHovered;
 			mHovered = null;
+			Control.UpdateMouseOver(hovered, null);
 		}
-		if (control.Handle == null)
+	}
+
+	private void NotifyControlDestroyed(Control control, void* window)
+	{
+		if (control.GetHandle() != window) return;
+		mControls.Remove(window);
+		control.NotifyHandleDestroyed(window);
+		ClearInputState(control);
+	}
+
+	public override void DestroyControl(Control control)
+	{
+		ClearInputState(control);
+		if (control.GetHandle() == null)
 			return;
-		let handle = control.Handle;
+		let handle = control.GetHandle();
+		let generation = control.HandleGeneration;
 		Win32.DestroyWindow(handle);
-		mControls.Remove(handle);
-		control.SetNativeHandle(null);
+		if (control.HandleGeneration.IsCurrent(generation)) NotifyControlDestroyed(control, handle);
 	}
 
 	public override void UpdateControl(Control control, ControlChange change)
 	{
-		if (control.Handle == null)
+		if (control.GetHandle() == null)
 			return;
+		if (change == .Parent)
+			Win32.SetParent(control.GetHandle(), GetParentHandle(control));
 		if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)
 		{
 			if (mControls.TryGetValue(Win32.GetFocus(), let focused) && Control.IsAncestorOf(control, focused))
@@ -168,31 +199,31 @@ internal class Win32Backend : FormsBackend
 				mHovered = null;
 			}
 		}
-		if (change == .Visibility || (change == .All && !(control is Form)))
-			Win32.ShowWindow(control.Handle, control.IsEffectivelyVisible ? Win32.SW_SHOW : Win32.SW_HIDE);
+		if (change == .Visibility || change == .Parent || (change == .All && !(control is Form)))
+			Win32.ShowWindow(control.GetHandle(), control.IsEffectivelyVisible ? Win32.SW_SHOW : Win32.SW_HIDE);
 		if (change == .ZOrder && control.Parent != null)
 			for (let child in control.Parent.Controls)
-				if (child.Handle != null)
-					Win32.SetWindowPos(child.Handle, null, 0, 0, 0, 0,
+				if (child.GetHandle() != null)
+					Win32.SetWindowPos(child.GetHandle(), null, 0, 0, 0, 0,
 						Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOACTIVATE);
 		if (change == .Text)
-			Win32.SetWindowText(control.Handle, control.Text.ToScopedNativeWChar!());
+			Win32.SetWindowText(control.GetHandle(), control.Text.ToScopedNativeWChar!());
 		if (change == .Font || change == .All)
-			Win32.SendMessage(control.Handle, Win32.WM_SETFONT, (uint*)GetNativeFont(control).Handle, (int*)(void*)1);
+			Win32.SendMessage(control.GetHandle(), Win32.WM_SETFONT, (uint*)GetNativeFont(control).Handle, (int*)(void*)1);
 		if (change == .Enabled || change == .All)
-			Win32.EnableWindow(control.Handle, control.IsEffectivelyEnabled ? 1 : 0);
+			Win32.EnableWindow(control.GetHandle(), control.IsEffectivelyEnabled ? 1 : 0);
 		if (change == .Border && !(control is Form))
 			UpdateBorderStyle(control);
-		if (change == .Bounds || change == .Constraints || change == .All)
+		if (change == .Bounds || change == .Constraints || change == .Parent || change == .All)
 		{
 			let size = control.Size;
 			let location = control.Location;
 			let offset = control.Parent?.ContentOffset ?? .(0, 0);
 			if (let form = control as Form)
-				Win32.SetWindowPos(form.Handle, null, location.x, location.y,
+				Win32.SetWindowPos(form.GetHandle(), null, location.x, location.y,
 					Math.Max(size.width, form.MinimumSize.width), Math.Max(size.height, form.MinimumSize.height), Win32.SWP_NOZORDER);
 			else
-				Win32.SetWindowPos(control.Handle, null, location.x - offset.x, location.y - offset.y, size.width, size.height, Win32.SWP_NOZORDER);
+				Win32.SetWindowPos(control.GetHandle(), null, location.x - offset.x, location.y - offset.y, size.width, size.height, Win32.SWP_NOZORDER);
 		}
 		if (change == .Scroll || change == .All)
 			if (let scrollable = control as ScrollableControl)
@@ -201,17 +232,17 @@ internal class Win32Backend : FormsBackend
 			if (let progress = control as ProgressBar) UpdateProgressBar(progress, change);
 		if (change == .Value || change == .All)
 			if (let checkBox = control as CheckBox)
-				Win32.SendMessage(control.Handle, Win32.BM_SETCHECK, (uint*)(void*)(checkBox.Checked ? 1 : 0), null);
+				Win32.SendMessage(control.GetHandle(), Win32.BM_SETCHECK, (uint*)(void*)(checkBox.Checked ? 1 : 0), null);
 		if (let editor = control as TextBoxBase)
 		{
 			if (change == .ReadOnly || change == .All)
-				Win32.SendMessage(control.Handle, Win32.EM_SETREADONLY, (uint*)(void*)(editor.ReadOnly ? 1 : 0), null);
+				Win32.SendMessage(control.GetHandle(), Win32.EM_SETREADONLY, (uint*)(void*)(editor.ReadOnly ? 1 : 0), null);
 			if (change == .Selection || change == .All)
-				Win32.SendMessage(control.Handle, Win32.EM_SETSEL,
+				Win32.SendMessage(control.GetHandle(), Win32.EM_SETSEL,
 					(uint*)(void*)TextEncodingHelper.ToUtf16Offset(editor.Text, editor.SelectionAnchor),
 					(int*)(void*)TextEncodingHelper.ToUtf16Offset(editor.Text, editor.Caret));
 		}
-		Win32.InvalidateRect(control.Handle, null, true);
+		Win32.InvalidateRect(control.GetHandle(), null, true);
 	}
 
 	public override System.Drawing.Rectangle GetScreenWorkingArea()
@@ -225,13 +256,13 @@ internal class Win32Backend : FormsBackend
 
 	public override Size GetClientSize(Form form)
 	{
-		if (form.Handle == null)
+		if (form.GetHandle() == null)
 		{
 			var frame = Win32.RECT(0, 0, 0, 0);
 			Win32.AdjustWindowRectEx(ref frame, GetWindowStyle(form), 0, 0);
 			return .(Math.Max(0, form.Size.width - frame.right + frame.left), Math.Max(0, form.Size.height - frame.bottom + frame.top));
 		}
-		Win32.GetClientRect(form.Handle, var bounds);
+		Win32.GetClientRect(form.GetHandle(), var bounds);
 		return .(bounds.right, bounds.bottom);
 	}
 
@@ -239,12 +270,11 @@ internal class Win32Backend : FormsBackend
 	{
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
 		Win32.AdjustWindowRectEx(ref bounds, GetWindowStyle(form), 0, 0);
-		Win32.SetWindowPos(form.Handle, null, form.Location.x, form.Location.y,
+		Win32.SetWindowPos(form.GetHandle(), null, form.Location.x, form.Location.y,
 			Math.Max(bounds.right - bounds.left, form.MinimumSize.width), Math.Max(bounds.bottom - bounds.top, form.MinimumSize.height), Win32.SWP_NOZORDER);
 	}
 
-	public override void Show(Form form) => Win32.ShowWindow(form.Handle, Win32.SW_SHOW);
-	public override void Close(Form form) => DestroyControl(form);
+	public override void Show(Form form) => Win32.ShowWindow(form.GetHandle(), Win32.SW_SHOW);
 	public override void DoEvents()
 	{
 		Win32.MSG message = ?;
@@ -286,11 +316,16 @@ internal class Win32Backend : FormsBackend
 			return Win32.DefWindowProc(window, message, wParam, lParam);
 		if (backend.DispatchNativeInput(form, message, wParam, lParam))
 			return 0;
-		if (form.Handle != window) return 0;
+		if (form.GetHandle() != window) return 0;
 
 		switch (message)
 		{
 		case Win32.WM_COMMAND: backend.HandleCommand(wParam, lParam);
+		case Win32.WM_SHOWWINDOW:
+			let snapshot = form.HandleGeneration;
+			let result = Win32.DefWindowProc(window, message, wParam, lParam);
+			if (form.GetHandle() == window && form.IsCurrentHandle(snapshot)) form.NotifyVisibility(wParam != null);
+			return result;
 		case Win32.WM_GETMINMAXINFO:
 			let limits = (Win32.MINMAXINFO*)lParam;
 			limits.minTrackSize.x = Math.Max(limits.minTrackSize.x, form.MinimumSize.width);
@@ -305,12 +340,12 @@ internal class Win32Backend : FormsBackend
 		case Win32.WM_CLOSE:
 			form.Close();
 			return 0;
-		case Win32.WM_DESTROY:
-			form.SetNativeHandle(null);
-			return 0;
+		case Win32.WM_NCDESTROY:
+			backend.NotifyControlDestroyed(form, window);
+			return Win32.DefWindowProc(window, message, wParam, lParam);
 		default:
 		}
-		return form.Handle == window ? Win32.DefWindowProc(window, message, wParam, lParam) : 0;
+		return form.GetHandle() == window ? Win32.DefWindowProc(window, message, wParam, lParam) : 0;
 	}
 }
 #endif

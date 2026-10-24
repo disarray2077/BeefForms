@@ -262,11 +262,6 @@ internal class SDLWindowSession : RefCounted
 		mShowPending = (SDL.GetWindowFlags(mWindow) & (uint32)SDL.WindowFlags.Hidden) != 0;
 		RequestRedraw();
 	}
-	public void Close(Form form)
-	{
-		mRunning = false;
-		mBackend.WakeEventLoop();
-	}
 
 	private void RequestRedraw()
 	{

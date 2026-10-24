@@ -206,14 +206,6 @@ internal class SDLBackend : FormsBackend
 			session?.Show(form);
 		}
 	}
-	public override void Close(Form form)
-	{
-		using (let current = UseSession(form))
-		{
-			let session = current.Session;
-			session?.Close(form);
-		}
-	}
 	public override bool FocusControl(Control control)
 	{
 		using (let current = UseSession(control))

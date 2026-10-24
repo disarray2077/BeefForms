@@ -52,6 +52,8 @@ public class TextBoxBase : Control
 	internal int SelectionAnchor => mAnchor;
 	private int mCaret;
 	private int mAnchor;
+	private int mCachedAnchorUtf16;
+	private int mCachedCaretUtf16;
 	internal bool UpdatingText { get; private set; }
 
 	public override StringView Text
@@ -62,17 +64,18 @@ public class TextBoxBase : Control
 			let text = value;
 			if (Text == text) return;
 			// Created WinForms editors reset selection; unrealized editors retain UTF-16 positions.
-			let anchor = IsHandleCreated ? 0 : TextEncodingHelper.ToUtf8Offset(text, TextEncodingHelper.ToUtf16Offset(Text, mAnchor));
-			let caret = IsHandleCreated ? 0 : TextEncodingHelper.ToUtf8Offset(text, TextEncodingHelper.ToUtf16Offset(Text, mCaret));
-			CommitText(text, anchor, caret);
+			let anchor = IsHandleCreated ? 0 : TextEncodingHelper.ToUtf8Offset(text, mCachedAnchorUtf16);
+			let caret = IsHandleCreated ? 0 : TextEncodingHelper.ToUtf8Offset(text, mCachedCaretUtf16);
+			CommitText(text, anchor, caret, preserveSelection: !IsHandleCreated);
 		}
 	}
 
-	private void CommitText(StringView text, int anchor, int caret, bool forceNotification = false)
+	private void CommitText(StringView text, int anchor, int caret, bool forceNotification = false, bool preserveSelection = false)
 	{
 		let changed = SetTextValue(text);
 		mAnchor = TextEncodingHelper.CharacterBoundary(Text, anchor);
 		mCaret = TextEncodingHelper.CharacterBoundary(Text, caret);
+		if (!preserveSelection) CacheSelection();
 		UpdatingText = true;
 		if (changed) UpdateBackend(.Text);
 		UpdateBackend(.Selection);
@@ -88,6 +91,7 @@ public class TextBoxBase : Control
 		let position = Math.Clamp(start, 0, textLength);
 		mAnchor = TextEncodingHelper.ToUtf8Offset(Text, position);
 		mCaret = TextEncodingHelper.ToUtf8Offset(Text, position + Math.Clamp(length, -position, textLength - position));
+		CacheSelection();
 		UpdateBackend(.Selection);
 	}
 	public void SelectAll() => Select(0, UTF16.GetEncodedLen(Text));
@@ -97,13 +101,29 @@ public class TextBoxBase : Control
 		mCaret = TextEncodingHelper.CharacterBoundary(Text, position);
 		if (!extend)
 			mAnchor = mCaret;
+		CacheSelection();
 		UpdateBackend(.Selection);
 	}
 
-	internal void NotifySelection(int anchor, int caret)
+	internal void NotifySelection(int anchor, int caret, StringView text)
 	{
 		mAnchor = anchor;
 		mCaret = caret;
+		CacheSelection(text);
+	}
+
+	private void CacheSelection() => CacheSelection(Text);
+
+	private void CacheSelection(StringView text)
+	{
+		mCachedAnchorUtf16 = TextEncodingHelper.ToUtf16Offset(text, mAnchor);
+		mCachedCaretUtf16 = TextEncodingHelper.ToUtf16Offset(text, mCaret);
+	}
+
+	protected internal override void CreateHandle()
+	{
+		base.CreateHandle();
+		if (IsHandleCreated) CacheSelection();
 	}
 
 	internal int AdjacentPosition(int position, bool forward) => TextEncodingHelper.AdjacentPosition(Text, position, forward);

@@ -10,11 +10,11 @@ extension Win32Backend
 {
 	private void PaintLabel(Label label)
 	{
-		let context = Win32.BeginPaint(label.Handle, var paint);
-		defer Win32.EndPaint(label.Handle, ref paint);
-		Win32.GetClientRect(label.Handle, var bounds);
+		let context = Win32.BeginPaint(label.GetHandle(), var paint);
+		defer Win32.EndPaint(label.GetHandle(), ref paint);
+		Win32.GetClientRect(label.GetHandle(), var bounds);
 		Win32.FillRect(context, ref bounds, (void*)(Win32.COLOR_BTNFACE + 1));
-		let font = (void*)Win32.SendMessage(label.Handle, Win32.WM_GETFONT, null, null);
+		let font = (void*)Win32.SendMessage(label.GetHandle(), Win32.WM_GETFONT, null, null);
 		let previous = Win32.SelectObject(context, font);
 		defer Win32.SelectObject(context, previous);
 		Win32.SetBkMode(context, Win32.TRANSPARENT);

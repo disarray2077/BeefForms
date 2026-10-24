@@ -268,17 +268,18 @@ class MultiWindowReviewTests
 		main.DestroyHandle(); main.CreateHandle();
 		int stops = 0;
 		Application.[Friend]RunFrame(scope [&] () => { stops++; });
-		Test.Assert(stops == 0 && !deleted && Application.[Friend]sOpenForms.Count == 2);
+		Test.Assert(stops == 0 && !deleted && Application.OpenForms.Count == 1 && Application.OpenForms[0] == secondary);
 		secondary.DestroyHandle();
 		main.Close();
 		secondary.CreateHandle();
 		Application.[Friend]RunFrame(scope [&] () => { stops++; });
-		Test.Assert(stops == 1 && deleted && secondary.IsDisposed);
-		Test.Assert(Application.[Friend]sOpenForms.IsEmpty && Application.CreatedControlCount == 0);
+		Test.Assert(stops == 1 && deleted && !secondary.IsDisposed);
+		secondary.Dispose();
+		Test.Assert(Application.OpenForms.Count == 0 && Application.CreatedControlCount == 0);
 	}
 
-	[Test] public static void SDLHandleRecreationPreservesRegistrationAndRunLifetime() => VerifyRecreation(.SDL2OpenGL);
+	[Test] public static void SDLRawHandleRecreationDoesNotRestoreRegistration() => VerifyRecreation(.SDL2OpenGL);
 #if BF_PLATFORM_WINDOWS
-	[Test] public static void NativeHandleRecreationPreservesRegistrationAndRunLifetime() => VerifyRecreation(.Win32);
+	[Test] public static void NativeRawHandleRecreationDoesNotRestoreRegistration() => VerifyRecreation(.Win32);
 #endif
 }

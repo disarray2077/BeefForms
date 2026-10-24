@@ -21,7 +21,7 @@ class CallbackLifecycleTests
 		});
 		form.FormClosed.Add(new (sender, args) =>
 		{
-			Test.Assert(events == "BC" && !form.IsHandleCreated && !form.IsDisposed && !form.Disposing);
+			Test.Assert(events == "BC" && form.IsHandleCreated && !form.IsDisposed && !form.Disposing);
 			events.Append('D');
 		});
 		form.Disposed.Add(new (sender, args) =>

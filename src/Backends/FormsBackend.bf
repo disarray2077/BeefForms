@@ -18,7 +18,6 @@ internal abstract class FormsBackend
 	public abstract Rectangle GetScreenWorkingArea();
 	public abstract void SetClientSize(Form form, Size size);
 	public abstract void Show(Form form);
-	public abstract void Close(Form form);
 #if !BF_PLATFORM_WASM
 	public abstract void Run(Form form);
 #endif

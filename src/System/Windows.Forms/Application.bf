@@ -19,7 +19,10 @@ public static class Application
 	private static bool sProcessingEvents;
 	private static bool sExiting;
 	private static Form sMainForm;
-	private static List<Form> sOpenForms = new .() ~ delete _;
+	private static FormCollection sOpenForms = new .() ~ delete _;
+
+	/// A live, read-only collection of loaded forms, indexed by position or name.
+	public static FormCollection OpenForms => sOpenForms;
 
 	internal static void RegisterForm(Form form) => sOpenForms.Add(form);
 	internal static void UnregisterForm(Form form) => sOpenForms.Remove(form);

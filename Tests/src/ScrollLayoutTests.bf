@@ -10,6 +10,11 @@ namespace BeefForms.Tests;
 
 class ScrollLayoutTests
 {
+#if BF_PLATFORM_WINDOWS
+	[Import("user32.dll"), CLink]
+	private static extern bool IsWindow(void* window);
+#endif
+
 	[Test]
 	public static void RemovingAndReparentingChildrenUpdatesScrollBounds()
 	{
@@ -191,8 +196,10 @@ class ScrollLayoutTests
 		second.Controls.Add(child);
 		Test.Assert(Win32.GetParent(child.Handle) == second.Handle);
 		Test.Assert(!first.VerticalScrollVisible && second.VerticalScrollVisible);
+		let oldHandle = child.Handle;
 		second.Controls.Clear();
-		Test.Assert(!child.IsHandleCreated && child.Handle == null && child.Parent == null);
+		Test.Assert(!child.IsHandleCreated && child.Parent == null);
+		Test.Assert(!IsWindow(oldHandle));
 		delete child;
 	}
 #endif

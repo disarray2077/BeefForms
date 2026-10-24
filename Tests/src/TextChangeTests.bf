@@ -11,6 +11,67 @@ namespace BeefForms.Tests;
 
 class TextChangeTests
 {
+	[Test]
+	public static void UncreatedAssignmentRestoresSelectionAfterTextRegrows()
+	{
+		let editor = scope TextBox();
+		editor.Text = "abcdef"; editor.Select(4, 2);
+		editor.Text = "x";
+		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 0);
+		editor.Text = "abcdef";
+		Test.Assert(editor.SelectionStart == 4 && editor.SelectionLength == 2 && !editor.IsHandleCreated);
+	}
+
+	[Test]
+	public static void UncreatedSelectionCacheUsesUTF16AcrossTextReplacements()
+	{
+		let editor = scope TextBox();
+		editor.Text = "aé😀z"; editor.Select(2, 3);
+		editor.Text = "é";
+		Test.Assert(editor.SelectionStart == 1 && editor.SelectionLength == 0);
+		editor.Text = "aé😀z";
+		Test.Assert(editor.SelectionStart == 2 && editor.SelectionLength == 3);
+		editor.Text = "x"; editor.Select(0, 1);
+		editor.Text = "aé😀z";
+		Test.Assert(editor.SelectionStart == 0 && editor.SelectionLength == 1);
+	}
+
+	private static void VerifyCreatedSelectionCache(ApplicationBackend backend)
+	{
+		Application.UseBackend(backend);
+		let form = scope Form(); form.ClientSize = .(240, 120);
+		let editor = new TextBox(); form.Controls.Add(editor);
+		editor.Text = "abcdef"; editor.Select(4, 2); editor.Text = "x";
+		form.Show();
+		// Once created, assigning different text resets the native selection.
+		editor.Text = "abcdef";
+		Test.Assert(editor.SelectionStart == 0 && editor.SelectionLength == 0);
+		form.Close();
+	}
+
+	[Test] public static void SDLCreatedAssignmentDoesNotRestoreTheUncreatedSelection() => VerifyCreatedSelectionCache(.SDL2OpenGL);
+#if BF_PLATFORM_WINDOWS
+	[Test] public static void NativeCreatedAssignmentDoesNotRestoreTheUncreatedSelection() => VerifyCreatedSelectionCache(.Win32);
+#endif
+
+	private static void VerifySelectionAfterHandleDestruction(ApplicationBackend backend)
+	{
+		Application.UseBackend(backend);
+		let form = scope Form(); form.ClientSize = .(240, 120);
+		let editor = new TextBox(); form.Controls.Add(editor);
+		editor.Text = "abcdef"; editor.Select(4, 2); editor.Text = "x";
+		form.Show();
+		editor.[Friend]DestroyHandle();
+		editor.Text = "abcdef";
+		Test.Assert(!editor.IsHandleCreated && editor.SelectionStart == 1 && editor.SelectionLength == 0);
+		form.Close();
+	}
+
+	[Test] public static void SDLHandleCreationCommitsTheClampedSelection() => VerifySelectionAfterHandleDestruction(.SDL2OpenGL);
+#if BF_PLATFORM_WINDOWS
+	[Test] public static void NativeHandleCreationCommitsTheClampedSelection() => VerifySelectionAfterHandleDestruction(.Win32);
+#endif
+
 	// Expected text/selection states were captured with .NET 9.0.4 WinForms.
 	private class Snapshot
 	{

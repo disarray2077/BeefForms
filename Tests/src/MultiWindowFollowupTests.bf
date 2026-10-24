@@ -147,7 +147,7 @@ class MultiWindowFollowupTests
 		Application.[Friend]BeginRun(main); other.Show(); other.DestroyHandle(); main.Close();
 		Application.[Friend]RunFrame(=> StopLoop);
 		// Explicit DestroyHandle (without a recreation operation) behaves this way in .NET too.
-		Test.Assert(deleted && !other.IsHandleCreated && !other.IsDisposed && Application.[Friend]sOpenForms.IsEmpty);
+		Test.Assert(deleted && !other.IsHandleCreated && !other.IsDisposed && Application.OpenForms.Count == 0);
 	}
 
 	private static void TrackExit(Form form, String events, char8 closing, char8 closed, char8 disposed)
@@ -183,7 +183,7 @@ class MultiWindowFollowupTests
 		Test.Assert(!first.IsDisposed && !second.IsDisposed && !third.IsDisposed && !Application.[Friend]sExiting);
 		cancel = false; events.Clear(); Application.Exit();
 		Test.Assert(events == "321cbaCBA" && first.IsDisposed && second.IsDisposed && third.IsDisposed);
-		Test.Assert(Application.[Friend]sOpenForms.IsEmpty && Application.CreatedControlCount == 0);
+		Test.Assert(Application.OpenForms.Count == 0 && Application.CreatedControlCount == 0);
 	}
 
 	[Test] public static void SDLApplicationExitUsesCancelableClosingThenClosedAndDisposalPhases() => VerifyExitPhases(.SDL2OpenGL);
@@ -221,7 +221,7 @@ class MultiWindowFollowupTests
 		second.FormClosed.Add(new [&] (sender, args) => { closed++; });
 		Application.Exit();
 		Test.Assert(firstQueries == 0 && closed == 1 && first.IsDisposed && second.IsDisposed);
-		Test.Assert(Application.[Friend]sOpenForms.IsEmpty);
+		Test.Assert(Application.OpenForms.Count == 0);
 	}
 
 	[Test] public static void SDLExplicitlyDestroyedSecondaryMatchesDotNetTeardown() => VerifyHandleFreeSecondary(.SDL2OpenGL);

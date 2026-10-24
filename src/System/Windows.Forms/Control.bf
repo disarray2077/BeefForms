@@ -10,7 +10,7 @@ namespace System.Windows.Forms;
 
 internal enum ControlChange
 {
-	Paint, Text, Font, Bounds, Enabled, Value, Appearance, Border, Constraints, ReadOnly, Selection, Scroll, Visibility, ZOrder, All
+	Paint, Text, Font, Bounds, Enabled, Value, Appearance, Border, Constraints, ReadOnly, Selection, Scroll, Visibility, Parent, ZOrder, All
 }
 
 public class Control : System.ComponentModel.Component
@@ -39,9 +39,10 @@ public class Control : System.ComponentModel.Component
 			value.ReleaseDisposalOwner();
 			mItems.Insert(index, value);
 			value.mParent = mOwner;
+			value.UpdateBackend(.Parent);
 			value.UpdateAnchorDistances();
 			value.UpdateFont();
-			if (mOwner.IsHandleCreated) value.CreateHandle();
+			if (mOwner.IsHandleCreated) value.CreateControl();
 			mOwner.PerformLayout();
 			value.UpdateBackend(.ZOrder);
 		}
@@ -108,6 +109,7 @@ public class Control : System.ComponentModel.Component
 	private List<Control> mDisposedChildren ~ delete _;
 	private Control mDisposalOwner;
 	private append String mText = .();
+	private append String mName = .();
 	private Font mFont ~ _?.Release();
 	private Point mLocation;
 	private Size mSize, mClientSize;
@@ -117,6 +119,7 @@ public class Control : System.ComponentModel.Component
 	private bool mEnabled = true;
 	private bool mAutoSize;
 	private BorderStyle mBorderStyle;
+	private bool mHandleCreated;
 	private bool mCreated;
 	private Generation mHandleGeneration;
 	private bool mDisposing, mDisposed;
@@ -128,10 +131,20 @@ public class Control : System.ComponentModel.Component
 	public ref Event<EventHandler> Load { get; set; } ~ _.Dispose();
 	public ref Event<EventHandler> TextChanged { get; set; } ~ _.Dispose();
 
-	public void* Handle => mHandle;
-	public bool IsHandleCreated => mCreated;
+	public void* Handle
+	{
+		get
+		{
+			if (!IsHandleCreated) CreateHandle();
+			return mHandle;
+		}
+	}
+	/// Returns the current handle without creating one.
+	internal void* GetHandle() => mHandle;
+	public bool IsHandleCreated => mHandleCreated;
+	public bool Created => mCreated;
 	internal Generation HandleGeneration => mHandleGeneration;
-	internal bool IsCurrentHandle(Generation snapshot) => mCreated && !IsDisposingOrDisposed && mHandleGeneration.IsCurrent(snapshot);
+	internal bool IsCurrentHandle(Generation snapshot) => mHandleCreated && !IsDisposingOrDisposed && mHandleGeneration.IsCurrent(snapshot);
 	public bool Disposing => mDisposing;
 	public bool IsDisposed => mDisposed;
 	internal bool IsDisposingOrDisposed => mDisposing || mDisposed;
@@ -258,7 +271,11 @@ public class Control : System.ComponentModel.Component
 		set { mEnabled = value; UpdateSubtree(.Enabled); }
 	}
 
-	public String Name { get; set; }
+	public StringView Name
+	{
+		get => mName;
+		set => mName.Set(value);
+	}
 	public int TabIndex { get; set; }
 	public AnchorStyles Anchor { get; set; } = .Top | .Left;
 	public bool AutoSize
@@ -277,7 +294,7 @@ public class Control : System.ComponentModel.Component
 		{
 			if (mBorderStyle == value) return;
 			mBorderStyle = value;
-			if (mCreated) UpdateClientSize();
+			if (mHandleCreated) UpdateClientSize();
 			UpdateBackend(.Border);
 			UpdateAutoSize();
 			PerformLayout();
@@ -350,12 +367,19 @@ public class Control : System.ComponentModel.Component
 
 	private void UpdateClientSize() => mClientSize = .(Math.Max(0, mSize.width - BorderWidth * 2), Math.Max(0, mSize.height - BorderWidth * 2));
 
-	internal void DestroyHandle()
+	private bool ResetHandleState()
 	{
-		if (!mCreated) return;
+		if (!mHandleCreated) return false;
+		mHandleCreated = false;
 		mCreated = false;
 		if (let form = this as Form) Application.UnregisterForm(form);
 		mHandleGeneration.Advance();
+		return true;
+	}
+
+	protected internal virtual void DestroyHandle()
+	{
+		if (!ResetHandleState()) return;
 		for (let child in Controls) child.DestroyHandle();
 		Application.Backend.DestroyControl(this);
 		Application.CreatedControlCount--;
@@ -368,13 +392,13 @@ public class Control : System.ComponentModel.Component
 	internal void UpdateBackend(ControlChange change)
 	{
 		NeedsPaint = true;
-		if (mCreated)
+		if (mHandleCreated && !(this is Form && change == .Visibility && Visible && !Created))
 			Application.Backend.UpdateControl(this, change);
 	}
 
 	private void UpdateAutoSize()
 	{
-		if (AutoSize && this is Label && (mCreated || Parent != null))
+		if (AutoSize && this is Label && (mHandleCreated || Parent != null))
 			Size = Application.Backend.MeasureText(this);
 		else if (AutoSize && this is TextBoxBase && !(this is RichTextBox))
 			Size = .(Size.width, Application.Backend.GetTextBoxHeight((TextBoxBase)this));
@@ -469,6 +493,14 @@ public class Control : System.ComponentModel.Component
 	}
 
 	internal void SetNativeHandle(void* handle) => mHandle = handle;
+	internal void NotifyHandleDestroyed(void* handle)
+	{
+		if (mHandle != handle) return;
+		mHandle = null;
+		// DestroyHandle already invalidates state and accounts for its own destruction.
+		if (ResetHandleState()) Application.CreatedControlCount--;
+	}
+
 	internal void NotifyMove(Point location)
 	{
 		mLocation = location;
@@ -483,28 +515,43 @@ public class Control : System.ComponentModel.Component
 		if (mSize.width == size.width && mSize.height == size.height) return;
 		mSize = size;
 		UpdateClientSize();
-		if (mCreated) OnSizeChanged(.Empty);
+		if (mHandleCreated) OnSizeChanged(.Empty);
 	}
+
+	public void CreateControl()
+	{
+		if (mCreated || !Visible || IsDisposed) return;
+		mCreated = true;
+		if (!IsHandleCreated) CreateHandle();
+		if (!IsHandleCreated || IsDisposingOrDisposed) return;
+		let children = ToScopedArray!(Controls);
+		for (let child in children)
+		{
+			// Check membership before dereferencing: a previous callback may have deleted this child.
+			if (!Controls.Contains(child) || child.IsDisposingOrDisposed) continue;
+			child.UpdateAnchorDistances();
+			child.CreateControl();
+			if (!mCreated || IsDisposingOrDisposed) return;
+		}
+		PerformLayout();
+		if (!mCreated || IsDisposingOrDisposed) return;
+		OnCreateControl();
+	}
+
+	protected virtual void OnCreateControl() {}
 
 	protected internal virtual void CreateHandle()
 	{
 		if (IsDisposed)
 			Runtime.FatalError("Cannot create a handle for a disposed control");
-		if (mCreated)
+		if (mHandleCreated)
 			return;
 		mHandleGeneration.Advance();
 		Application.CreatedControlCount++;
 		Application.Backend.CreateControl(this);
 		UpdateClientSize();
-		mCreated = true;
-		if (let form = this as Form) Application.RegisterForm(form);
+		mHandleCreated = true;
 		UpdateAutoSize();
-		for (let child in Controls)
-		{
-			if (child.IsDisposingOrDisposed) continue;
-			child.UpdateAnchorDistances();
-			child.CreateHandle();
-		}
-		PerformLayout();
+		if (!(this is Form) && Visible) CreateControl();
 	}
 }

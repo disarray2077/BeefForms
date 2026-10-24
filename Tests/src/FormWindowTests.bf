@@ -114,7 +114,7 @@ class FormWindowTests
 		bool pending = true;
 		int requests = 0, closed = 0;
 		form.FormClosing.Add(new [&] (sender, args) => { requests++; args.Cancel = pending; });
-		form.FormClosed.Add(new [&] (sender, args) => { closed++; Test.Assert(!form.IsHandleCreated && !editor.IsHandleCreated); });
+		form.FormClosed.Add(new [&] (sender, args) => { closed++; Test.Assert(form.IsHandleCreated && editor.IsHandleCreated); });
 		form.Show();
 		if (let sdl = Application.Backend as SDLBackend)
 		{

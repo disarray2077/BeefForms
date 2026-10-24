@@ -104,7 +104,7 @@ class MultiWindowTests
 		Test.Assert(attempts == 2 && closed == 1 && deleted);
 		Test.Assert(survivor.IsDisposed && !survivor.IsHandleCreated);
 		Test.Assert(survivorClosing == 0 && survivorClosed == 0 && survivorDisposed == 1);
-		Test.Assert(Application.CreatedControlCount == 0 && Application.[Friend]sOpenForms.IsEmpty);
+		Test.Assert(Application.CreatedControlCount == 0 && Application.OpenForms.Count == 0);
 		Test.Assert(!Application.[Friend]sRunning && Application.[Friend]sMainForm == null);
 	}
 
@@ -292,6 +292,6 @@ class MultiWindowTests
 		Test.Assert(!deleted && survivor.IsHandleCreated);
 		Application.[Friend]RunFrame(scope [&] () => { stops++; });
 		Test.Assert(stops == 1 && deleted && survivor.IsDisposed && !survivor.IsHandleCreated);
-		Test.Assert(Application.CreatedControlCount == 0 && Application.[Friend]sOpenForms.IsEmpty);
+		Test.Assert(Application.CreatedControlCount == 0 && Application.OpenForms.Count == 0);
 	}
 }
