@@ -29,7 +29,9 @@ internal abstract class FormsBackend
 	public abstract void SetCapture(Control control, bool capture);
 	public abstract bool HasCapture(Control control);
 	public abstract Size MeasureText(Control control);
+	public virtual Size MeasureText(Control control, Size proposedSize) => MeasureText(control);
 	public abstract int32 GetTextBoxHeight(TextBoxBase editor);
+	public abstract int32 GetFontHeight(Control control);
 
 	/// Client area available before scrollbars are applied.
 	public virtual Size GetScrollClientSize(Control control) => control.ClientSize;

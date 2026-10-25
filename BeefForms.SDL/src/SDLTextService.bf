@@ -76,10 +76,23 @@ internal class SDLTextService
 	public static HorizontalAlignment Alignment(Control control) => (control as Label)?.TextAlign.Horizontal ?? .Left;
 	public static bool HasEllipsis(Control control) => (control as Label)?.AutoEllipsis == true && !control.AutoSize;
 
-	public void GetDisplayText(Control control, String display)
+	private void NormalizeEditorText(Control control, String display)
+	{
+		if (let editor = control as TextBoxBase)
+		{
+			if (editor.Multiline) display.Replace("\r\n", "\n");
+			else
+			{
+				display.Replace('\r', ' ');
+				display.Replace('\n', ' ');
+			}
+		}
+	}
+	public void GetDisplayText(Control control, String display, bool applyEllipsis = true)
 	{
 		display.Set(control.Text);
-		if (!HasEllipsis(control)) return;
+		NormalizeEditorText(control, display);
+		if (!applyEllipsis || !HasEllipsis(control)) return;
 		let width = control.ClientSize.width - LabelPadding(control) * 2;
 		if (Measure(control, display) <= width) return;
 		let available = width - Measure(control, "...");
@@ -113,6 +126,17 @@ internal class SDLTextService
 		GetDisplayText(control, display);
 		let size = LayoutText(control, display);
 		return .(size.width + ((control is Label) ? LabelPadding(control) * 2 : 0), size.height);
+	}
+
+	public Size MeasureText(Control control, Size proposedSize)
+	{
+		if (control.Text.IsEmpty) return .(0, LineHeight(control));
+		let padding = (control is Label) ? LabelPadding(control) * 2 : 0;
+		let width = proposedSize.width > 0 ? Math.Max(1, proposedSize.width - padding) : 0;
+		let text = scope String();
+		GetDisplayText(control, text, false);
+		let measured = MeasureWrapped(GetFont(control), text, width, .Left, null);
+		return .(measured.width + padding, measured.height);
 	}
 
 	public Size MeasureEditorContent(TextBoxBase editor)
@@ -186,15 +210,21 @@ internal class SDLTextService
 
 	public Point TextPosition(TextBoxBase control, int position)
 	{
-		int lineStart = 0, line = 0;
-		for (int i < position)
-			if (control.Text[i] == '\n') { lineStart = i + 1; line++; }
-		return .(Measure(control, .(control.Text, lineStart, position - lineStart)), (int32)(line * LineHeight(control)));
+		int line = 0;
+		if (control.Multiline)
+			for (int i < position) if (control.Text[i] == '\n') line++;
+		let start = control.Multiline ? control.Text.LineStart(position) : 0;
+		var end = position;
+		if (control.Multiline && end > start && end < control.Text.Length && control.Text[end - 1] == '\r' && control.Text[end] == '\n')
+			end--;
+		let text = scope String(control.Text, start, end - start);
+		NormalizeEditorText(control, text);
+		return .(Measure(control, text), (int32)(line * LineHeight(control)));
 	}
 
 	public int HitText(TextBoxBase control, int x, int y)
 	{
-		let line = Math.Max(0, (y + control.BorderWidth + control.ScrollY - EditorTextInset) / LineHeight(control));
+		let line = control.Multiline ? Math.Max(0, (y + control.BorderWidth + control.ScrollY - EditorTextInset) / LineHeight(control)) : 0;
 		int start = 0;
 		for (int i < line)
 		{
@@ -202,9 +232,9 @@ internal class SDLTextService
 			if (end < 0) return control.Text.Length;
 			start = end + 1;
 		}
-		var end = control.Text.IndexOf('\n', start);
-		if (end < 0) end = control.Text.Length;
-		let text = StringView(control.Text, start, end - start);
+		let end = control.Multiline ? control.Text.LineEnd(start) : control.Text.Length;
+		let text = scope String(control.Text, start, end - start);
+		NormalizeEditorText(control, text);
 		let boundaries = scope List<int>();
 		TextEncodingHelper.GetCharacterBoundaries(text, boundaries);
 		let target = x + control.BorderWidth + control.ScrollX - EditorTextInset;

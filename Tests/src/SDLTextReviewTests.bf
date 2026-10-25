@@ -18,7 +18,7 @@ class SDLTextReviewTests
 		int position = 0;
 		while (position < editor.Text.Length)
 		{
-			let next = editor.AdjacentPosition(position, true);
+			let next = TextEncodingHelper.AdjacentPosition(editor.Text, position, true, editor.Multiline);
 			let left = service.Measure(editor, .(editor.Text, 0, position));
 			let right = service.Measure(editor, .(editor.Text, 0, next));
 			if (x < (left + right) / 2) break;
@@ -65,6 +65,7 @@ class SDLTextReviewTests
 				}
 			}
 		}
+		editor.Multiline = true;
 		editor.Text = "first\n\u{E9}\u{1F600} last\n";
 		editor.SetScrollOffset(.(7, service.LineHeight(editor)));
 		let lineEnd = editor.Text.IndexOf('\n', 6);

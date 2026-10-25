@@ -1,26 +1,19 @@
 # TODO
 
-Confirmed gaps in the current source, reviewed on 2026-10-23. This is a backlog,
-not a commitment to implement these features next or a complete WinForms API inventory.
+Confirmed gaps in the current source, reviewed on 2026-10-23 and updated on
+2026-10-24. This is a backlog, not a commitment to implement these features next
+or a complete WinForms API inventory.
 
 ## Stubbed components
 
 - [ ] **FlowLayoutPanel**: currently an empty `Panel` subclass. It has no flow
   layout engine, `FlowDirection`, `WrapContents`, or flow-break API.
   [Source](src/System/Windows.Forms/FlowLayoutPanel.bf)
-- [ ] **Timer**: currently an empty `Component` subclass. It has no `Interval`,
-  `Enabled`, `Tick`, `Start`, `Stop`, or timer scheduling behavior.
-  [Source](src/System/Windows.Forms/Timer.bf)
-- [ ] **ReadOnlyCollectionBase<T> / ComponentCollection**: the collection base
-  returns zero for `Count` and null for its enumerator. `ComponentCollection`
-  adds no storage, initialization, or usable enumeration.
-  [Collection base](src/System/Collections/ReadOnlyCollectionBase.bf),
-  [component collection](src/System/ComponentModel/ComponentCollection.bf)
 
 ## Very incomplete components and contracts
 
-- [ ] **RichTextBox**: currently provides plain multiline editing through
-  `TextBoxBase` and backend type checks. Win32 uses the ordinary EDIT class;
+- [ ] **RichTextBox**: currently provides plain editing through
+  `TextBoxBase.Multiline`, enabled by default. Win32 uses the ordinary EDIT class;
   SDL supports multiline text. Rich-text storage, formatting, and RTF APIs are
   absent. Rich-text implementation remains deferred.
   [Control](src/System/Windows.Forms/RichTextBox.bf),
@@ -34,18 +27,6 @@ not a commitment to implement these features next or a complete WinForms API inv
   [Event arguments](src/System/Windows.Forms/Utils.bf),
   [Panel](src/System/Windows.Forms/Panel.bf),
   [SDL painting](BeefForms.SDL/src/SDLWindowSession.Rendering.bf)
-- [ ] **Preferred sizing and general container AutoSize**: base `Control`
-  special-cases labels and single-line editors. It has no public virtual
-  `GetPreferredSize` operation; setting `AutoSize` on an ordinary panel does
-  not make it fit its children.
-  [Source](src/System/Windows.Forms/Control.bf)
-- [ ] **Component-container infrastructure**: `IContainer` and `ISite` expose
-  contracts and `Component` stores a site, but there is no concrete `Container`
-  implementation. Together with the placeholder component collection, this
-  leaves designer-style non-control component management incomplete.
-  [Container contract](src/System/ComponentModel/IContainer.bf),
-  [site contract](src/System/ComponentModel/ISite.bf),
-  [Component](src/System/ComponentModel/Component.bf)
 
 ## Accepted settings without operational behavior
 

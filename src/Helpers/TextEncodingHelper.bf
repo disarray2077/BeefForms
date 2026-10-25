@@ -15,9 +15,11 @@ internal static class TextEncodingHelper
 		return result;
 	}
 
-	public static int AdjacentPosition(StringView text, int position, bool forward)
+	public static int AdjacentPosition(StringView text, int position, bool forward, bool multiline)
 	{
 		var result = position + (forward ? 1 : -1);
+		if (multiline && result > 0 && result < text.Length && text[result - 1] == '\r' && text[result] == '\n')
+			result += forward ? 1 : -1;
 		while (result > 0 && result < text.Length && ((uint8)text[result] & 0xC0) == 0x80)
 			result += forward ? 1 : -1;
 		return Math.Clamp(result, 0, text.Length);

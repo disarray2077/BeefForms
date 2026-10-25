@@ -368,6 +368,8 @@ extension SDLWindowSession
 			switch (symbol)
 			{
 			case .A: editor.SelectAll();
+			case .HOME: editor.SetCaret(0, shift);
+			case .END: editor.SetCaret(editor.Text.Length, shift);
 			case .C, .X:
 				if (editor.SelectionByteLength > 0)
 				{
@@ -381,8 +383,11 @@ extension SDLWindowSession
 				{
 					let text = scope String(clipboard);
 					SDL.free(clipboard);
-					if (!(editor is RichTextBox))
-						{ text.Replace("\n", ""); text.Replace("\r", ""); }
+					if (!editor.Multiline)
+					{
+						text.Replace("\n", "");
+						text.Replace("\r", "");
+					}
 					editor.ReplaceSelection(text);
 				}
 			default:
@@ -404,19 +409,26 @@ extension SDLWindowSession
 			let forward = symbol == .RIGHT;
 			let position = !shift && editor.SelectionByteLength > 0
 				? editor.SelectionByteStart + (forward ? editor.SelectionByteLength : 0)
-				: editor.AdjacentPosition(editor.Caret, forward);
+				: TextEncodingHelper.AdjacentPosition(editor.Text, editor.Caret, forward, editor.Multiline);
 			editor.SetCaret(position, shift);
 		case .HOME, .END:
-			let start = editor.Text.LastIndexOf('\n', Math.Max(0, editor.Caret - 1)) + 1;
-			let end = editor.Text.IndexOf('\n', editor.Caret);
-			editor.SetCaret(symbol == .HOME ? start : end < 0 ? editor.Text.Length : end, shift);
+			editor.SetCaret(symbol == .HOME
+				? (editor.Multiline ? editor.Text.LineStart(editor.Caret) : 0)
+				: (editor.Multiline ? editor.Text.LineEnd(editor.Caret) : editor.Text.Length), shift);
 		case .UP, .DOWN:
+			if (!editor.Multiline) return;
 			let position = mBackend.TextService.TextPosition(editor, editor.Caret);
 			let delta = symbol == .DOWN ? 1 : -1;
 			editor.SetCaret(mBackend.TextService.HitText(editor, position.x + SDLTextService.EditorTextInset - editor.BorderWidth - editor.ScrollX,
 				position.y + delta * mBackend.TextService.LineHeight(editor) + SDLTextService.EditorTextInset - editor.BorderWidth - editor.ScrollY), shift);
 		case .RETURN:
-			if (editor is RichTextBox) editor.ReplaceSelection("\n");
+			let snapshot = mWindowGeneration;
+			let handleSnapshot = editor.HandleGeneration;
+			let press = scope KeyPressEventArgs('\r');
+			editor.DispatchInput(.KeyPress, press);
+			if (!IsCurrentControl(editor, snapshot, handleSnapshot) || press.Handled) return;
+			if (press.KeyChar >= ' ') editor.ReplaceSelection(scope String()..Append(press.KeyChar));
+			else if (editor.Multiline && (press.KeyChar == '\r' || press.KeyChar == '\n')) editor.ReplaceSelection(editor.LineBreak);
 		default:
 		}
 	}

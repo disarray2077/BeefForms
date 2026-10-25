@@ -64,6 +64,7 @@ public class ScrollableControl : Control
 	}
 	protected internal override void ChildBoundsChanged()
 	{
+		base.ChildBoundsChanged();
 		UpdateScrollBounds();
 	}
 

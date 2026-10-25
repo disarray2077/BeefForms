@@ -165,9 +165,9 @@ internal class SDLWindowSession : RefCounted
 			if (let progress = control as ProgressBar) progress.RestartMarquee(SDL.GetTicks64());
 		if (let editor = control as TextBoxBase)
 		{
-			if (change == .Text || change == .Font || change == .Bounds || change == .Border || change == .All)
+			if (change == .Text || change == .Font || change == .Bounds || change == .Border || change == .Multiline || change == .All)
 				editor.InvalidateScroll();
-			if (IsFocused(editor) && (change == .Text || change == .Selection || change == .ReadOnly))
+			if (IsFocused(editor) && (change == .Text || change == .Selection || change == .ReadOnly || change == .Multiline))
 			{
 				editor.RestartCaretBlink(SDL.GetTicks64());
 				if (change != .ReadOnly) editor.RequestCaretReveal();

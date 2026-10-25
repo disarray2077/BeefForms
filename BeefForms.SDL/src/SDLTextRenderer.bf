@@ -17,7 +17,7 @@ internal class SDLTextRenderer
 		public int32 Width, Height, FontKey, LayoutWidth;
 		public HorizontalAlignment Alignment;
 		public float RasterScale;
-		public bool Ellipsis;
+		public bool Ellipsis, Multiline;
 		public append String Text = .();
 	}
 
@@ -49,8 +49,9 @@ internal class SDLTextRenderer
 		let layoutWidth = mTextService.LayoutWidth(control);
 		let alignment = SDLTextService.Alignment(control);
 		let ellipsis = SDLTextService.HasEllipsis(control);
+		let multiline = (control as TextBoxBase)?.Multiline == true;
 		let rasterScale = mCanvas.Metrics.RasterScale;
-		if (texture.Text == control.Text && texture.FontKey == key && texture.LayoutWidth == layoutWidth && texture.Alignment == alignment && texture.Ellipsis == ellipsis && texture.RasterScale == rasterScale)
+		if (texture.Text == control.Text && texture.FontKey == key && texture.LayoutWidth == layoutWidth && texture.Alignment == alignment && texture.Ellipsis == ellipsis && texture.Multiline == multiline && texture.RasterScale == rasterScale)
 			return texture;
 		delete texture.Image;
 		texture.Image = null;
@@ -59,6 +60,7 @@ internal class SDLTextRenderer
 		texture.LayoutWidth = layoutWidth;
 		texture.Alignment = alignment;
 		texture.Ellipsis = ellipsis;
+		texture.Multiline = multiline;
 		texture.RasterScale = rasterScale;
 		texture.Width = 0;
 		texture.Height = 0;

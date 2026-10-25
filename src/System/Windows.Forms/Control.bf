@@ -10,7 +10,7 @@ namespace System.Windows.Forms;
 
 internal enum ControlChange
 {
-	Paint, Text, Font, Bounds, Enabled, Value, Appearance, Border, Constraints, ReadOnly, Selection, Scroll, Visibility, Parent, ZOrder, All
+	Paint, Text, Font, Bounds, Enabled, Value, Appearance, Border, Constraints, ReadOnly, Multiline, Selection, Scroll, Visibility, Parent, ZOrder, All
 }
 
 public class Control : System.ComponentModel.Component
@@ -165,6 +165,7 @@ public class Control : System.ComponentModel.Component
 	protected internal virtual void ChildBoundsChanged()
 	{
 		if (LayoutSuspended) mLayoutDeferred = true;
+		else if (AutoSize) PerformLayout();
 	}
 
 	internal int32 BorderWidth => BorderStyle == .None ? 0 : BorderStyle == .FixedSingle ? 1 : 2;
@@ -255,6 +256,7 @@ public class Control : System.ComponentModel.Component
 		get => mSize;
 		set
 		{
+			mSpecifiedSize = value;
 			if (mSize.width == value.width && mSize.height == value.height)
 				return;
 			mSize = value;
@@ -277,11 +279,29 @@ public class Control : System.ComponentModel.Component
 		set => mName.Set(value);
 	}
 	public int TabIndex { get; set; }
-	public AnchorStyles Anchor { get; set; } = .Top | .Left;
-	public bool AutoSize
+	private AnchorStyles mAnchor = .Top | .Left;
+	public AnchorStyles Anchor
+	{
+		get => mAnchor;
+		set
+		{
+			if (mAnchor == value) return;
+			mAnchor = value;
+			UpdateAnchorDistances();
+			Parent?.PerformLayout();
+		}
+	}
+	public virtual bool AutoSize
 	{
 		get => mAutoSize;
-		set { mAutoSize = value; UpdateAutoSize(); }
+		set
+		{
+			if (mAutoSize == value) return;
+			mAutoSize = value;
+			if (!value) RestoreSpecifiedSize();
+			UpdateAutoSize();
+			OnAutoSizeChanged(.Empty);
+		}
 	}
 
 	// Keep separate: an appended ControlCollection causes a compiler type-layout cycle :(
@@ -396,13 +416,7 @@ public class Control : System.ComponentModel.Component
 			Application.Backend.UpdateControl(this, change);
 	}
 
-	private void UpdateAutoSize()
-	{
-		if (AutoSize && this is Label && (mHandleCreated || Parent != null))
-			Size = Application.Backend.MeasureText(this);
-		else if (AutoSize && this is TextBoxBase && !(this is RichTextBox))
-			Size = .(Size.width, Application.Backend.GetTextBoxHeight((TextBoxBase)this));
-	}
+	protected virtual void UpdateAutoSize() => Parent?.PerformLayout();
 
 	private void UpdateFont()
 	{
@@ -432,12 +446,26 @@ public class Control : System.ComponentModel.Component
 			mLayoutDeferred = true;
 			return;
 		}
-		// Layout requests made by callbacks must not recurse into the active pass.
-		mLayoutSuspendCount = 1;
-		defer { mLayoutSuspendCount = 0; mLayoutDeferred = false; }
-		Layout.Invoke(this, .Empty);
-		for (let child in Controls)
-			child.ApplyAnchoring(LayoutSize);
+		{
+			// Layout requests made by callbacks must not recurse into the active pass.
+			mLayoutSuspendCount = 1;
+			defer { mLayoutSuspendCount = 0; }
+			Layout.Invoke(this, .Empty);
+			if (IsDisposingOrDisposed) return;
+			for (int pass < MaxLayoutPasses)
+			{
+				mLayoutDeferred = false;
+				let children = ToScopedArray!(Controls);
+				for (let child in children)
+				{
+					if (!Controls.Contains(child) || child.IsDisposingOrDisposed) continue;
+					child.ApplyAnchoring(LayoutSize);
+					if (IsDisposingOrDisposed) return;
+				}
+				if (!mLayoutDeferred) break;
+			}
+		}
+		if (AutoSize) Parent?.PerformLayout();
 	}
 
 	internal void UpdateAnchorDistances()
@@ -451,33 +479,34 @@ public class Control : System.ComponentModel.Component
 
 	internal void ApplyAnchoring(Size parentSize)
 	{
+		let parent = Parent;
 		var location = mLocation;
 		var size = mSize;
 		if (Anchor.HasFlag(.Right))
 		{
 			if (Anchor.HasFlag(.Left))
 				size.width = Math.Max(0, parentSize.width - mAnchorInfo.Left - mAnchorInfo.Right);
-			else
-				location.x = parentSize.width - size.width - mAnchorInfo.Right;
+			else location.x = parentSize.width - size.width - mAnchorInfo.Right;
 		}
 		if (Anchor.HasFlag(.Bottom))
 		{
 			if (Anchor.HasFlag(.Top))
 				size.height = Math.Max(0, parentSize.height - mAnchorInfo.Top - mAnchorInfo.Bottom);
-			else
-				location.y = parentSize.height - size.height - mAnchorInfo.Bottom;
+			else location.y = parentSize.height - size.height - mAnchorInfo.Bottom;
 		}
-		let moved = location.x != mLocation.x || location.y != mLocation.y;
-		let resized = size.width != mSize.width || size.height != mSize.height;
-		mLocation = location;
-		mSize = size;
-		UpdateClientSize();
-		if (moved || resized)
-			UpdateBackend(.Bounds);
-		if (moved)
-			OnLocationChanged(.Empty);
-		if (resized)
-			OnSizeChanged(.Empty);
+		if (AutoSize && !SelfAutoSize && LocallyVisible)
+		{
+			var minimum = mSpecifiedSize;
+			Size proposed = default;
+			if (Anchor.HasFlag(.Left | .Right)) minimum.width = proposed.width = size.width;
+			if (Anchor.HasFlag(.Top | .Bottom)) minimum.height = proposed.height = size.height;
+			let preferred = GetAutoSize(proposed, minimum);
+			if (IsDisposingOrDisposed || Parent != parent) return;
+			if (Anchor.HasFlag(.Right) && !Anchor.HasFlag(.Left)) location.x -= preferred.width - size.width;
+			if (Anchor.HasFlag(.Bottom) && !Anchor.HasFlag(.Top)) location.y -= preferred.height - size.height;
+			size = preferred;
+		}
+		SetLayoutBounds(location, size);
 	}
 
 	protected virtual void OnLocationChanged(EventArgs e)
@@ -513,6 +542,7 @@ public class Control : System.ComponentModel.Component
 	internal void NotifyResize(Size size)
 	{
 		if (mSize.width == size.width && mSize.height == size.height) return;
+		mSpecifiedSize = size;
 		mSize = size;
 		UpdateClientSize();
 		if (mHandleCreated) OnSizeChanged(.Empty);

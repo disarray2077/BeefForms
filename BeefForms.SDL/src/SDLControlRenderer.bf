@@ -112,7 +112,7 @@ internal class SDLControlRenderer
 				let end = start + editor.SelectionByteLength;
 				while (start < end)
 				{
-					var lineEnd = editor.Text.IndexOf('\n', start);
+					var lineEnd = editor.Multiline ? editor.Text.IndexOf('\n', start) : -1;
 					if (lineEnd < 0 || lineEnd > end) lineEnd = end;
 					let a = mTextService.TextPosition(editor, start);
 					let b = mTextService.TextPosition(editor, lineEnd);

@@ -53,10 +53,12 @@ extension Win32Backend
 		return result;
 	}
 
+	public override int32 GetFontHeight(Control control) => GetNativeFont(control).Height;
+
 	public override int32 GetTextBoxHeight(TextBoxBase editor)
 	{
 		uint32 dpi = editor.GetHandle() == null ? 96 : Win32.GetDpiForWindow(editor.GetHandle());
-		return GetNativeFont(editor).Height + (editor.BorderStyle == .None ? 0 : Win32.GetSystemMetricsForDpi(Win32.SM_CYBORDER, dpi) * 4 + 3);
+		return GetFontHeight(editor) + (editor.BorderStyle == .None ? 0 : Win32.GetSystemMetricsForDpi(Win32.SM_CYBORDER, dpi) * 4 + 3);
 	}
 }
 #endif

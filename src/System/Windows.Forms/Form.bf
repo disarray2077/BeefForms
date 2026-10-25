@@ -9,6 +9,44 @@ public class Form : ContainerControl
 {
 	private bool mLoaded, mClosing, mClosed;
 	private bool mShowCalled;
+	private bool mAutoSizing;
+	public AutoSizeMode AutoSizeMode
+	{
+		get => GetAutoSizeMode();
+		set => SetAutoSizeMode(value);
+	}
+	public override System.Drawing.Size GetPreferredSize(System.Drawing.Size proposedSize)
+	{
+		let content = base.GetPreferredSize(proposedSize);
+		let client = LayoutSize;
+		return .(Math.Max(MinimumSize.width, content.width + Math.Max(0, Size.width - client.width)),
+			Math.Max(MinimumSize.height, content.height + Math.Max(0, Size.height - client.height)));
+	}
+	public override void PerformLayout()
+	{
+		if (mAutoSizing)
+		{
+			if (LayoutSuspended) base.PerformLayout();
+			return;
+		}
+		mAutoSizing = true;
+		defer { mAutoSizing = false; }
+		base.PerformLayout();
+		for (int pass < MaxLayoutPasses)
+		{
+			if (!AutoSize || LayoutSuspended || !IsHandleCreated || IsDisposingOrDisposed) break;
+			let previous = Size;
+			HasInitialClientSize = false;
+			ApplyAutoSize();
+			if (Size == previous) break;
+			base.PerformLayout();
+		}
+	}
+	protected override void UpdateAutoSize()
+	{
+		base.UpdateAutoSize();
+		if (AutoSize) PerformLayout();
+	}
 	private System.Drawing.Size mMinimumSize;
 	private System.Drawing.Size mInitialClientSize;
 	internal bool HasInitialClientSize;

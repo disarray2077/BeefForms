@@ -242,7 +242,9 @@ internal class SDLBackend : FormsBackend
 		session.SetCapture(control, capture);
 	}
 	public override Size MeasureText(Control control) => TextService.MeasureText(control);
-	public override int32 GetTextBoxHeight(TextBoxBase editor) => TextService.LineHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
+	public override Size MeasureText(Control control, Size proposedSize) => TextService.MeasureText(control, proposedSize);
+	public override int32 GetFontHeight(Control control) => TextService.LineHeight(control);
+	public override int32 GetTextBoxHeight(TextBoxBase editor) => GetFontHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
 
 	internal void WakeEventLoop()
 	{

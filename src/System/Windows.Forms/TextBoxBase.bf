@@ -8,14 +8,57 @@ namespace System.Windows.Forms;
 
 public class TextBoxBase : Control
 {
-	public this() { TabStop = true; BorderStyle = .Fixed3D; AutoSize = true; }
+	private bool mMultiline;
+	private int32 mRequestedHeight;
+	public ref Event<EventHandler> MultilineChanged { get; set; } ~ _.Dispose();
+	protected virtual void OnMultilineChanged(EventArgs args) => MultilineChanged.Invoke(this, args);
+	protected internal virtual StringView LineBreak => "\r\n";
+	public virtual bool Multiline
+	{
+		get => mMultiline;
+		set
+		{
+			if (mMultiline == value) return;
+			mMultiline = value;
+			{
+				let updating = UpdatingText;
+				UpdatingText = true;
+				defer { UpdatingText = updating; }
+				UpdateBackend(.Multiline);
+			}
+			if (IsDisposingOrDisposed) return;
+			let height = AutoSize && !Multiline ? Application.Backend.GetTextBoxHeight(this) : mRequestedHeight;
+			SetLayoutBounds(Location, .(Size.width, height), true);
+			base.UpdateAutoSize();
+			OnMultilineChanged(.Empty);
+		}
+	}
+	protected override void RestoreSpecifiedSize() => SetLayoutBounds(Location, .(Size.width, mRequestedHeight), true);
+	protected internal override bool SelfAutoSize => true;
+	public override System.Drawing.Size GetPreferredSize(System.Drawing.Size proposedSize)
+	{
+		let border = BorderWidth * 2;
+		System.Drawing.Size constraints = .(proposedSize.width > border ? proposedSize.width - border : 0,
+			proposedSize.height > border ? proposedSize.height - border : 0);
+		let text = Application.Backend.MeasureText(this, Multiline ? constraints : default);
+		return .(text.width + border, Math.Max(text.height + border,
+			Application.Backend.GetTextBoxHeight(this)));
+	}
+	protected override void UpdateAutoSize()
+	{
+		if (AutoSize && !Multiline)
+			SetLayoutBounds(Location, .(Size.width, Application.Backend.GetTextBoxHeight(this)), true);
+		base.UpdateAutoSize();
+	}
+	public this() { TabStop = true; BorderStyle = .Fixed3D; AutoSize = true; mRequestedHeight = Size.height; }
 	public override System.Drawing.Size Size
 	{
 		get => base.Size;
 		set
 		{
+			mRequestedHeight = value.height;
 			var size = value;
-			if (AutoSize && !(this is RichTextBox))
+			if (AutoSize && !Multiline)
 				size.height = Application.Backend.GetTextBoxHeight(this);
 			base.Size = size;
 		}
@@ -126,8 +169,6 @@ public class TextBoxBase : Control
 		if (IsHandleCreated) CacheSelection();
 	}
 
-	internal int AdjacentPosition(int position, bool forward) => TextEncodingHelper.AdjacentPosition(Text, position, forward);
-
 	internal void ReplaceSelection(StringView value)
 	{
 		if (ReadOnly)
@@ -147,7 +188,7 @@ public class TextBoxBase : Control
 			return;
 		if (SelectionByteLength == 0)
 		{
-			let adjacent = AdjacentPosition(mCaret, !backward);
+			let adjacent = TextEncodingHelper.AdjacentPosition(Text, mCaret, !backward, Multiline);
 			if (adjacent == mCaret) return;
 			mAnchor = mCaret;
 			mCaret = adjacent;

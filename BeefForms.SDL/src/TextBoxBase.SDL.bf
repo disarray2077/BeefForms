@@ -46,7 +46,7 @@ extension TextBoxBase
 			ScrollY = Math.Max(caret.y + lineHeight - viewport.height + trailingMargin.height, Math.Min(ScrollY, caret.y));
 		}
 		ScrollX = Math.Clamp(ScrollX, 0, Math.Max(0, content.width + trailingMargin.width - viewport.width));
-		ScrollY = Math.Clamp(ScrollY, 0, Math.Max(0, content.height + trailingMargin.height - viewport.height));
+		ScrollY = Multiline ? Math.Clamp(ScrollY, 0, Math.Max(0, content.height + trailingMargin.height - viewport.height)) : 0;
 		mScrollValidationPending = false;
 		mCaretRevealPending = false;
 	}

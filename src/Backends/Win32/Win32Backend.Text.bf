@@ -10,6 +10,35 @@ namespace BeefForms.Backends;
 #if BF_PLATFORM_WINDOWS
 extension Win32Backend
 {
+	private void RecreateEditor(TextBoxBase editor)
+	{
+		let focused = IsFocused(editor);
+		editor.DestroyHandle();
+		if (editor.IsDisposingOrDisposed) return;
+		editor.CreateHandle();
+		if (focused && !editor.IsDisposingOrDisposed) FocusControl(editor);
+	}
+
+	public override Size MeasureText(Control control, Size proposedSize)
+	{
+		let window = control.GetHandle();
+		let context = Win32.GetDC(window);
+		defer Win32.ReleaseDC(window, context);
+		let font = GetNativeFont(control);
+		let previous = Win32.SelectObject(context, font.Handle);
+		defer Win32.SelectObject(context, previous);
+		if (control.Text.IsEmpty) return .(0, font.Height);
+		let padding = (control is Label) ? (font.Height + 5) / 6 * 2 : 0;
+		let width = proposedSize.width > 0 ? Math.Max(1, proposedSize.width - padding) : 0;
+		Win32.RECT bounds = .(0, 0, width, 0);
+		let editor = control as TextBoxBase;
+		let singleLine = editor != null && !editor.Multiline;
+		let flags = Win32.DT_CALCRECT | (editor != null ? Win32.DT_NOPREFIX : 0) |
+			(singleLine ? Win32.DT_SINGLELINE : (width > 0 ? Win32.DT_WORDBREAK : 0));
+		Win32.DrawText(context, control.Text.ToScopedNativeWChar!(), -1, ref bounds, flags);
+		return .(bounds.right + padding, bounds.bottom);
+	}
+
 	public override Size MeasureText(Control control)
 	{
 		let context = Win32.GetDC(control.GetHandle());

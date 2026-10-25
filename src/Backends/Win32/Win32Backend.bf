@@ -61,7 +61,7 @@ internal class Win32Backend : FormsBackend
 		if (let textBox = control as TextBoxBase)
 		{
 			style |= Win32.ES_AUTOHSCROLL;
-			if (control is RichTextBox)
+			if (textBox.Multiline)
 				style |= Win32.ES_MULTILINE | Win32.ES_AUTOVSCROLL | Win32.WS_VSCROLL;
 			if (textBox.ReadOnly)
 				style |= Win32.ES_READONLY;
@@ -183,6 +183,11 @@ internal class Win32Backend : FormsBackend
 
 	public override void UpdateControl(Control control, ControlChange change)
 	{
+		if (change == .Multiline)
+		{
+			RecreateEditor((TextBoxBase)control);
+			return;
+		}
 		if (control.GetHandle() == null)
 			return;
 		if (change == .Parent)
