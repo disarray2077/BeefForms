@@ -17,7 +17,7 @@ internal class SDLBackend : FormsBackend
 	private append List<SDLWindowSession> mSessions = .();
 	private append Dictionary<uint32, SDLWindowSession> mWindows = .();
 
-	private bool mInitialized, mWheelHasPosition, mPumpingEvents;
+	private bool mInitialized, mWheelHasPosition, mPumpingEvents, mWakePending;
 	private int mRenderThreadId, mFrames;
 	private SDL.EventType mRedrawEvent;
 
@@ -131,6 +131,19 @@ internal class SDLBackend : FormsBackend
 		if (!mSessions.IsEmpty)
 			Runtime.FatalError("The Emscripten SDL2 driver supports a single browser canvas");
 #endif
+		InitializeDispatcher();
+		let session = new SDLWindowSession(this, form, mWheelHasPosition);
+		mSessions.Add(session);
+		form.SDLSession = session;
+		using (UseContext(session))
+		{
+			session.CreateControl(form);
+			mWindows[SDL.GetWindowID(session.mWindow)] = session;
+		}
+	}
+
+	public override void InitializeDispatcher()
+	{
 		if (!mInitialized)
 		{
 			if (SDL.InitSubSystem(.Video) != 0)
@@ -139,14 +152,6 @@ internal class SDLBackend : FormsBackend
 			mRedrawEvent = (.)SDL.RegisterEvents(1);
 			SDL.GetVersion(var version);
 			mWheelHasPosition = version.major > 2 || version.minor >= 26;
-		}
-		let session = new SDLWindowSession(this, form, mWheelHasPosition);
-		mSessions.Add(session);
-		form.SDLSession = session;
-		using (UseContext(session))
-		{
-			session.CreateControl(form);
-			mWindows[SDL.GetWindowID(session.mWindow)] = session;
 		}
 	}
 
@@ -246,16 +251,21 @@ internal class SDLBackend : FormsBackend
 	public override int32 GetFontHeight(Control control) => TextService.LineHeight(control);
 	public override int32 GetTextBoxHeight(TextBoxBase editor) => GetFontHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
 
-	internal void WakeEventLoop()
+	public override void WakeEventLoop()
 	{
-		SDL.Event input = .();
-		input.type = mRedrawEvent;
-		SDL.PushEvent(ref input);
+		using (Application.DispatcherCore.SyncRoot.Enter())
+		{
+			if (mWakePending) return;
+			SDL.Event input = .();
+			input.type = mRedrawEvent;
+			mWakePending = SDL.PushEvent(ref input) > 0;
+		}
 	}
 
 #if !BF_PLATFORM_WASM
 	public override void Run(Form form)
 	{
+		Application.DispatcherCore.VerifyAccess();
 		mFrames = 0;
 		mRenderThreadId = Thread.CurrentThreadId;
 		SDL.AddEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
@@ -276,6 +286,7 @@ internal class SDLBackend : FormsBackend
 
 	private int32 GetEventWaitTimeout()
 	{
+		if (Application.DispatcherCore.HasPending) return 0;
 		int32 timeout = TimerScheduler.GetNextTimeout();
 		for (let session in mSessions)
 		{
@@ -288,8 +299,10 @@ internal class SDLBackend : FormsBackend
 	public override void DoEvents()
 	{
 		if (mPumpingEvents || IsRendering) return;
+		Application.DispatcherCore.VerifyAccess();
 		mPumpingEvents = true;
 		defer { mPumpingEvents = false; }
+		Application.DispatcherCore.ProcessPending();
 		TimerScheduler.Process();
 		ProcessEvents();
 		let capture = CapturePath != null && (FrameLimit == 0 || mFrames + 1 == FrameLimit);
@@ -348,6 +361,12 @@ internal class SDLBackend : FormsBackend
 
 	private void ProcessEvent(ref SDL.Event input)
 	{
+		if (input.type == mRedrawEvent)
+		{
+			using (Application.DispatcherCore.SyncRoot.Enter())
+				mWakePending = false;
+			return;
+		}
 		if (input.type == .Quit)
 		{
 			Application.Exit();

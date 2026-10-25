@@ -13,9 +13,7 @@ extension Win32Backend
 	private void RecreateEditor(TextBoxBase editor)
 	{
 		let focused = IsFocused(editor);
-		editor.DestroyHandle();
-		if (editor.IsDisposingOrDisposed) return;
-		editor.CreateHandle();
+		editor.RecreateHandle();
 		if (focused && !editor.IsDisposingOrDisposed) FocusControl(editor);
 	}
 

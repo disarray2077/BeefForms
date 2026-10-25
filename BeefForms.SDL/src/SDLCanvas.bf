@@ -38,6 +38,7 @@ internal class SDLCanvas
 #else
 		let shaderHeader = "#version 330 core\n";
 #endif
+
 		let vertexSource = scope String(shaderHeader);
 		vertexSource.Append("""
 			layout(location = 0) in vec2 position;
@@ -50,6 +51,7 @@ internal class SDLCanvas
 			    uv = texcoord;
 			}
 			""");
+
 		let fragmentSource = scope String(shaderHeader);
 		fragmentSource.Append("""
 			in vec2 uv;
@@ -58,14 +60,17 @@ internal class SDLCanvas
 			out vec4 fragmentColor;
 			void main() { fragmentColor = texture(image, uv) * color; }
 			""");
+
 		let vertex = CompileShader(GL.GL_VERTEX_SHADER, vertexSource);
 		defer GL.glDeleteShader(vertex);
 		let fragment = CompileShader(GL.GL_FRAGMENT_SHADER, fragmentSource);
 		defer GL.glDeleteShader(fragment);
+
 		mProgram = (.)GL.glCreateProgram();
 		GL.glAttachShader(mProgram, vertex);
 		GL.glAttachShader(mProgram, fragment);
 		GL.glLinkProgram(mProgram);
+
 		int32 linked = 0;
 		GL.glGetProgramiv(mProgram, GL.GL_LINK_STATUS, &linked);
 		if (linked == 0)
@@ -74,22 +79,29 @@ internal class SDLCanvas
 			GL.glGetProgramInfoLog(mProgram, log.Count, null, &log);
 			Runtime.FatalError(scope String(&log));
 		}
+
 		mViewportUniform = GL.glGetUniformLocation(mProgram, "viewport");
 		mColorUniform = GL.glGetUniformLocation(mProgram, "color");
+
 		GL.glUseProgram(mProgram);
 		GL.glUniform1i(GL.glGetUniformLocation(mProgram, "image"), 0);
+
 		GL.glGenVertexArrays(1, &mVertexArray);
-		GL.glGenBuffers(1, &mBuffer);
 		GL.glBindVertexArray(mVertexArray);
+
+		GL.glGenBuffers(1, &mBuffer);
 		GL.glBindBuffer(GL.GL_ARRAY_BUFFER, mBuffer);
+
 		GL.glEnableVertexAttribArray(0);
 		GL.glEnableVertexAttribArray(1);
 		GL.glVertexAttribPointer(0, 2, GL.GL_FLOAT, 0, 4 * sizeof(float), null);
 		GL.glVertexAttribPointer(1, 2, GL.GL_FLOAT, 0, 4 * sizeof(float), (void*)(int)(2 * sizeof(float)));
+
 		GL.glGenTextures(1, &mWhiteTexture);
 		GL.glBindTexture(GL.GL_TEXTURE_2D, mWhiteTexture);
 		uint32 white = 0xFFFFFFFF;
 		GL.glTexImage2D(GL.GL_TEXTURE_2D, 0, GL.GL_RGBA, 1, 1, 0, GL.GL_RGBA, GL.GL_UNSIGNED_BYTE, &white);
+
 		SetTextureParameters();
 	}
 

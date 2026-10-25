@@ -38,7 +38,7 @@ public class Control : System.ComponentModel.Component
 			value.Parent?.Controls.Remove(value);
 			value.ReleaseDisposalOwner();
 			mItems.Insert(index, value);
-			value.mParent = mOwner;
+			value.SetParent(mOwner);
 			value.UpdateBackend(.Parent);
 			value.UpdateAnchorDistances();
 			value.UpdateFont();
@@ -61,7 +61,7 @@ public class Control : System.ComponentModel.Component
 			if (value.Parent != mOwner) return;
 			mItems.RemoveAt(index);
 			value.DestroyHandle();
-			value.mParent = null;
+			value.SetParent(null);
 			mOwner.PerformLayout();
 		}
 		public void Clear()
@@ -71,7 +71,7 @@ public class Control : System.ComponentModel.Component
 				let value = mItems.Back;
 				mItems.RemoveAt(Count - 1);
 				value.DestroyHandle();
-				value.mParent = null;
+				value.SetParent(null);
 			}
 			mOwner.PerformLayout();
 		}
@@ -87,7 +87,7 @@ public class Control : System.ComponentModel.Component
 		internal Control TakeLastForDeletion()
 		{
 			let child = mItems.PopBack();
-			child.mParent = null;
+			child.SetParent(null);
 			return child;
 		}
 
@@ -352,9 +352,20 @@ public class Control : System.ComponentModel.Component
 
 	protected override void Dispose(bool disposing)
 	{
-		if (!disposing || mDisposing) return;
-		mDisposing = true;
-		defer { mDisposing = false; mDisposed = true; }
+		using (Application.DispatcherCore.SyncRoot.Enter())
+		{
+			if (!disposing || mDisposing) return;
+			mDisposing = true;
+			CancelInvocationsLocked();
+		}
+		defer
+		{
+			using (Application.DispatcherCore.SyncRoot.Enter())
+			{
+				mDisposing = false;
+				mDisposed = true;
+			}
+		}
 		DestroyHandle();
 		Parent?.Controls.Remove(this);
 		DisposeChildren();
@@ -374,7 +385,7 @@ public class Control : System.ComponentModel.Component
 			{
 				if (child.Parent != this) continue;
 				// Match WinForms: clear Parent before notifying, clear Controls after the cascade.
-				child.mParent = null;
+				child.SetParent(null);
 				if (mDisposedChildren == null) mDisposedChildren = new .();
 				mDisposedChildren.Add(child);
 				child.mDisposalOwner = this;
@@ -389,12 +400,16 @@ public class Control : System.ComponentModel.Component
 
 	private bool ResetHandleState()
 	{
-		if (!mHandleCreated) return false;
-		mHandleCreated = false;
-		mCreated = false;
-		if (let form = this as Form) Application.UnregisterForm(form);
-		mHandleGeneration.Advance();
-		return true;
+		using (Application.DispatcherCore.SyncRoot.Enter())
+		{
+			if (!mHandleCreated) return false;
+			mHandleCreated = false;
+			if (!IsRecreatingHandle) CancelInvocationsLocked();
+			mCreated = false;
+			if (let form = this as Form) Application.UnregisterForm(form);
+			mHandleGeneration.Advance();
+			return true;
+		}
 	}
 
 	protected internal virtual void DestroyHandle()
@@ -576,12 +591,24 @@ public class Control : System.ComponentModel.Component
 			Runtime.FatalError("Cannot create a handle for a disposed control");
 		if (mHandleCreated)
 			return;
+		Application.DispatcherCore.VerifyAccess();
 		mHandleGeneration.Advance();
 		Application.CreatedControlCount++;
 		Application.Backend.CreateControl(this);
 		UpdateClientSize();
-		mHandleCreated = true;
+		using (Application.DispatcherCore.SyncRoot.Enter())
+			mHandleCreated = true;
 		UpdateAutoSize();
 		if (!(this is Form) && Visible) CreateControl();
+	}
+
+	internal void RecreateHandle()
+	{
+		if (!IsHandleCreated) return;
+		let recreating = mRecreatingHandle;
+		mRecreatingHandle = true;
+		defer { mRecreatingHandle = recreating; }
+		DestroyHandle();
+		if (!IsDisposingOrDisposed) CreateHandle();
 	}
 }

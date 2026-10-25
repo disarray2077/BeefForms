@@ -1,7 +1,7 @@
 # TODO
 
 Confirmed gaps in the current source, reviewed on 2026-10-23 and updated on
-2026-10-24. This is a backlog, not a commitment to implement these features next
+2026-10-25. This is a backlog, not a commitment to implement these features next
 or a complete WinForms API inventory.
 
 ## Stubbed components
@@ -43,10 +43,6 @@ or a complete WinForms API inventory.
 
 ## Missing supporting APIs
 
-- [ ] **UI-thread marshaling**: `Control.Invoke`, `BeginInvoke`, and a public UI
-  dispatch queue are absent. Existing event pumping does not supply those APIs.
-  [Control](src/System/Windows.Forms/Control.bf),
-  [Application](src/System/Windows.Forms/Application.bf)
 - [ ] **Layout spacing**: general `Control.Margin` and `Padding` APIs are absent.
   Account for these when flow layout or other container layout is implemented.
   [Source](src/System/Windows.Forms/Control.bf)

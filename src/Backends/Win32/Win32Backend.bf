@@ -282,6 +282,7 @@ internal class Win32Backend : FormsBackend
 	public override void Show(Form form) => Win32.ShowWindow(form.GetHandle(), Win32.SW_SHOW);
 	public override void DoEvents()
 	{
+		Application.DispatcherCore.VerifyAccess();
 		Win32.MSG message = ?;
 		while (Win32.PeekMessage(out message, null, 0, 0, Win32.PM_REMOVE) != 0)
 		{
@@ -297,6 +298,7 @@ internal class Win32Backend : FormsBackend
 	}
 	public override void Run(Form form)
 	{
+		Application.DispatcherCore.VerifyAccess();
 		Win32.MSG message = ?;
 		while (form.IsHandleCreated && Win32.GetMessage(out message, null, 0, 0) > 0)
 		{

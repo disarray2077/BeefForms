@@ -18,6 +18,17 @@ public static class Application
 	private static bool sRunning;
 	private static bool sProcessingEvents;
 	private static bool sExiting;
+
+	internal static UIThreadDispatcher DispatcherCore = new .() ~ delete _;
+	public static UIThreadDispatcher Dispatcher
+	{
+		get
+		{
+			DispatcherCore.Initialize();
+			return DispatcherCore;
+		}
+	}
+
 	private static Form sMainForm;
 	private static FormCollection sOpenForms = new .() ~ delete _;
 
@@ -38,6 +49,7 @@ public static class Application
 
 	private static void BeginRun(Form mainForm)
 	{
+		DispatcherCore.VerifyAccess();
 		if (sRunning)
 			Runtime.FatalError("Application.Run is already active");
 		sRunning = true;
@@ -54,6 +66,7 @@ public static class Application
 		while (!sOpenForms.IsEmpty)
 			sOpenForms.Back.Dispose();
 		delete form;
+		DispatcherCore.Shutdown();
 		sRunning = false;
 	}
 
@@ -74,21 +87,26 @@ public static class Application
 
 	public static void UseBackend(ApplicationBackend backend)
 	{
-		if (sRunning || sProcessingEvents || CreatedControlCount != 0 || MessageBoxCount != 0)
-			Runtime.FatalError("Cannot change the forms backend while controls, event processing, or message boxes are active");
-		
-		if (Backend.Type == backend)
-			return;
-
-		delete Backend;
-		switch (backend)
+		using (DispatcherCore.SyncRoot.Enter())
 		{
-		case .SDL2OpenGL: Backend = FormsBackendFactory.Instance.CreateSDLBackend();
+			if (sRunning || sProcessingEvents || DispatcherCore.IsDispatching || CreatedControlCount != 0 || MessageBoxCount != 0)
+				Runtime.FatalError("Cannot change the forms backend while controls, event processing, or message boxes are active");
+
+			if (Backend.Type == backend)
+				return;
+
+			if (DispatcherCore.HasPending) Runtime.FatalError("Cannot change the forms backend while dispatch is pending");
+			DispatcherCore.Shutdown();
+			delete Backend;
+			switch (backend)
+			{
+			case .SDL2OpenGL: Backend = FormsBackendFactory.Instance.CreateSDLBackend();
 #if BF_PLATFORM_WINDOWS
-		case .Win32: Backend = new Win32Backend();
+			case .Win32: Backend = new Win32Backend();
 #else
-		case .Win32: Runtime.FatalError("The Win32 backend requires Windows");
+			case .Win32: Runtime.FatalError("The Win32 backend requires Windows");
 #endif
+			}
 		}
 	}
 
@@ -129,6 +147,7 @@ public static class Application
 	/// Must be called from the UI thread.
 	public static void DoEvents()
 	{
+		DispatcherCore.VerifyAccess();
 		if (sProcessingEvents) return;
 		sProcessingEvents = true;
 		defer { sProcessingEvents = false; }

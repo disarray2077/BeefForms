@@ -9,6 +9,104 @@ Before starting substantial changes, inspect the working tree. If those changes 
 - If a path for the Beef compiler isn't given by the user, locate Beef in `%BEEFDIR%\IDE\dist` (Windows) or `$BEEFDIR/IDE/dist` (Unix) when using a source checkout, or `%PROGRAMFILES%\Beef\bin` for a Windows installation. Prefer the source checkout if available. Verify paths before using them.
 - Store temporary files in `$TMPDIR` (Unix) or `%TEMP%` (Windows). On Linux, avoid assuming that the `/tmp` directory is the directory in `$TMPDIR`, even if most of the times it will be.
 
+## Code readability and formatting
+
+- Put block bodies on separate, indented lines. Never write a braced body on one line,
+  such as `{ return mCount; }`.
+- Methods that perform actions or have side effects, including all void methods, must
+  use a block body, even if the body is a single statement.
+- A method that only computes and returns a value from a single expression may use
+  expression-bodied syntax. Place `=> expression` on the next line, indented one
+  level; never put it on the same line as the signature.
+- Properties and accessors whose body is a single expression may use `=>` on one line,
+  such as `public int Count => mCount;` or `get => mX;`.
+- Write lambdas with a single-expression body in expression form, such as
+  `(a) => Log(a)`, not `(a) => { Log(a); }`. Use a multi-line block body only for
+  lambdas that need multiple statements.
+- Brace a control-flow body when it contains another control-flow statement. A single
+  simple statement as the innermost body may stay unbraced.
+- Blank lines are the exception, not the default. A statement block that does one job is a
+  single paragraph, however many statements it has. For example, creating an object,
+  enqueuing it, and returning it is one job. Keep together a declaration and its setup,
+  an operation and its `defer`, a query and the check that tests it, and calls that
+  configure the same thing. Using different variables or methods is not a reason to
+  split.
+- Add a blank line only between distinct phases of a longer function, where each phase
+  is a group of statements with its own purpose. When unsure, don't add one. Don't add
+  section comments or extract helpers just to break up a function.
+- Never place a blank line directly after an opening brace or before a closing brace,
+  and never use more than one consecutive blank line. Treat a preprocessor
+  conditional (`#if`/`#else`/`#endif`) as a single unit.
+- When making a spacing-only change, preserve statement order and behavior. Apply this
+  style to code you write or modify; do not reformat unrelated code unless requested.
+  Most existing code already complies, so "no change" is the expected result for most
+  functions.
+
+Example: properties and expression-bodied members.
+```beef
+public int Count => mCount;
+public bool IsEmpty => mCount == 0;
+public int Capacity { get; private set; }
+
+public float X
+{
+	get => mX;
+	set => mX = value;
+}
+
+public bool Contains(T item)
+	=> IndexOf(item) != -1;
+```
+
+Example: a statement block that does one job stays a single paragraph.
+```beef
+public InvocationState Enqueue(delegate void() callback, bool ownsCallback)
+{
+	let state = new InvocationState(callback, ownsCallback);
+	using (SyncRoot.Enter())
+		EnqueueLocked(state);
+	return state;
+}
+```
+
+Example: the outer body is braced because it contains control flow, and the inner body
+may stay unbraced.
+```beef
+public Control FindHandleOwner()
+{
+	for (var control = this; control != null; control = control.Parent)
+	{
+		if (control.IsHandleCreated)
+			return control;
+	}
+	return null;
+}
+```
+
+Example: a longer function with distinct phases (compile, link, check) gets blank lines
+between them.
+```beef
+public void InitShader()
+{
+	let vertex = CompileShader(GL.GL_VERTEX_SHADER, vertexSource);
+	defer GL.glDeleteShader(vertex);
+	let fragment = CompileShader(GL.GL_FRAGMENT_SHADER, fragmentSource);
+	defer GL.glDeleteShader(fragment);
+
+	mProgram = (.)GL.glCreateProgram();
+	GL.glAttachShader(mProgram, vertex);
+	GL.glAttachShader(mProgram, fragment);
+	GL.glLinkProgram(mProgram);
+
+	int32 linked = 0;
+	GL.glGetProgramiv(mProgram, GL.GL_LINK_STATUS, &linked);
+	if (linked == 0)
+	{
+		...
+	}
+}
+```
+
 ## Code comments
 
 Use comments to explain non-obvious intent, constraints, or invariants rather than information

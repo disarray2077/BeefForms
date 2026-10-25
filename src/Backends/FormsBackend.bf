@@ -24,6 +24,8 @@ internal abstract class FormsBackend
 	public abstract void Run(Form form);
 #endif
 	public abstract void DoEvents();
+	public virtual void InitializeDispatcher() {}
+	public virtual void WakeEventLoop() {}
 	public abstract bool FocusControl(Control control);
 	public abstract bool IsFocused(Control control);
 	public abstract void SetCapture(Control control, bool capture);
