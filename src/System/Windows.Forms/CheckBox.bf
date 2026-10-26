@@ -11,16 +11,19 @@ public class CheckBox : ButtonBase
 		get => mChecked;
 		set
 		{
-			if (mChecked == value) return;
+			if (mChecked == value)
+				return;
 			mChecked = value;
 			UpdateBackend(.Value);
 			CheckedChanged.Invoke(this, .Empty);
 		}
 	}
 	public ref Event<EventHandler> CheckedChanged { get; set; } ~ _.Dispose();
+
 	protected override void OnClick(EventArgs args)
 	{
-		if (AutoCheck) Checked = !Checked;
+		if (AutoCheck)
+			Checked = !Checked;
 		base.OnClick(args);
 	}
 }

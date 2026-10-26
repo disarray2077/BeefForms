@@ -21,10 +21,21 @@ internal class SDLWindowSession : RefCounted
 	internal struct LifetimeScope : IDisposable
 	{
 		private SDLWindowSession mSession;
-		public this(SDLWindowSession session) { mSession = session; session.AddRef(); }
-		public void Dispose() => mSession.ReleaseRef();
+
+		public this(SDLWindowSession session)
+		{
+			mSession = session;
+			session.AddRef();
+		}
+
+		public void Dispose()
+		{
+			mSession.ReleaseRef();
+		}
 	}
-	internal LifetimeScope Retain() => .(this);
+
+	internal LifetimeScope Retain()
+		=> .(this);
 
 	public this(SDLBackend backend, Form form, bool wheelHasPosition)
 	{
@@ -63,7 +74,8 @@ internal class SDLWindowSession : RefCounted
 
 	public ~this()
 	{
-		if (mForm?.SDLSession == this) mForm.SDLSession = null;
+		if (mForm?.SDLSession == this)
+			mForm.SDLSession = null;
 		DestroyWindow();
 	}
 
@@ -72,8 +84,10 @@ internal class SDLWindowSession : RefCounted
 		RequestRedraw();
 		if (!(control is Form))
 		{
-			if (let progress = control as ProgressBar) progress.RestartMarquee(SDL.GetTicks64());
-			if (let editor = control as TextBoxBase) editor.InvalidateScroll();
+			if (let progress = control as ProgressBar)
+				progress.RestartMarquee(SDL.GetTicks64());
+			if (let editor = control as TextBoxBase)
+				editor.InvalidateScroll();
 			return;
 		}
 		mForm = (Form)control;
@@ -109,7 +123,8 @@ internal class SDLWindowSession : RefCounted
 		mTextRenderer = new .(mCanvas, mBackend.TextService);
 		mControlRenderer = new .(mCanvas, mTextRenderer, mBackend.TextService);
 		control.SetNativeHandle(mWindow);
-		if (!mForm.HasInitialClientSize) SetFormSize(mForm, size);
+		if (!mForm.HasInitialClientSize)
+			SetFormSize(mForm, size);
 		control.NotifyResize(GetFormSize());
 		SetFormLocation(control.Location);
 		control.NotifyMove(GetFormLocation());
@@ -121,7 +136,8 @@ internal class SDLWindowSession : RefCounted
 		if (mWindow == null)
 			return;
 		mWindowGeneration.Advance();
-		if (mActive) SDL.StopTextInput();
+		if (mActive)
+			SDL.StopTextInput();
 		MakeCurrent();
 		delete mControlRenderer;
 		mControlRenderer = null;
@@ -145,24 +161,32 @@ internal class SDLWindowSession : RefCounted
 	{
 		let generation = control.HandleGeneration;
 		RequestRedraw();
-		if (Control.IsAncestorOf(control, mFocused)) Focus(null);
-		if (Control.IsAncestorOf(control, mCaptured)) SetCapture(mCaptured, false);
-		if (mPressed == control) mPressed = null;
-		if (Control.IsAncestorOf(control, mHovered)) Hover(null);
+		if (Control.IsAncestorOf(control, mFocused))
+			Focus(null);
+		if (Control.IsAncestorOf(control, mCaptured))
+			SetCapture(mCaptured, false);
+		if (mPressed == control)
+			mPressed = null;
+		if (Control.IsAncestorOf(control, mHovered))
+			Hover(null);
 		mTextRenderer?.Forget(control);
 		if (control == mForm)
 		{
 			DestroyWindow();
 			mForm = null;
 		}
-		if (control.HandleGeneration.IsCurrent(generation)) control.SetNativeHandle(null);
+		if (control.HandleGeneration.IsCurrent(generation))
+			control.SetNativeHandle(null);
 	}
 
 	public void UpdateControl(Control control, ControlChange change)
 	{
 		RequestRedraw();
 		if (change == .Appearance || change == .All)
-			if (let progress = control as ProgressBar) progress.RestartMarquee(SDL.GetTicks64());
+		{
+			if (let progress = control as ProgressBar)
+				progress.RestartMarquee(SDL.GetTicks64());
+		}
 		if (let editor = control as TextBoxBase)
 		{
 			if (change == .Text || change == .Font || change == .Bounds || change == .Border || change == .Multiline || change == .All)
@@ -170,21 +194,27 @@ internal class SDLWindowSession : RefCounted
 			if (IsFocused(editor) && (change == .Text || change == .Selection || change == .ReadOnly || change == .Multiline))
 			{
 				editor.RestartCaretBlink(SDL.GetTicks64());
-				if (change != .ReadOnly) editor.RequestCaretReveal();
+				if (change != .ReadOnly)
+					editor.RequestCaretReveal();
 			}
 		}
 		if (!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)
 		{
-			if (Control.IsAncestorOf(control, mFocused)) Focus(null);
-			if (Control.IsAncestorOf(control, mCaptured)) SetCapture(mCaptured, false);
-			if (Control.IsAncestorOf(control, mPressed)) mPressed = null;
-			if (Control.IsAncestorOf(control, mHovered)) Hover(null);
+			if (Control.IsAncestorOf(control, mFocused))
+				Focus(null);
+			if (Control.IsAncestorOf(control, mCaptured))
+				SetCapture(mCaptured, false);
+			if (Control.IsAncestorOf(control, mPressed))
+				mPressed = null;
+			if (Control.IsAncestorOf(control, mHovered))
+				Hover(null);
 		}
 		if (control == mForm && mWindow != null)
 		{
 			if (change == .Visibility)
 			{
-				if (control.Visible) Show(mForm);
+				if (control.Visible)
+					Show(mForm);
 				else
 				{
 					mShowPending = false;
@@ -193,7 +223,8 @@ internal class SDLWindowSession : RefCounted
 			}
 			if (change == .Text)
 				SDL.SetWindowTitle(mWindow, control.Text.ToScopeCStr!());
-			if (change == .Constraints) ApplyMinimumSize(mForm);
+			if (change == .Constraints)
+				ApplyMinimumSize(mForm);
 			if (change == .Bounds)
 			{
 				SetFormSize(mForm, control.Size);
@@ -208,49 +239,59 @@ internal class SDLWindowSession : RefCounted
 
 	public Size GetClientSize(Form form)
 	{
-		if (mWindow == null) return form.Size;
+		if (mWindow == null)
+			return form.Size;
 		SDL.GetWindowSize(mWindow, var width, var height);
 		return .(width, height);
 	}
+
 	private WindowInsets GetWindowInsets()
 	{
 		SDL.GetWindowBordersSize(mWindow, var top, var left, var bottom, var right);
 		return .(top, left, bottom, right);
 	}
+
 	private Point GetFormLocation()
 	{
 		SDL.GetWindowPosition(mWindow, var x, var y);
 		let insets = GetWindowInsets();
 		return .(x - insets.Left, y - insets.Top);
 	}
+
 	private void SetFormLocation(Point location)
 	{
 		let insets = GetWindowInsets();
 		SDL.SetWindowPosition(mWindow, location.x + insets.Left, location.y + insets.Top);
 	}
+
 	private Size GetFormSize()
 	{
 		let client = GetClientSize(mForm);
 		let insets = GetWindowInsets();
 		return .(client.width + insets.Left + insets.Right, client.height + insets.Top + insets.Bottom);
 	}
+
 	private void UpdateFormSize()
 	{
 		let size = GetFormSize();
-		if (size.width == mForm.Size.width && size.height == mForm.Size.height) return;
+		if (size.width == mForm.Size.width && size.height == mForm.Size.height)
+			return;
 		mForm.NotifyResize(size);
 		RequestRedraw();
 	}
+
 	private void SetFormSize(Form form, Size size)
 	{
 		let insets = GetWindowInsets();
 		SetClientSize(form, .(Math.Max(1, size.width - insets.Left - insets.Right), Math.Max(1, size.height - insets.Top - insets.Bottom)));
 	}
+
 	private Size GetMinimumClientSize(Form form)
 	{
 		let insets = GetWindowInsets();
 		return .(Math.Max(0, form.MinimumSize.width - insets.Left - insets.Right), Math.Max(0, form.MinimumSize.height - insets.Top - insets.Bottom));
 	}
+
 	private void ApplyMinimumSize(Form form)
 	{
 		let minimum = GetMinimumClientSize(form);
@@ -258,12 +299,14 @@ internal class SDLWindowSession : RefCounted
 		let size = GetClientSize(form);
 		SetClientSize(form, size);
 	}
+
 	public void SetClientSize(Form form, Size size)
 	{
 		let minimum = GetMinimumClientSize(form);
 		SDL.SetWindowSize(mWindow, Math.Max(1, Math.Max(size.width, minimum.width)), Math.Max(1, Math.Max(size.height, minimum.height)));
 		form.NotifyResize(GetFormSize());
 	}
+
 	public void Show(Form form)
 	{
 		ApplyMinimumSize(form);
@@ -274,26 +317,31 @@ internal class SDLWindowSession : RefCounted
 
 	private void RequestRedraw()
 	{
-		if (mRedrawRequested) return;
+		if (mRedrawRequested)
+			return;
 		mRedrawRequested = true;
-		if (mRunning) mBackend.WakeEventLoop();
+		if (mRunning)
+			mBackend.WakeEventLoop();
 	}
 
 	internal void MakeCurrent()
 	{
 		if (mWindow != null && (SDL.GL_GetCurrentContext() != mContext || SDL.GL_GetCurrentWindow() != mWindow))
+		{
 			if (SDL.GL_MakeCurrent(mWindow, mContext) != 0)
 				Runtime.FatalError("Could not activate the window's OpenGL context");
+		}
 	}
 
 	// Close is synchronous. A callback may even replace the window before returning.
-	private bool IsCurrentWindow(Generation snapshot) => mWindowGeneration.IsCurrent(snapshot) && mRunning &&
+	private bool IsCurrentWindow(Generation snapshot)
+		=> mWindowGeneration.IsCurrent(snapshot) && mRunning &&
 		mWindow != null && mForm != null && mForm.IsHandleCreated && !mForm.IsDisposingOrDisposed;
 
-	private bool IsCurrentControl(Control control, Generation snapshot) => IsCurrentWindow(snapshot) &&
+	private bool IsCurrentControl(Control control, Generation snapshot)
+		=> IsCurrentWindow(snapshot) &&
 		control != null && control.IsHandleCreated && !control.IsDisposingOrDisposed;
 
-	private bool IsCurrentControl(Control control, Generation snapshot, Generation handleSnapshot) =>
-		IsCurrentWindow(snapshot) && control != null && control.IsCurrentHandle(handleSnapshot);
-
+	private bool IsCurrentControl(Control control, Generation snapshot, Generation handleSnapshot)
+		=> IsCurrentWindow(snapshot) && control != null && control.IsCurrentHandle(handleSnapshot);
 }

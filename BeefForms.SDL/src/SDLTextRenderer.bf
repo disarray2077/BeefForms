@@ -64,20 +64,25 @@ internal class SDLTextRenderer
 		texture.RasterScale = rasterScale;
 		texture.Width = 0;
 		texture.Height = 0;
+
 		if (control.Text.IsEmpty)
 			return texture;
+
 		let displayText = scope String();
 		mTextService.GetDisplayText(control, displayText);
+
 		let lines = scope List<SDLTextService.TextLine>();
 		let size = mTextService.LayoutText(control, displayText, rasterScale == 1 ? null : lines);
 		let surface = RasterizeText(control, displayText, rasterScale, size, lines);
 		if (surface == null)
 			Runtime.FatalError(scope $"Could not render UI text: {StringView(SDL.GetError())}");
 		defer SDL.FreeSurface(surface);
+
 		let rgba = SDL.ConvertSurfaceFormat(surface, SDL.PIXELFORMAT_ABGR8888, 0);
 		if (rgba == null)
 			Runtime.FatalError("Could not convert UI text pixels");
 		defer SDL.FreeSurface(rgba);
+
 		texture.Width = size.width;
 		texture.Height = size.height;
 		texture.Image = mCanvas.Upload(rgba);
@@ -99,19 +104,23 @@ internal class SDLTextRenderer
 		// the drawable resolution produces slightly different glyph advances.
 		let surface = SDL.CreateRGBSurfaceWithFormat(0, (.)Math.Ceiling(size.width * scale),
 			(.)Math.Ceiling(size.height * scale), 32, SDL.PIXELFORMAT_ABGR8888);
-		if (surface == null) return null;
+		if (surface == null)
+			return null;
 		if (SDL.FillRect(surface, null, 0) != 0)
 			Runtime.FatalError("Could not clear UI text pixels");
 		let lineSkip = mTextService.LineHeight(control);
-		int row = 0;
 		for (let line in lines)
 		{
-			defer { row++; }
-			if (line.Width == 0 || line.Length == 0) continue;
+			if (line.Width == 0 || line.Length == 0)
+				continue;
+
 			let content = scope String(text, line.Start, line.Length);
 			let rendered = SDLTTF.RenderUTF8_Blended(font, content, .(255, 255, 255, 255));
-			if (rendered == null) Runtime.FatalError(scope $"Could not render UI text: {StringView(SDL.GetError())}");
+			if (rendered == null)
+				Runtime.FatalError(scope $"Could not render UI text: {StringView(SDL.GetError())}");
 			defer SDL.FreeSurface(rendered);
+
+			let row = @line.Index;
 			let x = alignment == .Center ? (size.width - line.Width) / 2 : alignment == .Right ? size.width - line.Width : 0;
 			SDL.Rect destination = .((.)Math.Round(x * scale), (.)Math.Round(row * lineSkip * scale),
 				(.)Math.Ceiling(line.Width * scale), (.)Math.Ceiling(line.Height * scale));

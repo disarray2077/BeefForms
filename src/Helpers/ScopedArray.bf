@@ -11,14 +11,15 @@ static
 	{
 		T[] items;
 		if (source.Count <= 16)
-		    items = scope:mixin T[source.Count](?);
+			items = scope:mixin T[source.Count](?);
 		else
 		{
-		    items = new T[source.Count](?);
-		    defer:mixin delete items;
+			items = new T[source.Count](?);
+			defer:mixin delete items;
 		}
 		int index = 0;
-		for (let item in source) items[index++] = item;
+		for (let item in source)
+			items[index++] = item;
 		items
 	}
 
@@ -29,11 +30,11 @@ static
 	{
 		T[] items;
 		if (source.Count <= 16)
-		    items = scope:mixin T[source.Count](?);
+			items = scope:mixin T[source.Count](?);
 		else
 		{
-		    items = new T[source.Count](?);
-		    defer:mixin delete items;
+			items = new T[source.Count](?);
+			defer:mixin delete items;
 		}
 		int index = 0;
 		for (let item in source)

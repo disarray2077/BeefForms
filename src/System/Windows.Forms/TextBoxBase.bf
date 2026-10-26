@@ -11,14 +11,20 @@ public class TextBoxBase : Control
 	private bool mMultiline;
 	private int32 mRequestedHeight;
 	public ref Event<EventHandler> MultilineChanged { get; set; } ~ _.Dispose();
-	protected virtual void OnMultilineChanged(EventArgs args) => MultilineChanged.Invoke(this, args);
+
+	protected virtual void OnMultilineChanged(EventArgs args)
+	{
+		MultilineChanged.Invoke(this, args);
+	}
+
 	protected internal virtual StringView LineBreak => "\r\n";
 	public virtual bool Multiline
 	{
 		get => mMultiline;
 		set
 		{
-			if (mMultiline == value) return;
+			if (mMultiline == value)
+				return;
 			mMultiline = value;
 			{
 				let updating = UpdatingText;
@@ -26,15 +32,22 @@ public class TextBoxBase : Control
 				defer { UpdatingText = updating; }
 				UpdateBackend(.Multiline);
 			}
-			if (IsDisposingOrDisposed) return;
+			if (IsDisposingOrDisposed)
+				return;
 			let height = AutoSize && !Multiline ? Application.Backend.GetTextBoxHeight(this) : mRequestedHeight;
 			SetLayoutBounds(Location, .(Size.width, height), true);
 			base.UpdateAutoSize();
 			OnMultilineChanged(.Empty);
 		}
 	}
-	protected override void RestoreSpecifiedSize() => SetLayoutBounds(Location, .(Size.width, mRequestedHeight), true);
+
+	protected override void RestoreSpecifiedSize()
+	{
+		SetLayoutBounds(Location, .(Size.width, mRequestedHeight), true);
+	}
+
 	protected internal override bool SelfAutoSize => true;
+
 	public override System.Drawing.Size GetPreferredSize(System.Drawing.Size proposedSize)
 	{
 		let border = BorderWidth * 2;
@@ -44,13 +57,22 @@ public class TextBoxBase : Control
 		return .(text.width + border, Math.Max(text.height + border,
 			Application.Backend.GetTextBoxHeight(this)));
 	}
+
 	protected override void UpdateAutoSize()
 	{
 		if (AutoSize && !Multiline)
 			SetLayoutBounds(Location, .(Size.width, Application.Backend.GetTextBoxHeight(this)), true);
 		base.UpdateAutoSize();
 	}
-	public this() { TabStop = true; BorderStyle = .Fixed3D; AutoSize = true; mRequestedHeight = Size.height; }
+
+	public this()
+	{
+		TabStop = true;
+		BorderStyle = .Fixed3D;
+		AutoSize = true;
+		mRequestedHeight = Size.height;
+	}
+
 	public override System.Drawing.Size Size
 	{
 		get => base.Size;
@@ -68,7 +90,11 @@ public class TextBoxBase : Control
 	public bool ReadOnly
 	{
 		get => mReadOnly;
-		set { mReadOnly = value; UpdateBackend(.ReadOnly); }
+		set
+		{
+			mReadOnly = value;
+			UpdateBackend(.ReadOnly);
+		}
 	}
 	/// Selection positions and lengths use UTF-16 code units.
 	public int SelectionStart
@@ -76,7 +102,8 @@ public class TextBoxBase : Control
 		get => TextEncodingHelper.ToUtf16Offset(Text, SelectionByteStart);
 		set
 		{
-			if (value < 0) Runtime.FatalError("SelectionStart must not be negative");
+			if (value < 0)
+				Runtime.FatalError("SelectionStart must not be negative");
 			Select(value, SelectionLength);
 		}
 	}
@@ -85,7 +112,8 @@ public class TextBoxBase : Control
 		get => TextEncodingHelper.ToUtf16Offset(Text, SelectionByteStart + SelectionByteLength) - SelectionStart;
 		set
 		{
-			if (value < 0) Runtime.FatalError("SelectionLength must not be negative");
+			if (value < 0)
+				Runtime.FatalError("SelectionLength must not be negative");
 			Select(SelectionStart, value);
 		}
 	}
@@ -105,7 +133,8 @@ public class TextBoxBase : Control
 		set
 		{
 			let text = value;
-			if (Text == text) return;
+			if (Text == text)
+				return;
 			// Created WinForms editors reset selection; unrealized editors retain UTF-16 positions.
 			let anchor = IsHandleCreated ? 0 : TextEncodingHelper.ToUtf8Offset(text, mCachedAnchorUtf16);
 			let caret = IsHandleCreated ? 0 : TextEncodingHelper.ToUtf8Offset(text, mCachedCaretUtf16);
@@ -118,13 +147,16 @@ public class TextBoxBase : Control
 		let changed = SetTextValue(text);
 		mAnchor = TextEncodingHelper.CharacterBoundary(Text, anchor);
 		mCaret = TextEncodingHelper.CharacterBoundary(Text, caret);
-		if (!preserveSelection) CacheSelection();
+		if (!preserveSelection)
+			CacheSelection();
 		UpdatingText = true;
-		if (changed) UpdateBackend(.Text);
+		if (changed)
+			UpdateBackend(.Text);
 		UpdateBackend(.Selection);
 		UpdatingText = false;
 		// No selection writes after notification: reentrant handlers own their final state.
-		if (changed || forceNotification) NotifyTextChanged();
+		if (changed || forceNotification)
+			NotifyTextChanged();
 	}
 
 	/// Selects text by UTF-16 indices; positions inside surrogate pairs snap to the character's start.
@@ -137,7 +169,11 @@ public class TextBoxBase : Control
 		CacheSelection();
 		UpdateBackend(.Selection);
 	}
-	public void SelectAll() => Select(0, UTF16.GetEncodedLen(Text));
+
+	public void SelectAll()
+	{
+		Select(0, UTF16.GetEncodedLen(Text));
+	}
 
 	internal void SetCaret(int position, bool extend)
 	{
@@ -155,7 +191,10 @@ public class TextBoxBase : Control
 		CacheSelection(text);
 	}
 
-	private void CacheSelection() => CacheSelection(Text);
+	private void CacheSelection()
+	{
+		CacheSelection(Text);
+	}
 
 	private void CacheSelection(StringView text)
 	{
@@ -166,7 +205,8 @@ public class TextBoxBase : Control
 	protected internal override void CreateHandle()
 	{
 		base.CreateHandle();
-		if (IsHandleCreated) CacheSelection();
+		if (IsHandleCreated)
+			CacheSelection();
 	}
 
 	internal void ReplaceSelection(StringView value)
@@ -189,7 +229,8 @@ public class TextBoxBase : Control
 		if (SelectionByteLength == 0)
 		{
 			let adjacent = TextEncodingHelper.AdjacentPosition(Text, mCaret, !backward, Multiline);
-			if (adjacent == mCaret) return;
+			if (adjacent == mCaret)
+				return;
 			mAnchor = mCaret;
 			mCaret = adjacent;
 		}

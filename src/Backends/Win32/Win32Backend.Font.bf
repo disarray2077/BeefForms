@@ -15,8 +15,14 @@ extension Win32Backend
 	{
 		public void* Handle ~ Win32.DeleteObject(_);
 		public int32 Height;
-		public this(void* handle, int32 height) { Handle = handle; Height = height; }
+
+		public this(void* handle, int32 height)
+		{
+			Handle = handle;
+			Height = height;
+		}
 	}
+
 	private append Dictionary<String, NativeFont> mFonts = .() ~ DeleteDictionaryKeysAndValues!(_);
 	private uint mGdiPlusToken;
 
@@ -27,33 +33,42 @@ extension Win32Backend
 		uint32 dpi = control.GetHandle() == null ? 96 : Win32.GetDpiForWindow(control.GetHandle());
 		let pixels = font == null ? 9f * dpi / 72 : font.GetPixelSize(dpi);
 		let style = font == null ? FontStyle.Regular : font.Style;
+
 		let key = scope $"{family}:{pixels}:{style}:{dpi}";
-		if (mFonts.TryGetValue(key, let cached)) return cached;
+		if (mFonts.TryGetValue(key, let cached))
+			return cached;
 
 		let handle = Win32.CreateFont(-(int32)Math.Round(pixels), 0, 0, 0, style.HasFlag(.Bold) ? 700 : 400,
 			style.HasFlag(.Italic) ? 1 : 0, style.HasFlag(.Underline) ? 1 : 0, style.HasFlag(.Strikeout) ? 1 : 0,
 			1, 0, 0, 5, 0, family.ToScopedNativeWChar!());
+
 		if (mGdiPlusToken == 0)
 		{
 			Win32.GdiplusStartupInput startup = .();
 			startup.Version = 1;
 			Win32.GdiplusStartup(out mGdiPlusToken, ref startup, null);
 		}
+
 		let context = Win32.GetDC(control.GetHandle());
 		defer Win32.ReleaseDC(control.GetHandle(), context);
+
 		let previous = Win32.SelectObject(context, handle);
 		defer Win32.SelectObject(context, previous);
+
 		void* measuredFont = null;
 		Win32.GdipCreateFontFromDC(context, out measuredFont);
 		defer Win32.GdipDeleteFont(measuredFont);
+
 		float height = 0;
 		Win32.GdipGetFontHeightGivenDPI(measuredFont, dpi, out height);
+
 		let result = new NativeFont(handle, (int32)Math.Ceiling(height));
 		mFonts.Add(new String(key), result);
 		return result;
 	}
 
-	public override int32 GetFontHeight(Control control) => GetNativeFont(control).Height;
+	public override int32 GetFontHeight(Control control)
+		=> GetNativeFont(control).Height;
 
 	public override int32 GetTextBoxHeight(TextBoxBase editor)
 	{

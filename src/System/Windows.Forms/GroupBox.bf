@@ -11,10 +11,12 @@ public class GroupBox : Control
 		get => GetAutoSizeMode();
 		set => SetAutoSizeMode(value);
 	}
+
 	public override Size GetPreferredSize(Size proposedSize)
 	{
 		let content = GetPreferredContainerSize();
 		return .(content.width, content.height + Application.Backend.GetFontHeight(this));
 	}
+
 	protected override bool CanSelectCore() => false;
 }

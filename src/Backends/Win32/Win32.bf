@@ -13,7 +13,9 @@ static class Win32
 	public static extern void* GetActiveWindow();
 	[Import("user32.dll"), CLink]
 	public static extern void* GetAncestor(void* window, uint32 flags);
+
 	public const uint32 GA_ROOT = 2;
+
 	[CRepr]
 	public struct SCROLLINFO
 	{
@@ -21,9 +23,19 @@ static class Win32
 		public int32 nMin, nMax;
 		public uint32 nPage;
 		public int32 nPos, nTrackPos;
+
 		public this(uint32 size, uint32 mask, int32 minimum, int32 maximum, uint32 page, int32 position, int32 track)
-		{ cbSize = size; fMask = mask; nMin = minimum; nMax = maximum; nPage = page; nPos = position; nTrackPos = track; }
+		{
+			cbSize = size;
+			fMask = mask;
+			nMin = minimum;
+			nMax = maximum;
+			nPage = page;
+			nPos = position;
+			nTrackPos = track;
+		}
 	}
+
 	public const int32 SB_HORZ = 0;
 	public const int32 SB_VERT = 1;
 	public const uint32 SIF_RANGE = 0x1;
@@ -38,6 +50,7 @@ static class Win32
 	public const uint32 SB_THUMBTRACK = 5;
 	public const uint32 SB_TOP = 6;
 	public const uint32 SB_BOTTOM = 7;
+
 	[Import("user32.dll"), CLink]
 	public static extern int32 SetScrollInfo(void* window, int32 bar, ref SCROLLINFO info, BOOL redraw);
 	[Import("user32.dll"), CLink]
@@ -46,15 +59,18 @@ static class Win32
 	public static extern BOOL ShowScrollBar(void* window, int32 bar, BOOL show);
 	[Import("user32.dll"), CLink]
 	public static extern int32 ScrollWindowEx(void* window, int32 dx, int32 dy, RECT* scroll, RECT* clip, void* updateRegion, RECT* update, uint flags);
+
 	public const uint SW_SCROLLCHILDREN = 0x0001;
 	public const uint SW_INVALIDATE = 0x0002;
 	public const uint SW_ERASE = 0x0004;
+
 	[Import("user32.dll"), CLink]
 	public static extern int32 GetSystemMetrics(int32 index);
 	[Import("user32.dll"), CLink]
 	public static extern uint32 GetDpiForWindow(void* window);
 	[Import("user32.dll"), CLink]
 	public static extern int32 GetSystemMetricsForDpi(int32 index, uint32 dpi);
+
 	public const int32 SM_CXVSCROLL = 2;
 	public const int32 SM_CYHSCROLL = 3;
 	public const int32 SM_CYBORDER = 6;
@@ -76,6 +92,7 @@ static class Win32
 		public void* DebugCallback;
 		public BOOL SuppressBackgroundThread, SuppressExternalCodecs;
 	}
+
 	[Import("gdiplus.dll"), CLink]
 	public static extern int32 GdiplusStartup(out uint token, ref GdiplusStartupInput input, void* output);
 	[Import("gdiplus.dll"), CLink]
@@ -92,6 +109,7 @@ static class Win32
 
 	public const int32 SM_CXICON = 11, SM_CYICON = 12, SM_CXSMICON = 49, SM_CYSMICON = 50;
 	public const uint WM_SETICON = 0x0080;
+
 	[Import("user32.dll"), CLink]
 	public static extern void* CreateIconFromResourceEx(uint8* bits, uint32 size, BOOL icon, uint32 version, int32 width, int32 height, uint32 flags);
 	[Import("user32.dll"), CLink]
@@ -104,7 +122,9 @@ static class Win32
 		public RECT rcMonitor, rcWork;
 		public uint32 dwFlags;
 	}
+
 	public const uint32 MONITOR_DEFAULTTONEAREST = 2;
+
 	[Import("user32.dll"), CLink]
 	public static extern BOOL GetCursorPos(out POINT point);
 	[Import("user32.dll"), CLink]
@@ -121,8 +141,10 @@ static class Win32
 	public const uint WM_GETMINMAXINFO = 0x0024;
 	public const uint WM_QUIT = 0x0012;
 	public const uint PM_REMOVE = 0x0001;
+
 	[Import("user32.dll"), LinkName("PeekMessageW")]
 	public static extern BOOL PeekMessage(out MSG message, void* window, uint minimum, uint maximum, uint flags);
+
 	public const uint WM_COMMAND = 0x0111;
 	public const uint WM_NCCREATE = 0x0081;
 	public const uint WM_CREATE = 0x0001;
@@ -281,8 +303,13 @@ static class Win32
 		public BOOL restore, update;
 		public uint8[32] reserved;
 	}
+
 	[CRepr]
-	public struct POINT { public int32 x, y; }
+	public struct POINT
+	{
+		public int32 x, y;
+	}
+
 	[CRepr]
 	public struct MINMAXINFO
 	{
@@ -314,9 +341,7 @@ static class Win32
 		char16* lpszMenuName,
 		char16* lpszClassName,
 		void* hIconSm
-	)
-	{
-	}
+	);
 
 	[CRepr]
 	public struct CREATESTRUCT
@@ -336,13 +361,16 @@ static class Win32
 	}
 
 	[CRepr]
-	public struct RECT : this(int32 left, int32 top, int32 right, int32 bottom) { }
+	public struct RECT : this(int32 left, int32 top, int32 right, int32 bottom);
 
 	[CRepr]
-	public struct INITCOMMONCONTROLSEX : this(uint32 dwSize, uint32 dwICC) { }
+	public struct INITCOMMONCONTROLSEX : this(uint32 dwSize, uint32 dwICC);
+
 	[CRepr]
-	public struct TRACKMOUSEEVENT : this(uint32 cbSize, uint32 dwFlags, void* hwndTrack, uint32 dwHoverTime) {}
+	public struct TRACKMOUSEEVENT : this(uint32 cbSize, uint32 dwFlags, void* hwndTrack, uint32 dwHoverTime);
+
 	public function LRESULT SubclassProc(void* window, uint32 message, uint32* wParam, int32* lParam, uint id, uint data);
+
 	[Import("comctl32.dll"), CLink]
 	public static extern bool SetWindowSubclass(void* window, SubclassProc callback, uint id, uint data);
 	[Import("comctl32.dll"), CLink]

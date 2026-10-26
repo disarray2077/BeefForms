@@ -14,8 +14,10 @@ extension Win32Backend
 			Win32.SendMessage(progress.GetHandle(), Win32.PBM_SETMARQUEE, null, null);
 			var style = (uint)(void*)Win32.GetWindowLongPtr(progress.GetHandle(), Win32.GWL_STYLE);
 			style &= ~(Win32.PBS_SMOOTH | Win32.PBS_MARQUEE);
-			if (progress.Style == .Continuous) style |= Win32.PBS_SMOOTH;
-			if (progress.Style == .Marquee) style |= Win32.PBS_MARQUEE;
+			if (progress.Style == .Continuous)
+				style |= Win32.PBS_SMOOTH;
+			if (progress.Style == .Marquee)
+				style |= Win32.PBS_MARQUEE;
 			Win32.SetWindowLongPtr(progress.GetHandle(), Win32.GWL_STYLE, (void*)style);
 			if (progress.Style == .Marquee && progress.MarqueeAnimationSpeed > 0)
 				Win32.SendMessage(progress.GetHandle(), Win32.PBM_SETMARQUEE, (uint*)(void*)1, (int*)(void*)(int)progress.MarqueeAnimationSpeed);

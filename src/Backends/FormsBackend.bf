@@ -24,20 +24,32 @@ internal abstract class FormsBackend
 	public abstract void Run(Form form);
 #endif
 	public abstract void DoEvents();
-	public virtual void InitializeDispatcher() {}
-	public virtual void WakeEventLoop() {}
+
+	public virtual void InitializeDispatcher()
+	{
+	}
+
+	public virtual void WakeEventLoop()
+	{
+	}
+
 	public abstract bool FocusControl(Control control);
 	public abstract bool IsFocused(Control control);
 	public abstract void SetCapture(Control control, bool capture);
 	public abstract bool HasCapture(Control control);
 	public abstract Size MeasureText(Control control);
-	public virtual Size MeasureText(Control control, Size proposedSize) => MeasureText(control);
+	public virtual Size MeasureText(Control control, Size proposedSize)
+		=> MeasureText(control);
 	public abstract int32 GetTextBoxHeight(TextBoxBase editor);
 	public abstract int32 GetFontHeight(Control control);
 
 	/// Client area available before scrollbars are applied.
 	public virtual Size GetScrollClientSize(Control control) => control.ClientSize;
 	/// Vertical scrollbar width and horizontal scrollbar height.
-	public virtual Size GetScrollBarSize(Control control) => .(16, 16);
-	public virtual void EnableVisualStyles() {}
+	public virtual Size GetScrollBarSize(Control control)
+		=> .(16, 16);
+
+	public virtual void EnableVisualStyles()
+	{
+	}
 }

@@ -1,3 +1,5 @@
 namespace System.Windows.Forms;
 
-public class TextBox : TextBoxBase {}
+public class TextBox : TextBoxBase
+{
+}

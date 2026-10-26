@@ -3,8 +3,6 @@
 namespace System.Windows;
 
 [CRepr]
-public struct Point : this(int32 x, int32 y)
-{
-}
+public struct Point : this(int32 x, int32 y);
 
 #endif

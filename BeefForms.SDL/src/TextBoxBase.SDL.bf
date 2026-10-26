@@ -17,11 +17,27 @@ extension TextBoxBase
 	private const uint64 CaretBlinkPeriod = 1000;
 
 	internal bool NeedsScrollPreparation => mScrollValidationPending || mCaretRevealPending;
-	internal void InvalidateScroll() => mScrollValidationPending = true;
-	internal void RequestCaretReveal() => mCaretRevealPending = true;
-	internal void RestartCaretBlink(uint64 now) => mCaretBlinkStartedAt = now;
-	private uint64 CaretPhase(uint64 now) => (Math.Max(now, mCaretBlinkStartedAt) - mCaretBlinkStartedAt) % CaretBlinkPeriod;
-	internal bool IsCaretVisible(uint64 now) => CaretPhase(now) < CaretVisibleDuration;
+
+	internal void InvalidateScroll()
+	{
+		mScrollValidationPending = true;
+	}
+
+	internal void RequestCaretReveal()
+	{
+		mCaretRevealPending = true;
+	}
+
+	internal void RestartCaretBlink(uint64 now)
+	{
+		mCaretBlinkStartedAt = now;
+	}
+
+	private uint64 CaretPhase(uint64 now)
+		=> (Math.Max(now, mCaretBlinkStartedAt) - mCaretBlinkStartedAt) % CaretBlinkPeriod;
+	internal bool IsCaretVisible(uint64 now)
+		=> CaretPhase(now) < CaretVisibleDuration;
+
 	internal uint64 GetNextCaretTick(uint64 now)
 	{
 		let phase = CaretPhase(now);

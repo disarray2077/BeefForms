@@ -2,11 +2,17 @@ using internal System.Windows.Forms;
 
 namespace System.Windows.Forms;
 
-public enum ProgressBarStyle { Blocks, Continuous, Marquee }
+public enum ProgressBarStyle
+{
+	Blocks,
+	Continuous,
+	Marquee
+}
 
 public class ProgressBar : Control
 {
 	protected override bool CanSelectCore() => false;
+
 	private int mValue, mMinimum;
 	private int mMaximum = 100;
 	private ProgressBarStyle mStyle;
@@ -14,14 +20,19 @@ public class ProgressBar : Control
 	public ProgressBarStyle Style
 	{
 		get => mStyle;
-		set { mStyle = value; UpdateBackend(.Appearance); }
+		set
+		{
+			mStyle = value;
+			UpdateBackend(.Appearance);
+		}
 	}
 	public int32 MarqueeAnimationSpeed
 	{
 		get => mMarqueeAnimationSpeed;
 		set
 		{
-			if (value < 0) Runtime.FatalError("MarqueeAnimationSpeed must not be negative");
+			if (value < 0)
+				Runtime.FatalError("MarqueeAnimationSpeed must not be negative");
 			mMarqueeAnimationSpeed = value;
 			UpdateBackend(.Appearance);
 		}
@@ -32,7 +43,8 @@ public class ProgressBar : Control
 		get => mMinimum;
 		set
 		{
-			if (value < 0) Runtime.FatalError("Minimum must not be negative");
+			if (value < 0)
+				Runtime.FatalError("Minimum must not be negative");
 			mMinimum = value;
 			mMaximum = Math.Max(mMaximum, value);
 			mValue = Math.Clamp(mValue, mMinimum, mMaximum);
@@ -44,7 +56,8 @@ public class ProgressBar : Control
 		get => mMaximum;
 		set
 		{
-			if (value < 0) Runtime.FatalError("Maximum must not be negative");
+			if (value < 0)
+				Runtime.FatalError("Maximum must not be negative");
 			mMaximum = value;
 			mMinimum = Math.Min(mMinimum, value);
 			mValue = Math.Clamp(mValue, mMinimum, mMaximum);

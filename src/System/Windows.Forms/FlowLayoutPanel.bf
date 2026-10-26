@@ -1,3 +1,5 @@
 namespace System.Windows.Forms;
 
-public class FlowLayoutPanel : Panel {}
+public class FlowLayoutPanel : Panel
+{
+}

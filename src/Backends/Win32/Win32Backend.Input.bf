@@ -10,16 +10,23 @@ namespace BeefForms.Backends;
 #if BF_PLATFORM_WINDOWS
 extension Win32Backend
 {
-	public override bool IsFocused(Control control) => Win32.GetFocus() == control.GetHandle();
-	public override bool HasCapture(Control control) => Win32.GetCapture() == control.GetHandle();
+	public override bool IsFocused(Control control)
+		=> Win32.GetFocus() == control.GetHandle();
+	public override bool HasCapture(Control control)
+		=> Win32.GetCapture() == control.GetHandle();
+
 	public override void SetCapture(Control control, bool capture)
 	{
-		if (capture) Win32.SetCapture(control.GetHandle());
-		else if (HasCapture(control)) Win32.ReleaseCapture();
+		if (capture)
+			Win32.SetCapture(control.GetHandle());
+		else if (HasCapture(control))
+			Win32.ReleaseCapture();
 	}
+
 	public override bool FocusControl(Control control)
 	{
-		if (!control.CanSelect) return false;
+		if (!control.CanSelect)
+			return false;
 		Win32.SetFocus(control.GetHandle());
 		return IsFocused(control);
 	}
@@ -44,10 +51,12 @@ extension Win32Backend
 			}
 			if (backend.DispatchNativeInput(control, message, wParam, lParam))
 				return 0;
-			if (control.GetHandle() != window || !control.HandleGeneration.IsCurrent(snapshot)) return 0;
+			if (control.GetHandle() != window || !control.HandleGeneration.IsCurrent(snapshot))
+				return 0;
 			if (message == Win32.WM_COMMAND)
 				backend.HandleCommand(wParam, lParam);
-			if (control.GetHandle() != window || !control.HandleGeneration.IsCurrent(snapshot)) return 0;
+			if (control.GetHandle() != window || !control.HandleGeneration.IsCurrent(snapshot))
+				return 0;
 			if (message == Win32.WM_NCDESTROY)
 			{
 				Win32.RemoveWindowSubclass(window, => ChildWindowProc, id);
@@ -61,17 +70,21 @@ extension Win32Backend
 			if (control is ScrollableControl && (message == Win32.WM_NCLBUTTONDOWN || message == Win32.WM_NCLBUTTONDBLCLK))
 				return Win32.DefWindowProc(window, message, wParam, lParam);
 			let result = Win32.DefSubclassProc(window, message, wParam, lParam);
-			if (control.GetHandle() != window || !control.HandleGeneration.IsCurrent(snapshot)) return result;
+			if (control.GetHandle() != window || !control.HandleGeneration.IsCurrent(snapshot))
+				return result;
 			if (message == Win32.WM_SHOWWINDOW)
 			{
-				if (control.IsHandleCreated) control.NotifyVisibility(wParam != null);
+				if (control.IsHandleCreated)
+					control.NotifyVisibility(wParam != null);
 				return result;
 			}
 			// STATIC and group boxes are mouse-transparent; preserve client and scrollbar hit testing.
 			if (message == Win32.WM_NCHITTEST && result == Win32.HTTRANSPARENT)
 				return Win32.DefWindowProc(window, message, wParam, lParam);
-			if (message == Win32.WM_PAINT) control.NotifyPaint();
-			if (control.GetHandle() != window || !control.HandleGeneration.IsCurrent(snapshot)) return result;
+			if (message == Win32.WM_PAINT)
+				control.NotifyPaint();
+			if (control.GetHandle() != window || !control.HandleGeneration.IsCurrent(snapshot))
+				return result;
 			if (let editor = control as TextBoxBase)
 				backend.SynchronizeSelectionAfterMessage(editor, message);
 			return result;
@@ -85,8 +98,10 @@ extension Win32Backend
 			return;
 		let notification = (uint)(void*)wParam >> 16;
 		if (let button = control as ButtonBase)
+		{
 			if (notification == Win32.BN_CLICKED)
 				button.PerformClick();
+		}
 		if (control is TextBoxBase && notification == Win32.EN_CHANGE)
 			NotifyNativeText(control);
 	}
@@ -94,24 +109,30 @@ extension Win32Backend
 	private static Keys KeyboardModifiers()
 	{
 		Keys result = .None;
-		if (Win32.GetKeyState(Win32.VK_SHIFT) < 0) result |= .Shift;
-		if (Win32.GetKeyState(Win32.VK_CONTROL) < 0) result |= .Control;
-		if (Win32.GetKeyState(Win32.VK_MENU) < 0) result |= .Alt;
+		if (Win32.GetKeyState(Win32.VK_SHIFT) < 0)
+			result |= .Shift;
+		if (Win32.GetKeyState(Win32.VK_CONTROL) < 0)
+			result |= .Control;
+		if (Win32.GetKeyState(Win32.VK_MENU) < 0)
+			result |= .Alt;
 		return result;
 	}
 
 	private void AdvanceFocus(Control focused, bool backward)
 	{
 		var root = focused;
-		while (root.Parent != null) root = root.Parent;
-		if (let next = Control.NextTabControl(root, focused, backward)) FocusControl(next);
+		while (root.Parent != null)
+			root = root.Parent;
+		if (let next = Control.NextTabControl(root, focused, backward))
+			FocusControl(next);
 	}
 
 	private bool DispatchNativeInput(Control control, uint32 message, uint32* wParam, int32* lParam)
 	{
 		let window = control.GetHandle();
 		let snapshot = control.HandleGeneration;
-		if (HandleScroll(control, message, wParam)) return true;
+		if (HandleScroll(control, message, wParam))
+			return true;
 		switch (message)
 		{
 		case Win32.WM_SETFOCUS, Win32.WM_KILLFOCUS:
@@ -135,7 +156,8 @@ extension Win32Backend
 				return true;
 			}
 			control.DispatchInput(down ? .KeyDown : .KeyUp, args);
-			if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot)) return true;
+			if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot))
+				return true;
 			mSuppressChars = down && args.SuppressKeyPress;
 			return args.Handled || args.SuppressKeyPress;
 		case Win32.WM_CHAR:
@@ -153,27 +175,48 @@ extension Win32Backend
 			let packed = (uint)(void*)lParam;
 			Win32.POINT point = .() { x = (int16)(packed & 0xFFFF), y = (int16)((packed >> 16) & 0xFFFF) };
 			let wheel = message == Win32.WM_MOUSEWHEEL || message == Win32.WM_MOUSEHWHEEL;
-			if (wheel) Win32.ScreenToClient(control.GetHandle(), ref point);
+			if (wheel)
+				Win32.ScreenToClient(control.GetHandle(), ref point);
 			MouseButtons button = .None;
 			InputEventKind kind = .MouseMove;
 			switch (message)
 			{
-			case Win32.WM_LBUTTONDOWN: button = .Left; kind = .MouseDown;
-			case Win32.WM_LBUTTONUP: button = .Left; kind = .MouseUp;
-			case Win32.WM_LBUTTONDBLCLK: button = .Left; kind = .MouseDoubleClick;
-			case Win32.WM_RBUTTONDOWN: button = .Right; kind = .MouseDown;
-			case Win32.WM_RBUTTONUP: button = .Right; kind = .MouseUp;
-			case Win32.WM_RBUTTONDBLCLK: button = .Right; kind = .MouseDoubleClick;
-			case Win32.WM_MBUTTONDOWN: button = .Middle; kind = .MouseDown;
-			case Win32.WM_MBUTTONUP: button = .Middle; kind = .MouseUp;
-			case Win32.WM_MBUTTONDBLCLK: button = .Middle; kind = .MouseDoubleClick;
-			case Win32.WM_MOUSEWHEEL, Win32.WM_MOUSEHWHEEL: kind = .MouseWheel;
+			case Win32.WM_LBUTTONDOWN:
+				button = .Left;
+				kind = .MouseDown;
+			case Win32.WM_LBUTTONUP:
+				button = .Left;
+				kind = .MouseUp;
+			case Win32.WM_LBUTTONDBLCLK:
+				button = .Left;
+				kind = .MouseDoubleClick;
+			case Win32.WM_RBUTTONDOWN:
+				button = .Right;
+				kind = .MouseDown;
+			case Win32.WM_RBUTTONUP:
+				button = .Right;
+				kind = .MouseUp;
+			case Win32.WM_RBUTTONDBLCLK:
+				button = .Right;
+				kind = .MouseDoubleClick;
+			case Win32.WM_MBUTTONDOWN:
+				button = .Middle;
+				kind = .MouseDown;
+			case Win32.WM_MBUTTONUP:
+				button = .Middle;
+				kind = .MouseUp;
+			case Win32.WM_MBUTTONDBLCLK:
+				button = .Middle;
+				kind = .MouseDoubleClick;
+			case Win32.WM_MOUSEWHEEL, Win32.WM_MOUSEHWHEEL:
+				kind = .MouseWheel;
 			default:
 			}
 			if (kind == .MouseMove)
 			{
 				Control.UpdateMouseOver(mHovered, control);
-				if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot)) return true;
+				if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot))
+					return true;
 				mHovered = control;
 				Win32.TRACKMOUSEEVENT tracking = .(sizeof(Win32.TRACKMOUSEEVENT), Win32.TME_LEAVE, control.GetHandle(), 0);
 				Win32.TrackMouseEvent(ref tracking);
@@ -184,11 +227,16 @@ extension Win32Backend
 			let args = scope MouseEventArgs(button, clicks, point.x, point.y,
 				message == Win32.WM_MOUSEWHEEL ? delta : 0, message == Win32.WM_MOUSEHWHEEL ? delta : 0);
 			control.DispatchInput(doubleClick ? .MouseDown : kind, args);
-			if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot)) return true;
-			if (doubleClick && !args.Handled) control.DispatchInput(.MouseDoubleClick, args);
-			if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot)) return true;
-			if (args.Handled) return true;
-			if ((kind == .MouseDown || doubleClick) && !(control is Form) && control.CanSelect) FocusControl(control);
+			if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot))
+				return true;
+			if (doubleClick && !args.Handled)
+				control.DispatchInput(.MouseDoubleClick, args);
+			if (control.GetHandle() != window || !control.IsCurrentHandle(snapshot))
+				return true;
+			if (args.Handled)
+				return true;
+			if ((kind == .MouseDown || doubleClick) && !(control is Form) && control.CanSelect)
+				FocusControl(control);
 		default:
 		}
 		return false;

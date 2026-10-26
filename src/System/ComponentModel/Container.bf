@@ -31,6 +31,7 @@ public class Container : IContainer
 				mHasName = !value.IsNull;
 			}
 		}
+
 		public this(IComponent component, Container container, StringView name)
 		{
 			mComponent = component;
@@ -40,12 +41,24 @@ public class Container : IContainer
 		}
 	}
 
-	public this() {}
-	public ~this() { Dispose(); }
-	public virtual void Add(IComponent component) => Add(component, null);
+	public this()
+	{
+	}
+
+	public ~this()
+	{
+		Dispose();
+	}
+
+	public virtual void Add(IComponent component)
+	{
+		Add(component, null);
+	}
+
 	public virtual void Add(IComponent component, StringView name)
 	{
-		if (component == null || component.Site?.Container == this) return;
+		if (component == null || component.Site?.Container == this)
+			return;
 		ValidateName(component, name);
 		component.Site?.Container?.Remove(component);
 		let site = CreateSite(component, name);
@@ -55,20 +68,27 @@ public class Container : IContainer
 		component.Site = site;
 	}
 
-	protected virtual ISite CreateSite(IComponent component, StringView name) => new ComponentSite(component, this, name);
+	protected virtual ISite CreateSite(IComponent component, StringView name)
+		=> new ComponentSite(component, this, name);
+
 	protected virtual void ValidateName(IComponent component, StringView name)
 	{
-		if (component == null) Runtime.FatalError("A component is required");
-		if (name.IsNull) return;
+		if (component == null)
+			Runtime.FatalError("A component is required");
+		if (name.IsNull)
+			return;
 		for (let site in mSites)
+		{
 			if (site.Component != component && !site.Name.IsNull && site.Name.Equals(name, true))
 				Runtime.FatalError("Component names must be unique within a container");
+		}
 	}
 
 	public virtual void Remove(IComponent component)
 	{
 		let site = component?.Site;
-		if (site?.Container != this) return;
+		if (site?.Container != this)
+			return;
 		component.Site = null;
 		mSites.Remove(site);
 		mComponents = null;
@@ -82,17 +102,23 @@ public class Container : IContainer
 			if (mComponents == null)
 			{
 				mComponents = new .();
-				for (let site in mSites) mComponents.Add(site.Component);
+				for (let site in mSites)
+					mComponents.Add(site.Component);
 				mCollections.Add(mComponents);
 			}
 			return mComponents;
 		}
 	}
 
-	public void Dispose() => Dispose(true);
+	public void Dispose()
+	{
+		Dispose(true);
+	}
+
 	protected virtual void Dispose(bool disposing)
 	{
-		if (!disposing) return;
+		if (!disposing)
+			return;
 		while (!mSites.IsEmpty)
 		{
 			let site = mSites.PopBack();

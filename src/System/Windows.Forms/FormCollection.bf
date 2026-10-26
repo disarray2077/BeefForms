@@ -9,15 +9,23 @@ public class FormCollection : IEnumerable<Form>
 {
 	private append List<Form> mForms = .();
 
-	public this() {}
+	public this()
+	{
+	}
 
 	internal bool IsEmpty => mForms.IsEmpty;
 	internal Form Back => mForms.Back;
+
 	internal void Add(Form form)
 	{
-		if (!mForms.Contains(form)) mForms.Add(form);
+		if (!mForms.Contains(form))
+			mForms.Add(form);
 	}
-	internal void Remove(Form form) => mForms.Remove(form);
+
+	internal void Remove(Form form)
+	{
+		mForms.Remove(form);
+	}
 
 	public int Count => mForms.Count;
 	public Form this[int index] => mForms[index];
@@ -25,20 +33,30 @@ public class FormCollection : IEnumerable<Form>
 	{
 		get
 		{
-			if (name.IsNull) return null;
+			if (name.IsNull)
+				return null;
 			for (let form in mForms)
-				if (form.Name.Equals(name, true)) return form;
+			{
+				if (form.Name.Equals(name, true))
+					return form;
+			}
 			return null;
 		}
 	}
 
-	public Enumerator GetEnumerator() => .(mForms);
+	public Enumerator GetEnumerator()
+		=> .(mForms);
 
 	public struct Enumerator : IEnumerator<Form>
 	{
 		private List<Form>.Enumerator mEnumerator;
 
-		internal this(List<Form> forms) { mEnumerator = forms.GetEnumerator(); }
-		public Result<Form> GetNext() mut => mEnumerator.GetNext();
+		internal this(List<Form> forms)
+		{
+			mEnumerator = forms.GetEnumerator();
+		}
+
+		public Result<Form> GetNext() mut
+			=> mEnumerator.GetNext();
 	}
 }

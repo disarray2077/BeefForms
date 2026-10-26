@@ -18,12 +18,20 @@ public class ScrollableControl : Control
 	public bool AutoScroll
 	{
 		get => mAutoScroll;
-		set { mAutoScroll = value; UpdateScrollBounds(); }
+		set
+		{
+			mAutoScroll = value;
+			UpdateScrollBounds();
+		}
 	}
 	public Size AutoScrollMinSize
 	{
 		get => mMinimumSize;
-		set { mMinimumSize = value; UpdateScrollBounds(); }
+		set
+		{
+			mMinimumSize = value;
+			UpdateScrollBounds();
+		}
 	}
 	public Point ScrollPosition
 	{
@@ -35,7 +43,8 @@ public class ScrollableControl : Control
 				Math.Clamp(value.x, 0, Math.Max(0, mContentSize.width - viewport.width)),
 				Math.Clamp(value.y, 0, Math.Max(0, mContentSize.height - viewport.height))
 			);
-			if (position.x == mScrollPosition.x && position.y == mScrollPosition.y) return;
+			if (position.x == mScrollPosition.x && position.y == mScrollPosition.y)
+				return;
 			mScrollPosition = position;
 			UpdateBackend(.Scroll);
 			Scroll.Invoke(this, .Empty);
@@ -60,8 +69,10 @@ public class ScrollableControl : Control
 	public override void PerformLayout()
 	{
 		base.PerformLayout();
-		if (!LayoutSuspended) UpdateScrollBounds();
+		if (!LayoutSuspended)
+			UpdateScrollBounds();
 	}
+
 	protected internal override void ChildBoundsChanged()
 	{
 		base.ChildBoundsChanged();
@@ -77,12 +88,15 @@ public class ScrollableControl : Control
 		}
 		mContentSize = mAutoScroll ? mMinimumSize : .(0, 0);
 		if (mAutoScroll)
+		{
 			for (let child in Controls)
 			{
-				if (!child.LocallyVisible) continue;
+				if (!child.LocallyVisible)
+					continue;
 				mContentSize.width = Math.Max(mContentSize.width, child.Location.x + child.Size.width);
 				mContentSize.height = Math.Max(mContentSize.height, child.Location.y + child.Size.height);
 			}
+		}
 		mHorizontalScroll = false;
 		mVerticalScroll = false;
 		// Each scrollbar reduces the other axis's viewport.
@@ -104,28 +118,41 @@ public class ScrollableControl : Control
 			return mHorizontalScroll ? .(0, viewport.height, viewport.width, bars.height) : default;
 		return mVerticalScroll ? .(viewport.width, 0, bars.width, viewport.height) : default;
 	}
+
 	internal Rectangle ScrollThumb(bool horizontal)
 	{
 		var result = ScrollTrack(horizontal);
 		let length = horizontal ? result.Width : result.Height;
 		let extent = horizontal ? mContentSize.width : mContentSize.height;
-		if (length == 0 || extent == 0) return result;
+		if (length == 0 || extent == 0)
+			return result;
 		let thumb = Math.Min(length, Math.Max(16, length * length / extent));
 		let position = horizontal ? mScrollPosition.x : mScrollPosition.y;
 		let offset = extent > length ? position * (length - thumb) / (extent - length) : 0;
-		if (horizontal) { result.X += offset; result.Width = thumb; }
-		else { result.Y += offset; result.Height = thumb; }
+		if (horizontal)
+		{
+			result.X += offset;
+			result.Width = thumb;
+		}
+		else
+		{
+			result.Y += offset;
+			result.Height = thumb;
+		}
 		return result;
 	}
 
 	protected override void OnMouseWheel(MouseEventArgs args)
 	{
 		base.OnMouseWheel(args);
-		if (args.Handled || IsDisposingOrDisposed || !AutoScroll) return;
+		if (args.Handled || IsDisposingOrDisposed || !AutoScroll)
+			return;
 		let previous = mScrollPosition;
 		var next = previous;
-		if (mVerticalScroll) next.y -= args.Delta * 48 / 120;
-		else next.x -= args.Delta * 48 / 120;
+		if (mVerticalScroll)
+			next.y -= args.Delta * 48 / 120;
+		else
+			next.x -= args.Delta * 48 / 120;
 		next.x += args.DeltaX * 48 / 120;
 		ScrollPosition = next;
 		args.Handled = previous.x != mScrollPosition.x || previous.y != mScrollPosition.y;
@@ -134,10 +161,12 @@ public class ScrollableControl : Control
 	protected override void OnMouseDown(MouseEventArgs args)
 	{
 		base.OnMouseDown(args);
-		if (args.Handled || IsDisposingOrDisposed || args.Button != .Left) return;
+		if (args.Handled || IsDisposingOrDisposed || args.Button != .Left)
+			return;
 		for (let horizontal in scope bool[](true, false))
 		{
-			if (!ScrollTrack(horizontal).Contains(args.X, args.Y)) continue;
+			if (!ScrollTrack(horizontal).Contains(args.X, args.Y))
+				continue;
 			let thumb = ScrollThumb(horizontal);
 			let coordinate = horizontal ? args.X : args.Y;
 			let start = horizontal ? thumb.X : thumb.Y;
@@ -152,8 +181,10 @@ public class ScrollableControl : Control
 			{
 				var position = mScrollPosition;
 				let page = horizontal ? ViewportSize.width : ViewportSize.height;
-				if (horizontal) position.x += coordinate < start ? -page : page;
-				else position.y += coordinate < start ? -page : page;
+				if (horizontal)
+					position.x += coordinate < start ? -page : page;
+				else
+					position.y += coordinate < start ? -page : page;
 				ScrollPosition = position;
 			}
 			args.Handled = true;
@@ -164,7 +195,8 @@ public class ScrollableControl : Control
 	protected override void OnMouseMove(MouseEventArgs args)
 	{
 		base.OnMouseMove(args);
-		if (IsDisposingOrDisposed || !mDragging || !Capture) return;
+		if (IsDisposingOrDisposed || !mDragging || !Capture)
+			return;
 		let track = ScrollTrack(mDragHorizontal);
 		let thumb = ScrollThumb(mDragHorizontal);
 		let length = mDragHorizontal ? track.Width : track.Height;
@@ -175,8 +207,10 @@ public class ScrollableControl : Control
 			let coordinate = mDragHorizontal ? args.X : args.Y;
 			let value = (coordinate - mDragOffset) * (extent - length) / (length - thumbLength);
 			var position = mScrollPosition;
-			if (mDragHorizontal) position.x = value;
-			else position.y = value;
+			if (mDragHorizontal)
+				position.x = value;
+			else
+				position.y = value;
 			ScrollPosition = position;
 		}
 		args.Handled = true;
@@ -185,7 +219,8 @@ public class ScrollableControl : Control
 	protected override void OnMouseUp(MouseEventArgs args)
 	{
 		base.OnMouseUp(args);
-		if (IsDisposingOrDisposed || args.Button != .Left || !mDragging) return;
+		if (IsDisposingOrDisposed || args.Button != .Left || !mDragging)
+			return;
 		mDragging = false;
 		Capture = false;
 		args.Handled = true;

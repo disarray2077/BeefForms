@@ -25,9 +25,12 @@ internal static class SDLMessageBox
 		SDL.MessageBoxFlags flags = .ButtonsLeftToRight;
 		switch (icon)
 		{
-		case .Error: flags |= .Error;
-		case .Warning: flags |= .Warning;
-		case .Information, .Question: flags |= .Information;
+		case .Error:
+			flags |= .Error;
+		case .Warning:
+			flags |= .Warning;
+		case .Information, .Question:
+			flags |= .Information;
 		default:
 		}
 #if BF_PLATFORM_WASM
@@ -52,10 +55,15 @@ internal static class SDLMessageBox
 
 	private static DialogResult ResolveMessageBoxResult(MessageBoxButtons buttons, int32 result)
 	{
-		if (result >= 0) return (DialogResult)result;
-		if (buttons == .OK) return .OK;
+		if (result >= 0)
+			return (DialogResult)result;
+		if (buttons == .OK)
+			return .OK;
 		for (let button in sMessageBoxButtonSets[(int)buttons])
-			if (button == .Cancel) return .Cancel;
+		{
+			if (button == .Cancel)
+				return .Cancel;
+		}
 		return .None;
 	}
 
@@ -65,7 +73,8 @@ internal static class SDLMessageBox
 		nativeButtons = default;
 		let results = sMessageBoxButtonSets[(int)buttons];
 		int32 count = 0;
-		while (count < results.Count && results[count] != .None) count++;
+		while (count < results.Count && results[count] != .None)
+			count++;
 		let requestedDefault = (int32)defaultButton >> 8;
 		let defaultIndex = requestedDefault < count ? requestedDefault : 0;
 		for (int32 i < count)
@@ -73,8 +82,10 @@ internal static class SDLMessageBox
 			let result = results[i];
 			nativeButtons[i].buttonid = (int32)result;
 			nativeButtons[i].text = sMessageBoxButtonLabels[(int)result];
-			if (i == defaultIndex) nativeButtons[i].flags |= .ReturnkeyDefault;
-			if (result == .Cancel || buttons == .OK) nativeButtons[i].flags |= .EscapekeyDefault;
+			if (i == defaultIndex)
+				nativeButtons[i].flags |= .ReturnkeyDefault;
+			if (result == .Cancel || buttons == .OK)
+				nativeButtons[i].flags |= .EscapekeyDefault;
 		}
 		return count;
 	}

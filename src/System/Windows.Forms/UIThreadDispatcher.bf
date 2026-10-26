@@ -18,11 +18,24 @@ public sealed class UIThreadDispatcher
 	private uint64 mNextTarget;
 	private int mExecuting;
 
-	internal this() {}
-	public ~this() { Shutdown(); }
+	internal this()
+	{
+	}
+
+	public ~this()
+	{
+		Shutdown();
+	}
 
 	public bool CheckAccess => Interlocked.Load(ref mThreadId, .Acquire) == Thread.CurrentThreadId;
-	internal bool HasPending { get { using (SyncRoot.Enter()) return mPending.Count != 0; } }
+	internal bool HasPending
+	{
+		get
+		{
+			using (SyncRoot.Enter())
+				return mPending.Count != 0;
+		}
+	}
 	internal bool IsDispatching => Interlocked.Load(ref mExecuting, .Acquire) != 0;
 
 	internal void Initialize()
@@ -45,11 +58,14 @@ public sealed class UIThreadDispatcher
 		}
 	}
 
-	internal uint64 RegisterTargetLocked() => ++mNextTarget;
+	internal uint64 RegisterTargetLocked()
+		=> ++mNextTarget;
+
 	internal void VerifyAccess()
 	{
 		Initialize();
-		if (!CheckAccess) Runtime.FatalError("This operation must run on the UI thread");
+		if (!CheckAccess)
+			Runtime.FatalError("This operation must run on the UI thread");
 	}
 
 	private InvocationState Enqueue(delegate void() callback, bool ownsCallback)
@@ -94,13 +110,15 @@ public sealed class UIThreadDispatcher
 		T value = default;
 		delegate void() invoke = scope [&] () => value = callback();
 		let result = Invoke(invoke);
-		if (result case .Err(let error)) return .Err(error);
+		if (result case .Err(let error))
+			return .Err(error);
 		return .Ok(value);
 	}
 
 	internal Result<void> Wait(InvocationState state)
 	{
-		if (CheckAccess && !state.Completion.HasValue) ProcessTarget(state.Target);
+		if (CheckAccess && !state.Completion.HasValue)
+			ProcessTarget(state.Target);
 		return state.Wait();
 	}
 
@@ -114,13 +132,15 @@ public sealed class UIThreadDispatcher
 
 	internal void ProcessPending()
 	{
-		if (!CheckAccess) return;
+		if (!CheckAccess)
+			return;
 		while (true)
 		{
 			uint64 target;
 			using (SyncRoot.Enter())
 			{
-				if (mPending.Count == 0) break;
+				if (mPending.Count == 0)
+					break;
 				target = mPending.FirstTarget;
 			}
 			ProcessTarget(target);
@@ -129,7 +149,8 @@ public sealed class UIThreadDispatcher
 
 	internal void ProcessTarget(uint64 target)
 	{
-		if (!CheckAccess) return;
+		if (!CheckAccess)
+			return;
 		// WinForms drains the dispatch control's whole queue even after a waiting invocation completes.
 		while (true)
 		{
@@ -137,7 +158,8 @@ public sealed class UIThreadDispatcher
 			using (SyncRoot.Enter())
 			{
 				state = mPending.PopTarget(target);
-				if (state == null) break;
+				if (state == null)
+					break;
 				Interlocked.Increment(ref mExecuting);
 			}
 			defer
@@ -154,7 +176,8 @@ public sealed class UIThreadDispatcher
 		while (true)
 		{
 			let state = target == 0 ? mPending.PopFront() : mPending.PopTarget(target);
-			if (state == null) break;
+			if (state == null)
+				break;
 			state.Complete(.Err);
 			state.ReleaseRef();
 		}
@@ -180,6 +203,7 @@ internal class InvocationQueue
 	{
 		public InvocationState First, Last;
 	}
+
 	private append Dictionary<uint64, TargetQueue> mTargets = .();
 	private InvocationState mFirst, mLast;
 
@@ -190,34 +214,46 @@ internal class InvocationQueue
 	{
 		state.AddRef();
 		state.Previous = mLast;
-		if (mLast != null) mLast.Next = state;
-		else mFirst = state;
+		if (mLast != null)
+			mLast.Next = state;
+		else
+			mFirst = state;
 		mLast = state;
 		Count++;
 		if (mTargets.TryGetValue(state.Target, var target))
 			target.Last.NextForTarget = state;
-		else target.First = state;
+		else
+			target.First = state;
 		target.Last = state;
 		mTargets[state.Target] = target;
 	}
 
-	public InvocationState PopFront() => Remove(mFirst);
+	public InvocationState PopFront()
+		=> Remove(mFirst);
+
 	public InvocationState PopTarget(uint64 target)
 	{
-		if (!mTargets.TryGetValue(target, let queue)) return null;
+		if (!mTargets.TryGetValue(target, let queue))
+			return null;
 		return Remove(queue.First);
 	}
 
 	private InvocationState Remove(InvocationState state)
 	{
-		if (state == null) return null;
-		if (state.Previous != null) state.Previous.Next = state.Next;
-		else mFirst = state.Next;
-		if (state.Next != null) state.Next.Previous = state.Previous;
-		else mLast = state.Previous;
+		if (state == null)
+			return null;
+		if (state.Previous != null)
+			state.Previous.Next = state.Next;
+		else
+			mFirst = state.Next;
+		if (state.Next != null)
+			state.Next.Previous = state.Previous;
+		else
+			mLast = state.Previous;
 		Count--;
 		// Both dequeue paths remove the oldest pending entry for its target.
-		if (state.NextForTarget == null) mTargets.Remove(state.Target);
+		if (state.NextForTarget == null)
+			mTargets.Remove(state.Target);
 		else
 		{
 			var target = mTargets[state.Target];
@@ -233,7 +269,12 @@ internal class InvocationQueue
 
 internal class InvocationState : RefCounted
 {
-	private enum CompletionState { Pending, Publishing, Completed }
+	private enum CompletionState
+	{
+		Pending,
+		Publishing,
+		Completed
+	}
 
 	internal InvocationState Previous, Next, NextForTarget;
 	private append Monitor mLock = .();
@@ -251,17 +292,25 @@ internal class InvocationState : RefCounted
 		mCallback = callback;
 		mOwnsCallback = ownsCallback;
 	}
-	public ~this() { if (mOwnsCallback) delete mCallback; }
+
+	public ~this()
+	{
+		if (mOwnsCallback)
+			delete mCallback;
+	}
 
 	public Result<void>? Completion
 	{
 		get
 		{
 			let state = Interlocked.Load(ref mCompletionState, .Acquire);
-			if (state == .Pending) return null;
-			if (state == .Completed) return mCompletion;
+			if (state == .Pending)
+				return null;
+			if (state == .Completed)
+				return mCompletion;
 			// Completion and an existing wait handle become observable together.
-			using (mLock.Enter()) return mCompletion;
+			using (mLock.Enter())
+				return mCompletion;
 		}
 	}
 
@@ -271,7 +320,8 @@ internal class InvocationState : RefCounted
 		{
 			using (mLock.Enter())
 			{
-				if (mWait == null) mWait = new .(mCompletion.HasValue);
+				if (mWait == null)
+					mWait = new .(mCompletion.HasValue);
 				return mWait;
 			}
 		}
@@ -296,7 +346,8 @@ internal class InvocationState : RefCounted
 
 	public Result<void> Wait()
 	{
-		if (let completion = Completion) return completion;
+		if (let completion = Completion)
+			return completion;
 		WaitHandle.WaitFor();
 		return Completion.Value;
 	}
@@ -306,10 +357,20 @@ public sealed class InvokeAsyncResult : IAsyncResult
 {
 	internal InvocationState State;
 
-	internal this(InvocationState state) { State = state; }
-	public ~this() { State.ReleaseRef(); }
+	internal this(InvocationState state)
+	{
+		State = state;
+	}
 
-	public void ReturnValueDiscarded() { delete this; }
+	public ~this()
+	{
+		State.ReleaseRef();
+	}
+
+	public void ReturnValueDiscarded()
+	{
+		delete this;
+	}
 
 	public bool IsCompleted => State.Completion.HasValue;
 	public bool CompletedSynchronously => false;

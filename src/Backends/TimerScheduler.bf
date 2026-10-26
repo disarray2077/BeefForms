@@ -27,7 +27,8 @@ internal static class TimerScheduler
 
 	internal static void Stop(uint registration)
 	{
-		if (!sTimers.Remove(registration)) return;
+		if (!sTimers.Remove(registration))
+			return;
 #if BF_PLATFORM_WINDOWS
 		Win32Timer.Stop(registration);
 #endif
@@ -35,7 +36,8 @@ internal static class TimerScheduler
 
 	internal static void Dispatch(uint registration)
 	{
-		if (sTimers.TryGetValue(registration, let timer)) timer.NotifyTick();
+		if (sTimers.TryGetValue(registration, let timer))
+			timer.NotifyTick();
 	}
 
 	internal static int32 GetNextTimeout()
@@ -46,7 +48,8 @@ internal static class TimerScheduler
 		for (let entry in sTimers)
 		{
 			let remaining = (int32)Math.Clamp(entry.value.NextTick - now, 0, int32.MaxValue);
-			if (timeout < 0 || remaining < timeout) timeout = remaining;
+			if (timeout < 0 || remaining < timeout)
+				timeout = remaining;
 		}
 #endif
 		return timeout;
@@ -66,7 +69,9 @@ internal static class TimerScheduler
 		let pending = ToScopedArray!(sTimers);
 		let now = Now;
 		for (let entry in pending)
+		{
 			if (sTimers.TryGetValue(entry.key, let timer) && timer.NextTick <= now)
 				timer.NotifyTick();
+		}
 	}
 }

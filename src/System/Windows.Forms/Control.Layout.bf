@@ -6,7 +6,11 @@ using internal BeefForms.Backends;
 
 namespace System.Windows.Forms;
 
-public enum AutoSizeMode { GrowAndShrink, GrowOnly }
+public enum AutoSizeMode
+{
+	GrowAndShrink,
+	GrowOnly
+}
 
 extension Control
 {
@@ -16,18 +20,32 @@ extension Control
 	private Size mSpecifiedSize;
 	private AutoSizeMode mAutoSizeMode = .GrowOnly;
 	public Size PreferredSize => GetPreferredSize(default);
+
 	public virtual Size GetPreferredSize(Size proposedSize) => mSpecifiedSize;
+
 	public ref Event<EventHandler> AutoSizeChanged { get; set; } ~ _.Dispose();
-	protected virtual void OnAutoSizeChanged(EventArgs args) => AutoSizeChanged.Invoke(this, args);
+
+	protected virtual void OnAutoSizeChanged(EventArgs args)
+	{
+		AutoSizeChanged.Invoke(this, args);
+	}
+
 	protected AutoSizeMode GetAutoSizeMode() => mAutoSizeMode;
+
 	protected void SetAutoSizeMode(AutoSizeMode value)
 	{
-		if (mAutoSizeMode == value) return;
+		if (mAutoSizeMode == value)
+			return;
 		mAutoSizeMode = value;
 		UpdateAutoSize();
 	}
+
 	protected internal virtual bool SelfAutoSize => false;
-	protected virtual void RestoreSpecifiedSize() => SetLayoutBounds(Location, mSpecifiedSize, true);
+
+	protected virtual void RestoreSpecifiedSize()
+	{
+		SetLayoutBounds(Location, mSpecifiedSize, true);
+	}
 
 	private Size GetAutoSize(Size proposedSize, Size minimum)
 	{
@@ -40,43 +58,53 @@ extension Control
 	internal void ApplyAutoSize()
 	{
 		let preferred = GetAutoSize(default, mSpecifiedSize);
-		if (!IsDisposingOrDisposed) SetLayoutBounds(Location, preferred);
+		if (!IsDisposingOrDisposed)
+			SetLayoutBounds(Location, preferred);
 	}
 
 	protected void SetLayoutBounds(Point location, Size size, bool updateAnchors = false)
 	{
 		let moved = location != mLocation;
 		let resized = size != mSize;
-		if (!moved && !resized) return;
+		if (!moved && !resized)
+			return;
 		mLocation = location;
 		mSize = size;
 		UpdateClientSize();
-		if (updateAnchors) UpdateAnchorDistances();
+		if (updateAnchors)
+			UpdateAnchorDistances();
 		UpdateBackend(.Bounds);
-		if (moved) OnLocationChanged(.Empty);
-		if (resized) OnSizeChanged(.Empty);
+		if (moved)
+			OnLocationChanged(.Empty);
+		if (resized)
+			OnSizeChanged(.Empty);
 	}
 
 	protected Size GetPreferredContainerSize()
 	{
 		Size preferred = default;
-		if (IsDisposingOrDisposed) return Size;
+		if (IsDisposingOrDisposed)
+			return Size;
 		let children = ToScopedArray!(Controls);
 		for (let child in children)
 		{
-			if (!Controls.Contains(child) || child.IsDisposingOrDisposed || !child.LocallyVisible) continue;
+			if (!Controls.Contains(child) || child.IsDisposingOrDisposed || !child.LocallyVisible)
+				continue;
 			var size = child.Size;
 			if (child.AutoSize && !child.SelfAutoSize)
 				size = child.GetAutoSize(default, child.mSpecifiedSize);
-			if (!Controls.Contains(child)) continue;
+			if (!Controls.Contains(child))
+				continue;
 			let right = child.Location.x + size.width;
 			let bottom = child.Location.y + size.height;
 			if (child.Anchor.HasFlag(.Right))
 				preferred.width = Math.Max(preferred.width, right + child.mAnchorInfo.Right);
-			else if (child.Anchor.HasFlag(.Left)) preferred.width = Math.Max(preferred.width, right);
+			else if (child.Anchor.HasFlag(.Left))
+				preferred.width = Math.Max(preferred.width, right);
 			if (child.Anchor.HasFlag(.Bottom))
 				preferred.height = Math.Max(preferred.height, bottom + child.mAnchorInfo.Bottom);
-			else preferred.height = Math.Max(preferred.height, bottom);
+			else
+				preferred.height = Math.Max(preferred.height, bottom);
 		}
 		return .(preferred.width + BorderWidth * 2, preferred.height + BorderWidth * 2);
 	}

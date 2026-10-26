@@ -40,17 +40,21 @@ internal class SDLTextService
 			mFontPath.Set("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf");
 #endif
 		}
-		if (!File.Exists(mFontPath)) Runtime.FatalError(scope $"Cannot find the UI font: {mFontPath}");
-		if (SDLTTF.Init() != 0) Runtime.FatalError(scope $"Could not initialize SDL_ttf: {StringView(SDL.GetError())}");
+		if (!File.Exists(mFontPath))
+			Runtime.FatalError(scope $"Cannot find the UI font: {mFontPath}");
+		if (SDLTTF.Init() != 0)
+			Runtime.FatalError(scope $"Could not initialize SDL_ttf: {StringView(SDL.GetError())}");
 	}
 
 	public ~this()
 	{
-		for (let entry in mFonts) SDLTTF.CloseFont(entry.value);
+		for (let entry in mFonts)
+			SDLTTF.CloseFont(entry.value);
 		SDLTTF.Quit();
 	}
 
-	public bool UsesPath(StringView path) => mConfiguredPath == path;
+	public bool UsesPath(StringView path)
+		=> mConfiguredPath == path;
 
 	public static int32 FontKey(Control control, float rasterScale = 1)
 	{
@@ -62,25 +66,44 @@ internal class SDLTextService
 	public SDLTTF.Font* GetFont(Control control, float rasterScale = 1)
 	{
 		let key = FontKey(control, rasterScale);
-		if (mFonts.TryGetValue(key, let font)) return font;
+		if (mFonts.TryGetValue(key, let font))
+			return font;
 		let result = SDLTTF.OpenFont(mFontPath, key / FontStyleStride);
-		if (result == null) Runtime.FatalError(scope $"Could not open UI font: {StringView(SDL.GetError())}");
+		if (result == null)
+			Runtime.FatalError(scope $"Could not open UI font: {StringView(SDL.GetError())}");
 		SDLTTF.SetFontStyle(result, key % FontStyleStride);
 		mFonts.Add(key, result);
 		return result;
 	}
 
-	public int32 LineHeight(Control control) => SDLTTF.FontLineSkip(GetFont(control));
-	public int32 LabelPadding(Control control) => (LineHeight(control) + 5) / 6;
-	public int32 LayoutWidth(Control control) => control is Label && !control.AutoSize ? Math.Max(1, control.ClientSize.width - LabelPadding(control) * 2) : 0;
-	public static HorizontalAlignment Alignment(Control control) => (control as Label)?.TextAlign.Horizontal ?? .Left;
-	public static bool HasEllipsis(Control control) => (control as Label)?.AutoEllipsis == true && !control.AutoSize;
+	public int32 LineHeight(Control control)
+		=> SDLTTF.FontLineSkip(GetFont(control));
+
+	public int32 LabelPadding(Control control)
+		=> (LineHeight(control) + 5) / 6;
+
+	public int32 LayoutWidth(Control control)
+	{
+		if (control is Label && !control.AutoSize)
+		{
+			let width = control.ClientSize.width - LabelPadding(control) * 2;
+			return Math.Max(1, width);
+		}
+		return 0;
+	}
+
+	public static HorizontalAlignment Alignment(Control control)
+		=> (control as Label)?.TextAlign.Horizontal ?? .Left;
+
+	public static bool HasEllipsis(Control control)
+		=> (control as Label)?.AutoEllipsis == true && !control.AutoSize;
 
 	private void NormalizeEditorText(Control control, String display)
 	{
 		if (let editor = control as TextBoxBase)
 		{
-			if (editor.Multiline) display.Replace("\r\n", "\n");
+			if (editor.Multiline)
+				display.Replace("\r\n", "\n");
 			else
 			{
 				display.Replace('\r', ' ');
@@ -88,13 +111,16 @@ internal class SDLTextService
 			}
 		}
 	}
+
 	public void GetDisplayText(Control control, String display, bool applyEllipsis = true)
 	{
 		display.Set(control.Text);
 		NormalizeEditorText(control, display);
-		if (!applyEllipsis || !HasEllipsis(control)) return;
+		if (!applyEllipsis || !HasEllipsis(control))
+			return;
 		let width = control.ClientSize.width - LabelPadding(control) * 2;
-		if (Measure(control, display) <= width) return;
+		if (Measure(control, display) <= width)
+			return;
 		let available = width - Measure(control, "...");
 		let boundaries = scope List<int>();
 		// Search complete prefixes so SDL_ttf retains kerning and glyph bounds.
@@ -103,8 +129,10 @@ internal class SDLTextService
 		while (low < high)
 		{
 			let middle = (low + high + 1) / 2;
-			if (Measure(control, .(display, 0, boundaries[middle])) <= available) low = middle;
-			else high = middle - 1;
+			if (Measure(control, .(display, 0, boundaries[middle])) <= available)
+				low = middle;
+			else
+				high = middle - 1;
 		}
 		let length = boundaries[low];
 		display.Remove(length, display.Length - length);
@@ -121,7 +149,8 @@ internal class SDLTextService
 
 	public Size MeasureText(Control control)
 	{
-		if (control.Text.IsEmpty) return .(0, 0);
+		if (control.Text.IsEmpty)
+			return .(0, 0);
 		let display = scope String();
 		GetDisplayText(control, display);
 		let size = LayoutText(control, display);
@@ -130,7 +159,8 @@ internal class SDLTextService
 
 	public Size MeasureText(Control control, Size proposedSize)
 	{
-		if (control.Text.IsEmpty) return .(0, LineHeight(control));
+		if (control.Text.IsEmpty)
+			return .(0, LineHeight(control));
 		let padding = (control is Label) ? LabelPadding(control) * 2 : 0;
 		let width = proposedSize.width > 0 ? Math.Max(1, proposedSize.width - padding) : 0;
 		let text = scope String();
@@ -151,14 +181,15 @@ internal class SDLTextService
 	{
 		public int Start, Length;
 		public int32 Width, Height;
+
 		public this(int start, int length, int32 width, int32 height)
 		{
 			Start = start; Length = length; Width = width; Height = height;
 		}
 	}
 
-	public Size LayoutText(Control control, String display, List<TextLine> lines = null) =>
-		MeasureWrapped(GetFont(control), display, HasEllipsis(control) ? 0 : LayoutWidth(control), Alignment(control), lines);
+	public Size LayoutText(Control control, String display, List<TextLine> lines = null)
+		=> MeasureWrapped(GetFont(control), display, HasEllipsis(control) ? 0 : LayoutWidth(control), Alignment(control), lines);
 
 	// Match SDL_ttf's wrapped surface bounds using metrics, without rasterizing pixels.
 	private Size MeasureWrapped(SDLTTF.Font* font, String text, int32 wrapWidth, HorizontalAlignment alignment, List<TextLine> lines)
@@ -182,7 +213,8 @@ internal class SDLTextService
 				let (character, bytes) = UTF8.Decode(text.Ptr + position, text.Length - position);
 				position += Math.Max(1, (int)bytes);
 				end = position;
-				if (character == '\u{FEFF}' || character == '\u{FFFE}') continue;
+				if (character == '\u{FEFF}' || character == '\u{FFFE}')
+					continue;
 				characters++;
 				let newline = character == '\n' || (wrapWidth > 0 && character == '\r');
 				if (newline || (wrapWidth > 0 && (character == ' ' || character == '\t')))
@@ -190,10 +222,19 @@ internal class SDLTextService
 					lastBreak = position;
 					breakEnd = newline ? previous : position;
 				}
-				if (newline) { end = previous; break; }
-				if (characters == limit) break;
+				if (newline)
+				{
+					end = previous;
+					break;
+				}
+				if (characters == limit)
+					break;
 			}
-			if (lastBreak >= 0 && position < text.Length) { position = lastBreak; end = breakEnd; }
+			if (lastBreak >= 0 && position < text.Length)
+			{
+				position = lastBreak;
+				end = breakEnd;
+			}
 			let line = scope String(text, start, end - start);
 			if (SDLTTF.SizeUTF8(font, line, var width, var height) != 0)
 				Runtime.FatalError(scope $"Could not measure UI text: {StringView(SDL.GetError())}");
@@ -212,7 +253,13 @@ internal class SDLTextService
 	{
 		int line = 0;
 		if (control.Multiline)
-			for (int i < position) if (control.Text[i] == '\n') line++;
+		{
+			for (int i < position)
+			{
+				if (control.Text[i] == '\n')
+					line++;
+			}
+		}
 		let start = control.Multiline ? control.Text.LineStart(position) : 0;
 		var end = position;
 		if (control.Multiline && end > start && end < control.Text.Length && control.Text[end - 1] == '\r' && control.Text[end] == '\n')
@@ -229,7 +276,8 @@ internal class SDLTextService
 		for (int i < line)
 		{
 			let end = control.Text.IndexOf('\n', start);
-			if (end < 0) return control.Text.Length;
+			if (end < 0)
+				return control.Text.Length;
 			start = end + 1;
 		}
 		let end = control.Multiline ? control.Text.LineEnd(start) : control.Text.Length;
@@ -244,10 +292,11 @@ internal class SDLTextService
 			let middle = (low + high) / 2;
 			let left = Measure(control, text.Substring(0, boundaries[middle]));
 			let right = Measure(control, text.Substring(0, boundaries[middle + 1]));
-			if (target < (left + right) / 2) high = middle;
-			else low = middle + 1;
+			if (target < (left + right) / 2)
+				high = middle;
+			else
+				low = middle + 1;
 		}
 		return start + boundaries[low];
 	}
-
 }

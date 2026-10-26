@@ -19,12 +19,17 @@ internal class Win32Backend : FormsBackend
 	private void* mParkingWindow;
 	private Control mHovered;
 	private bool mSuppressChars;
+
 	public ~this()
 	{
-		if (mParkingWindow != null) Win32.DestroyWindow(mParkingWindow);
-		if (mWindowIcon != null) Win32.DestroyIcon(mWindowIcon);
-		if (mSmallWindowIcon != null) Win32.DestroyIcon(mSmallWindowIcon);
-		if (mGdiPlusToken != 0) Win32.GdiplusShutdown(mGdiPlusToken);
+		if (mParkingWindow != null)
+			Win32.DestroyWindow(mParkingWindow);
+		if (mWindowIcon != null)
+			Win32.DestroyIcon(mWindowIcon);
+		if (mSmallWindowIcon != null)
+			Win32.DestroyIcon(mSmallWindowIcon);
+		if (mGdiPlusToken != 0)
+			Win32.GdiplusShutdown(mGdiPlusToken);
 	}
 
 	public override void EnableVisualStyles()
@@ -35,10 +40,14 @@ internal class Win32Backend : FormsBackend
 
 	private static char16* GetWindowClass(Control control)
 	{
-		if (control is Form) return (char16*)&Win32.FORM_CLASS;
-		if (control is ButtonBase || control is GroupBox) return (char16*)&Win32.BUTTON_CLASS;
-		if (control is TextBoxBase) return (char16*)&Win32.EDIT_CLASS;
-		if (control is ProgressBar) return (char16*)&Win32.PROGRESS_CLASS;
+		if (control is Form)
+			return (char16*)&Win32.FORM_CLASS;
+		if (control is ButtonBase || control is GroupBox)
+			return (char16*)&Win32.BUTTON_CLASS;
+		if (control is TextBoxBase)
+			return (char16*)&Win32.EDIT_CLASS;
+		if (control is ProgressBar)
+			return (char16*)&Win32.PROGRESS_CLASS;
 		return (char16*)&Win32.STATIC_CLASS;
 	}
 
@@ -47,16 +56,20 @@ internal class Win32Backend : FormsBackend
 		if (control is Form)
 			return Win32.WS_OVERLAPPEDWINDOW | Win32.WS_CLIPCHILDREN;
 		uint style = Win32.WS_CHILD | Win32.WS_CLIPCHILDREN | Win32.WS_CLIPSIBLINGS;
-		if (control.IsEffectivelyVisible) style |= Win32.WS_VISIBLE;
+		if (control.IsEffectivelyVisible)
+			style |= Win32.WS_VISIBLE;
 		if (control.TabIndex >= 0 && control.TabStop)
 			style |= Win32.WS_TABSTOP;
 		if (control is GroupBox)
 			style |= Win32.BS_GROUPBOX | Win32.WS_GROUP;
-		if (control is CheckBox) style |= Win32.BS_CHECKBOX;
+		if (control is CheckBox)
+			style |= Win32.BS_CHECKBOX;
 		if (let progress = control as ProgressBar)
 		{
-			if (progress.Style == .Continuous) style |= Win32.PBS_SMOOTH;
-			if (progress.Style == .Marquee) style |= Win32.PBS_MARQUEE;
+			if (progress.Style == .Continuous)
+				style |= Win32.PBS_SMOOTH;
+			if (progress.Style == .Marquee)
+				style |= Win32.PBS_MARQUEE;
 		}
 		if (let textBox = control as TextBoxBase)
 		{
@@ -69,8 +82,10 @@ internal class Win32Backend : FormsBackend
 		if (control.BorderStyle == .FixedSingle)
 			style |= Win32.WS_BORDER;
 		if (let scrollable = control as ScrollableControl)
+		{
 			if (scrollable.AutoScroll)
 				style |= Win32.WS_HSCROLL | Win32.WS_VSCROLL;
+		}
 		return style;
 	}
 
@@ -97,7 +112,8 @@ internal class Win32Backend : FormsBackend
 	private void* GetParentHandle(Control control)
 	{
 		let parent = control.Parent?.GetHandle();
-		if (parent != null || control is Form) return parent;
+		if (parent != null || control is Form)
+			return parent;
 		if (mParkingWindow == null)
 			mParkingWindow = Win32.CreateWindowEx(0, (char16*)&Win32.STATIC_CLASS, null, 0,
 				0, 0, 0, 0, null, null, Win32.GetModuleHandle(null), null);
@@ -120,12 +136,14 @@ internal class Win32Backend : FormsBackend
 		let size = control.Size;
 		var bounds = Win32.RECT(0, 0, size.width, size.height);
 		if (let form = control as Form)
+		{
 			if (form.HasInitialClientSize)
 			{
 				let client = form.InitialClientSize;
 				bounds = .(0, 0, client.width, client.height);
 				Win32.AdjustWindowRectEx(ref bounds, style, 0, 0);
 			}
+		}
 		let extendedStyle = GetWindowExtendedStyle(control);
 		let handle = Win32.CreateWindowEx(extendedStyle, GetWindowClass(control), control.Text.ToScopedNativeWChar!(), style,
 			control.Location.x, control.Location.y, bounds.right - bounds.left, bounds.bottom - bounds.top,
@@ -144,7 +162,10 @@ internal class Win32Backend : FormsBackend
 			Win32.SetWindowSubclass(handle, => ChildWindowProc, 1, 0);
 		UpdateControl(control, .All);
 		for (let child in control.Controls)
-			if (child.GetHandle() != null) UpdateControl(child, .Parent);
+		{
+			if (child.GetHandle() != null)
+				UpdateControl(child, .Parent);
+		}
 	}
 
 	private void ClearInputState(Control control)
@@ -164,7 +185,8 @@ internal class Win32Backend : FormsBackend
 
 	private void NotifyControlDestroyed(Control control, void* window)
 	{
-		if (control.GetHandle() != window) return;
+		if (control.GetHandle() != window)
+			return;
 		mControls.Remove(window);
 		control.NotifyHandleDestroyed(window);
 		ClearInputState(control);
@@ -178,7 +200,8 @@ internal class Win32Backend : FormsBackend
 		let handle = control.GetHandle();
 		let generation = control.HandleGeneration;
 		Win32.DestroyWindow(handle);
-		if (control.HandleGeneration.IsCurrent(generation)) NotifyControlDestroyed(control, handle);
+		if (control.HandleGeneration.IsCurrent(generation))
+			NotifyControlDestroyed(control, handle);
 	}
 
 	public override void UpdateControl(Control control, ControlChange change)
@@ -207,10 +230,14 @@ internal class Win32Backend : FormsBackend
 		if (change == .Visibility || change == .Parent || (change == .All && !(control is Form)))
 			Win32.ShowWindow(control.GetHandle(), control.IsEffectivelyVisible ? Win32.SW_SHOW : Win32.SW_HIDE);
 		if (change == .ZOrder && control.Parent != null)
+		{
 			for (let child in control.Parent.Controls)
+			{
 				if (child.GetHandle() != null)
 					Win32.SetWindowPos(child.GetHandle(), null, 0, 0, 0, 0,
 						Win32.SWP_NOMOVE | Win32.SWP_NOSIZE | Win32.SWP_NOACTIVATE);
+			}
+		}
 		if (change == .Text)
 			Win32.SetWindowText(control.GetHandle(), control.Text.ToScopedNativeWChar!());
 		if (change == .Font || change == .All)
@@ -231,13 +258,20 @@ internal class Win32Backend : FormsBackend
 				Win32.SetWindowPos(control.GetHandle(), null, location.x - offset.x, location.y - offset.y, size.width, size.height, Win32.SWP_NOZORDER);
 		}
 		if (change == .Scroll || change == .All)
+		{
 			if (let scrollable = control as ScrollableControl)
 				UpdateScrolling(scrollable);
+		}
 		if (change == .Value || change == .Appearance || change == .All)
-			if (let progress = control as ProgressBar) UpdateProgressBar(progress, change);
+		{
+			if (let progress = control as ProgressBar)
+				UpdateProgressBar(progress, change);
+		}
 		if (change == .Value || change == .All)
+		{
 			if (let checkBox = control as CheckBox)
 				Win32.SendMessage(control.GetHandle(), Win32.BM_SETCHECK, (uint*)(void*)(checkBox.Checked ? 1 : 0), null);
+		}
 		if (let editor = control as TextBoxBase)
 		{
 			if (change == .ReadOnly || change == .All)
@@ -279,7 +313,11 @@ internal class Win32Backend : FormsBackend
 			Math.Max(bounds.right - bounds.left, form.MinimumSize.width), Math.Max(bounds.bottom - bounds.top, form.MinimumSize.height), Win32.SWP_NOZORDER);
 	}
 
-	public override void Show(Form form) => Win32.ShowWindow(form.GetHandle(), Win32.SW_SHOW);
+	public override void Show(Form form)
+	{
+		Win32.ShowWindow(form.GetHandle(), Win32.SW_SHOW);
+	}
+
 	public override void DoEvents()
 	{
 		Application.DispatcherCore.VerifyAccess();
@@ -296,6 +334,7 @@ internal class Win32Backend : FormsBackend
 			Win32.DispatchMessage(message);
 		}
 	}
+
 	public override void Run(Form form)
 	{
 		Application.DispatcherCore.VerifyAccess();
@@ -323,15 +362,18 @@ internal class Win32Backend : FormsBackend
 			return Win32.DefWindowProc(window, message, wParam, lParam);
 		if (backend.DispatchNativeInput(form, message, wParam, lParam))
 			return 0;
-		if (form.GetHandle() != window) return 0;
+		if (form.GetHandle() != window)
+			return 0;
 
 		switch (message)
 		{
-		case Win32.WM_COMMAND: backend.HandleCommand(wParam, lParam);
+		case Win32.WM_COMMAND:
+			backend.HandleCommand(wParam, lParam);
 		case Win32.WM_SHOWWINDOW:
 			let snapshot = form.HandleGeneration;
 			let result = Win32.DefWindowProc(window, message, wParam, lParam);
-			if (form.GetHandle() == window && form.IsCurrentHandle(snapshot)) form.NotifyVisibility(wParam != null);
+			if (form.GetHandle() == window && form.IsCurrentHandle(snapshot))
+				form.NotifyVisibility(wParam != null);
 			return result;
 		case Win32.WM_GETMINMAXINFO:
 			let limits = (Win32.MINMAXINFO*)lParam;

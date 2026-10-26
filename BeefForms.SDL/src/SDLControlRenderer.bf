@@ -24,8 +24,10 @@ internal class SDLControlRenderer
 		mTextService = textService;
 	}
 
-	private void Text(Control control, int x, int y) =>
+	private void Text(Control control, int x, int y)
+	{
 		mText.Draw(control, x, y, control.IsEffectivelyEnabled ? 0f : 109f / 255);
+	}
 
 	public void PaintControl(Control control, Rectangle bounds, Rectangle clip, PaintState state)
 	{
@@ -41,19 +43,24 @@ internal class SDLControlRenderer
 			mCanvas.Fill(indicator, 1, 1, 1);
 			mCanvas.Border(indicator, enabled ? 0.45f : 0.7f, enabled ? 0.45f : 0.7f, enabled ? 0.45f : 0.7f);
 			if (checkBox.Checked)
+			{
 				for (int32 x < Math.Max(0, side - 4))
 				{
 					let y = x < 3 ? x : 6 - x;
 					mCanvas.Fill(.(indicator.X + x + 2, indicator.Y + side / 2 + y - 1, 2, 2), 0.15f, 0.4f, 0.65f);
 				}
+			}
 			Text(control, bounds.X + side + 4, bounds.Y + (bounds.Height - lineHeight) / 2);
-			if (state.Focused) mCanvas.Border(bounds, 0.35f, 0.5f, 0.7f);
+			if (state.Focused)
+				mCanvas.Border(bounds, 0.35f, 0.5f, 0.7f);
 		}
 		else if (control is Button)
 		{
 			let shade = state.Pressed && state.Hovered ? 0.9f : enabled && state.Hovered ? 0.96f : 253f / 255;
-			if (state.Focused) mCanvas.RoundedFill(bounds, 0, 120f / 255, 215f / 255);
-			else mCanvas.RoundedFill(bounds, enabled ? 0.8f : 0.9f, enabled ? 0.8f : 0.9f, enabled ? 0.8f : 0.9f);
+			if (state.Focused)
+				mCanvas.RoundedFill(bounds, 0, 120f / 255, 215f / 255);
+			else
+				mCanvas.RoundedFill(bounds, enabled ? 0.8f : 0.9f, enabled ? 0.8f : 0.9f, enabled ? 0.8f : 0.9f);
 			mCanvas.RoundedFill(.(bounds.X + 1, bounds.Y + 1, bounds.Width - 2, bounds.Height - 2), shade, shade, shade);
 			let textWidth = mTextService.Measure(control, control.Text);
 			Text(control, bounds.X + (bounds.Width - textWidth) / 2, bounds.Y + (bounds.Height - lineHeight) / 2);
@@ -83,7 +90,8 @@ internal class SDLControlRenderer
 			for (let horizontal in scope bool[](true, false))
 			{
 				var track = scrollable.ScrollTrack(horizontal);
-				if (track.Width == 0 || track.Height == 0) continue;
+				if (track.Width == 0 || track.Height == 0)
+					continue;
 				var thumb = scrollable.ScrollThumb(horizontal);
 				track.X += bounds.X + border; track.Y += bounds.Y + border;
 				thumb.X += bounds.X + border; thumb.Y += bounds.Y + border;
@@ -99,8 +107,12 @@ internal class SDLControlRenderer
 		let background = editor.ReadOnly ? 240f / 255 : 1f;
 		mCanvas.Fill(bounds, background, background, background);
 		if (editor.BorderStyle != .None)
-			if (state.Focused) mCanvas.Border(bounds, 0, 120f / 255, 215f / 255);
-			else mCanvas.Border(bounds, 0.68f, 0.68f, 0.68f);
+		{
+			if (state.Focused)
+				mCanvas.Border(bounds, 0, 120f / 255, 215f / 255);
+			else
+				mCanvas.Border(bounds, 0.68f, 0.68f, 0.68f);
+		}
 		let clip = parentClip.Intersect(.(bounds.X + 2, bounds.Y + 2, Math.Max(0, bounds.Width - 4), Math.Max(0, bounds.Height - 4)));
 		mCanvas.Clip(clip);
 		let caret = mTextService.TextPosition(editor, editor.Caret);
@@ -113,7 +125,8 @@ internal class SDLControlRenderer
 				while (start < end)
 				{
 					var lineEnd = editor.Multiline ? editor.Text.IndexOf('\n', start) : -1;
-					if (lineEnd < 0 || lineEnd > end) lineEnd = end;
+					if (lineEnd < 0 || lineEnd > end)
+						lineEnd = end;
 					let a = mTextService.TextPosition(editor, start);
 					let b = mTextService.TextPosition(editor, lineEnd);
 					mCanvas.Fill(.(bounds.X + textInset + a.x - editor.ScrollX, bounds.Y + textInset + a.y - editor.ScrollY,
@@ -132,10 +145,14 @@ internal class SDLControlRenderer
 	{
 		let size = mTextService.MeasureText(label);
 		int32 x = bounds.X + mTextService.LabelPadding(label), y = bounds.Y;
-		if (label.TextAlign.Horizontal == .Center) x += (bounds.Width - size.width) / 2;
-		if (label.TextAlign.Horizontal == .Right) x += bounds.Width - size.width;
-		if (label.TextAlign.Vertical == .Middle) y += (bounds.Height - size.height) / 2;
-		if (label.TextAlign.Vertical == .Bottom) y += bounds.Height - size.height;
+		if (label.TextAlign.Horizontal == .Center)
+			x += (bounds.Width - size.width) / 2;
+		if (label.TextAlign.Horizontal == .Right)
+			x += bounds.Width - size.width;
+		if (label.TextAlign.Vertical == .Middle)
+			y += (bounds.Height - size.height) / 2;
+		if (label.TextAlign.Vertical == .Bottom)
+			y += bounds.Height - size.height;
 		Text(label, x, y);
 	}
 

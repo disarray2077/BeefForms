@@ -15,18 +15,21 @@ internal static class Win32Dispatcher
 
 	public static void Initialize()
 	{
-		if (sWindow != null) return;
+		if (sWindow != null)
+			return;
 		let instance = Win32.GetModuleHandle(null);
 		if (!sRegistered)
 		{
 			Win32.WNDCLASSEX definition = .(sizeof(Win32.WNDCLASSEX), 0, => WindowProc, 0, 0,
 				instance, null, null, null, null, &sWindowClass, null);
-			if (Win32.RegisterClassEx(definition) == 0) Runtime.FatalError("Could not register the dispatch window class");
+			if (Win32.RegisterClassEx(definition) == 0)
+				Runtime.FatalError("Could not register the dispatch window class");
 			sRegistered = true;
 		}
 		sWindow = Win32.CreateWindowEx(0, &sWindowClass, null, 0, 0, 0, 0, 0,
 			(void*)(int)(-3) /* HWND_MESSAGE */, null, instance, null);
-		if (sWindow == null) Runtime.FatalError("Could not create the dispatch window");
+		if (sWindow == null)
+			Runtime.FatalError("Could not create the dispatch window");
 	}
 
 	public static void Wake(uint64 target)
@@ -40,7 +43,8 @@ internal static class Win32Dispatcher
 	{
 		let window = sWindow;
 		sWindow = null;
-		if (window != null) Win32.DestroyWindow(window);
+		if (window != null)
+			Win32.DestroyWindow(window);
 	}
 
 	private static Win32.LRESULT WindowProc(void* window, uint32 message, uint32* wParam, int32* lParam)

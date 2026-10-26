@@ -1,3 +1,5 @@
 namespace System.Windows.Forms;
 
-public class Button : ButtonBase {}
+public class Button : ButtonBase
+{
+}

@@ -13,7 +13,10 @@ public class Timer : Component
 	private int64 mNextTick;
 	private bool mDeleting;
 
-	public this() {}
+	public this()
+	{
+	}
+
 	public this(IContainer container)
 	{
 		container?.Add(this);
@@ -21,20 +24,26 @@ public class Timer : Component
 
 	public Object Tag { get; set; }
 	public ref Event<EventHandler> Tick { get; set; } ~ _.Dispose();
-	protected virtual void OnTick(EventArgs args) => Tick.Invoke(this, args);
+
+	protected virtual void OnTick(EventArgs args)
+	{
+		Tick.Invoke(this, args);
+	}
 
 	public virtual bool Enabled
 	{
 		get => mRegistration != 0;
 		set
 		{
-			if (value == Enabled || (value && mDeleting)) return;
+			if (value == Enabled || (value && mDeleting))
+				return;
 			if (value)
 			{
 				ResetDeadline();
 				mRegistration = TimerScheduler.Start(this);
 			}
-			else StopTimer();
+			else
+				StopTimer();
 		}
 	}
 
@@ -43,8 +52,10 @@ public class Timer : Component
 		get => mInterval;
 		set
 		{
-			if (value < 1) Runtime.FatalError("Timer.Interval must be greater than zero");
-			if (mInterval == value) return;
+			if (value < 1)
+				Runtime.FatalError("Timer.Interval must be greater than zero");
+			if (mInterval == value)
+				return;
 			mInterval = value;
 			if (Enabled)
 			{
@@ -56,11 +67,23 @@ public class Timer : Component
 		}
 	}
 
-	public void Start() => Enabled = true;
-	public void Stop() => Enabled = false;
+	public void Start()
+	{
+		Enabled = true;
+	}
+
+	public void Stop()
+	{
+		Enabled = false;
+	}
 
 	internal int64 NextTick => mNextTick;
-	private void ResetDeadline() => mNextTick = TimerScheduler.Now + mInterval;
+
+	private void ResetDeadline()
+	{
+		mNextTick = TimerScheduler.Now + mInterval;
+	}
+
 	internal void NotifyTick()
 	{
 		ResetDeadline();
@@ -71,7 +94,8 @@ public class Timer : Component
 	{
 		let registration = mRegistration;
 		mRegistration = 0;
-		if (registration != 0) TimerScheduler.Stop(registration);
+		if (registration != 0)
+			TimerScheduler.Stop(registration);
 	}
 
 	protected override void Dispose(bool disposing)

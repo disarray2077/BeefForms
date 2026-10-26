@@ -15,15 +15,20 @@ internal class SDLCanvas
 		public float ScaleY => PixelHeight / (float)Math.Max(1, Height);
 		public float RasterScale => Math.Max(1f, Math.Max(ScaleX, ScaleY));
 
-		public Rectangle ToScissor(Rectangle rect) =>
-			.((.)(rect.X * ScaleX), (.)(PixelHeight - rect.Bottom * ScaleY),
-			(.)(Math.Max(0, rect.Width) * ScaleX), (.)(Math.Max(0, rect.Height) * ScaleY));
+		public Rectangle ToScissor(Rectangle rect)
+			=> .((.)(rect.X * ScaleX), (.)(PixelHeight - rect.Bottom * ScaleY),
+				 (.)(Math.Max(0, rect.Width) * ScaleX), (.)(Math.Max(0, rect.Height) * ScaleY));
 	}
 
 	public class Texture
 	{
 		public uint32 Handle;
-		public ~this() { if (Handle != 0) GL.glDeleteTextures(1, &Handle); }
+
+		public ~this()
+		{
+			if (Handle != 0)
+				GL.glDeleteTextures(1, &Handle);
+		}
 	}
 
 	private uint32 mProgram, mBuffer, mVertexArray, mWhiteTexture;
@@ -63,6 +68,7 @@ internal class SDLCanvas
 
 		let vertex = CompileShader(GL.GL_VERTEX_SHADER, vertexSource);
 		defer GL.glDeleteShader(vertex);
+
 		let fragment = CompileShader(GL.GL_FRAGMENT_SHADER, fragmentSource);
 		defer GL.glDeleteShader(fragment);
 
@@ -151,8 +157,10 @@ internal class SDLCanvas
 		return texture;
 	}
 
-	public void Image(Rectangle rect, Texture texture, float shade) =>
+	public void Image(Rectangle rect, Texture texture, float shade)
+	{
 		Quad(rect, texture.Handle, shade, shade, shade);
+	}
 
 	public void Begin(SDL.Window* window)
 	{
@@ -213,7 +221,11 @@ internal class SDLCanvas
 		GL.glDrawArrays(GL.GL_TRIANGLES, 0, 6);
 	}
 
-	public void Fill(Rectangle rect, float r, float g, float b) => Quad(rect, mWhiteTexture, r, g, b);
+	public void Fill(Rectangle rect, float r, float g, float b)
+	{
+		Quad(rect, mWhiteTexture, r, g, b);
+	}
+
 	public void RoundedFill(Rectangle rect, float r, float g, float b)
 	{
 		Fill(.(rect.X + 2, rect.Y, rect.Width - 4, 1), r, g, b);
@@ -222,6 +234,7 @@ internal class SDLCanvas
 		Fill(.(rect.X + 1, rect.Y + rect.Height - 2, rect.Width - 2, 1), r, g, b);
 		Fill(.(rect.X + 2, rect.Y + rect.Height - 1, rect.Width - 4, 1), r, g, b);
 	}
+
 	public void Border(Rectangle rect, float r, float g, float b)
 	{
 		Fill(.(rect.X, rect.Y, rect.Width, 1), r,g,b);
@@ -229,5 +242,4 @@ internal class SDLCanvas
 		Fill(.(rect.X, rect.Y, 1, rect.Height), r,g,b);
 		Fill(.(rect.X + rect.Width - 1, rect.Y, 1, rect.Height), r,g,b);
 	}
-
 }

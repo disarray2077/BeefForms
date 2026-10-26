@@ -13,10 +13,13 @@ namespace BeefForms.Sample
 #if !BF_PLATFORM_WASM
 			let capturePath = scope String();
 			for (let arg in args)
+			{
 				if (arg == "--sdl")
 					Application.UseBackend(.SDL2OpenGL);
+			}
 #if BF_DEPENDS_BEEFFORMS_SDL
 			if (let backend = Application.Backend as SDLBackend)
+			{
 				for (let arg in args)
 				{
 					if (arg.StartsWith("--frames="))
@@ -27,6 +30,7 @@ namespace BeefForms.Sample
 						backend.CapturePath = capturePath;
 					}
 				}
+			}
 #endif
 #endif
 			Application.EnableVisualStyles();

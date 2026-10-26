@@ -8,8 +8,8 @@ public struct Rectangle : this(int32 X, int32 Y, int32 Width, int32 Height)
 	public int32 Right => X + Width;
 	public int32 Bottom => Y + Height;
 
-	public bool Contains(int32 x, int32 y) =>
-		x >= X && y >= Y && x < Right && y < Bottom;
+	public bool Contains(int32 x, int32 y)
+		=> x >= X && y >= Y && x < Right && y < Bottom;
 
 	public Rectangle Intersect(Rectangle other)
 	{

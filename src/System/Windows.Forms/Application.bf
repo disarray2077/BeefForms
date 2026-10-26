@@ -35,8 +35,15 @@ public static class Application
 	/// A live, read-only collection of loaded forms, indexed by position or name.
 	public static FormCollection OpenForms => sOpenForms;
 
-	internal static void RegisterForm(Form form) => sOpenForms.Add(form);
-	internal static void UnregisterForm(Form form) => sOpenForms.Remove(form);
+	internal static void RegisterForm(Form form)
+	{
+		sOpenForms.Add(form);
+	}
+
+	internal static void UnregisterForm(Form form)
+	{
+		sOpenForms.Remove(form);
+	}
 
 #if BF_PLATFORM_WASM
 	[CLink]
@@ -44,7 +51,10 @@ public static class Application
 	[CLink]
 	private static extern void emscripten_cancel_main_loop();
 
-	private static void BrowserFrame() => RunFrame(=> emscripten_cancel_main_loop);
+	private static void BrowserFrame()
+	{
+		RunFrame(=> emscripten_cancel_main_loop);
+	}
 #endif
 
 	private static void BeginRun(Form mainForm)
@@ -95,39 +105,59 @@ public static class Application
 			if (Backend.Type == backend)
 				return;
 
-			if (DispatcherCore.HasPending) Runtime.FatalError("Cannot change the forms backend while dispatch is pending");
+			if (DispatcherCore.HasPending)
+				Runtime.FatalError("Cannot change the forms backend while dispatch is pending");
 			DispatcherCore.Shutdown();
 			delete Backend;
 			switch (backend)
 			{
-			case .SDL2OpenGL: Backend = FormsBackendFactory.Instance.CreateSDLBackend();
+			case .SDL2OpenGL:
+				Backend = FormsBackendFactory.Instance.CreateSDLBackend();
 #if BF_PLATFORM_WINDOWS
-			case .Win32: Backend = new Win32Backend();
+			case .Win32:
+				Backend = new Win32Backend();
 #else
-			case .Win32: Runtime.FatalError("The Win32 backend requires Windows");
+			case .Win32:
+				Runtime.FatalError("The Win32 backend requires Windows");
 #endif
 			}
 		}
 	}
 
-	public static void EnableVisualStyles() => Backend.EnableVisualStyles();
-	public static void SetCompatibleTextRenderingDefault(bool defaultValue) {}
+	public static void EnableVisualStyles()
+	{
+		Backend.EnableVisualStyles();
+	}
+
+	public static void SetCompatibleTextRenderingDefault(bool defaultValue)
+	{
+	}
 
 	/// Closes the open forms only after all FormClosing handlers accept application exit.
 	public static void Exit()
 	{
-		if (sExiting) return;
+		if (sExiting)
+			return;
 		sExiting = true;
 		defer { sExiting = false; }
+
 		let queried = scope HashSet<Form>();
 		while (true)
 		{
 			Form next = null;
 			for (int i = sOpenForms.Count - 1; i >= 0; i--)
-				if (!queried.Contains(sOpenForms[i])) { next = sOpenForms[i]; break; }
-			if (next == null) break;
+			{
+				if (!queried.Contains(sOpenForms[i]))
+				{
+					next = sOpenForms[i];
+					break;
+				}
+			}
+			if (next == null)
+				break;
 			queried.Add(next);
-			if (next.QueryApplicationExit()) return;
+			if (next.QueryApplicationExit())
+				return;
 		}
 
 		// Closed notifications precede disposal. Callbacks can change the open-form list.
@@ -140,7 +170,10 @@ public static class Application
 			UnregisterForm(form);
 		}
 		for (let form in closed)
-			if (!form.IsDisposingOrDisposed) form.Dispose();
+		{
+			if (!form.IsDisposingOrDisposed)
+				form.Dispose();
+		}
 	}
 
 	/// Processes pending input and draws any due frame without waiting for more events.
@@ -148,7 +181,8 @@ public static class Application
 	public static void DoEvents()
 	{
 		DispatcherCore.VerifyAccess();
-		if (sProcessingEvents) return;
+		if (sProcessingEvents)
+			return;
 		sProcessingEvents = true;
 		defer { sProcessingEvents = false; }
 		Backend.DoEvents();

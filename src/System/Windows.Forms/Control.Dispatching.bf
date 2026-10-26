@@ -17,8 +17,10 @@ extension Control
 	private Control FindDispatchControl()
 	{
 		for (var control = this; control != null; control = control.Parent)
+		{
 			if (control.IsHandleCreated)
 				return control;
+		}
 		return null;
 	}
 
@@ -65,17 +67,21 @@ extension Control
 		T value = default;
 		delegate void() invoke = scope [&] () => value = callback();
 		let result = Invoke(invoke);
-		if (result case .Err(let error)) return .Err(error);
+		if (result case .Err(let error))
+			return .Err(error);
 		return .Ok(value);
 	}
 
 	/// Takes ownership of the heap delegate. The caller owns the result if retained.
-	public InvokeAsyncResult BeginInvoke(delegate void() callback) => new .(EnqueueInvocation(callback, true));
-	public Result<void> EndInvoke(IAsyncResult result) => Application.DispatcherCore.Wait(((InvokeAsyncResult)result).State);
+	public InvokeAsyncResult BeginInvoke(delegate void() callback)
+		=> new .(EnqueueInvocation(callback, true));
+	public Result<void> EndInvoke(IAsyncResult result)
+		=> Application.DispatcherCore.Wait(((InvokeAsyncResult)result).State);
 
 	private void CancelInvocationsLocked()
 	{
-		if (mInvocationTarget == 0) return;
+		if (mInvocationTarget == 0)
+			return;
 		Application.DispatcherCore.CancelPendingLocked(mInvocationTarget);
 		mInvocationTarget = 0;
 	}

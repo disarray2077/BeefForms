@@ -40,7 +40,8 @@ internal class SDLBackend : FormsBackend
 
 	public ~this()
 	{
-		for (let session in mSessions) session.ReleaseRef();
+		for (let session in mSessions)
+			session.ReleaseRef();
 		delete mTextService;
 		if (mInitialized)
 		{
@@ -67,13 +68,17 @@ internal class SDLBackend : FormsBackend
 			snapshot.Window = SDL.GL_GetCurrentWindow();
 			snapshot.Context = SDL.GL_GetCurrentContext();
 			if (snapshot.Context != default)
+			{
 				for (let session in backend.mSessions)
+				{
 					if (session.mContext == snapshot.Context)
 					{
 						session.AddRef();
 						snapshot.Owner = session;
 						break;
 					}
+				}
+			}
 			return snapshot;
 		}
 
@@ -88,7 +93,8 @@ internal class SDLBackend : FormsBackend
 				window = null;
 				context = default;
 			}
-			if (SDL.GL_GetCurrentContext() == context && SDL.GL_GetCurrentWindow() == window) return;
+			if (SDL.GL_GetCurrentContext() == context && SDL.GL_GetCurrentWindow() == window)
+				return;
 			if (SDL.GL_MakeCurrent(window, context) != 0)
 				Runtime.FatalError("Could not restore the previous OpenGL context");
 		}
@@ -116,7 +122,8 @@ internal class SDLBackend : FormsBackend
 		}
 	}
 
-	private ContextScope UseContext(SDLWindowSession session = null) => .(this, session);
+	private ContextScope UseContext(SDLWindowSession session = null)
+		=> .(this, session);
 
 	public override void CreateControl(Control control)
 	{
@@ -158,7 +165,8 @@ internal class SDLBackend : FormsBackend
 	public override void DestroyControl(Control control)
 	{
 		let session = GetSession(control);
-		if (session == null) return;
+		if (session == null)
+			return;
 		using (UseContext(session))
 		{
 			let generation = control.HandleGeneration;
@@ -178,7 +186,8 @@ internal class SDLBackend : FormsBackend
 	public override void UpdateControl(Control control, ControlChange change)
 	{
 		let session = GetSession(control);
-		if (session == null) return;
+		if (session == null)
+			return;
 		using (session.Retain())
 		{
 			session.UpdateControl(control, change);
@@ -190,6 +199,7 @@ internal class SDLBackend : FormsBackend
 		let session = GetSession(form);
 		return session == null ? form.Size : session.GetClientSize(form);
 	}
+
 	public override Rectangle GetScreenWorkingArea()
 	{
 		SDL.GetGlobalMouseState(var x, var y);
@@ -198,19 +208,23 @@ internal class SDLBackend : FormsBackend
 		SDL.GetDisplayUsableBounds(display, var area);
 		return .(area.x, area.y, area.w, area.h);
 	}
+
 	public override void SetClientSize(Form form, Size size)
 	{
 		let session = GetSession(form);
-		if (session == null) return;
+		if (session == null)
+			return;
 		using (session.Retain())
 		{
 			session.SetClientSize(form, size);
 		}
 	}
+
 	public override void Show(Form form)
 	{
 		let session = GetSession(form);
-		if (session == null) return;
+		if (session == null)
+			return;
 		using (session.Retain())
 		{
 			session.Show(form);
@@ -224,38 +238,55 @@ internal class SDLBackend : FormsBackend
 	public override bool FocusControl(Control control)
 	{
 		let session = GetSession(control);
-		if (session == null) return false;
+		if (session == null)
+			return false;
 		using (session.Retain())
 		{
 			return session.FocusControl(control);
 		}
 	}
-	public override bool IsFocused(Control control) => GetSession(control)?.IsFocused(control) ?? false;
-	public override bool HasCapture(Control control) => GetSession(control)?.HasCapture(control) ?? false;
+
+	public override bool IsFocused(Control control)
+		=> GetSession(control)?.IsFocused(control) ?? false;
+	public override bool HasCapture(Control control)
+		=> GetSession(control)?.HasCapture(control) ?? false;
+
 	public override void SetCapture(Control control, bool capture)
 	{
 		let session = GetSession(control);
-		if (session == null) return;
+		if (session == null)
+			return;
 		if (capture && (!control.IsHandleCreated || control.IsDisposingOrDisposed ||
-			!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled)) return;
+			!control.IsEffectivelyVisible || !control.IsEffectivelyEnabled))
+			return;
 		if (capture)
 		{
 			let sessions = ToScopedArray!(mSessions);
 			for (let other in sessions)
-				if (other != session) other.ReleaseCapture();
+			{
+				if (other != session)
+					other.ReleaseCapture();
+			}
 		}
 		session.SetCapture(control, capture);
 	}
-	public override Size MeasureText(Control control) => TextService.MeasureText(control);
-	public override Size MeasureText(Control control, Size proposedSize) => TextService.MeasureText(control, proposedSize);
-	public override int32 GetFontHeight(Control control) => TextService.LineHeight(control);
-	public override int32 GetTextBoxHeight(TextBoxBase editor) => GetFontHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
+
+	public override Size MeasureText(Control control)
+		=> TextService.MeasureText(control);
+	public override Size MeasureText(Control control, Size proposedSize)
+		=> TextService.MeasureText(control, proposedSize);
+
+	public override int32 GetFontHeight(Control control)
+		=> TextService.LineHeight(control);
+	public override int32 GetTextBoxHeight(TextBoxBase editor)
+		=> GetFontHeight(editor) + (editor.BorderStyle == .None ? 0 : 7);
 
 	public override void WakeEventLoop()
 	{
 		using (Application.DispatcherCore.SyncRoot.Enter())
 		{
-			if (mWakePending) return;
+			if (mWakePending)
+				return;
 			SDL.Event input = .();
 			input.type = mRedrawEvent;
 			mWakePending = SDL.PushEvent(ref input) > 0;
@@ -268,50 +299,69 @@ internal class SDLBackend : FormsBackend
 		Application.DispatcherCore.VerifyAccess();
 		mFrames = 0;
 		mRenderThreadId = Thread.CurrentThreadId;
+
 		SDL.AddEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
 		defer SDL.DelEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
+
 		while (form.IsHandleCreated)
 		{
 			let frames = mFrames;
 			DoEvents();
-			if (!form.IsHandleCreated || (FrameLimit > 0 && mFrames >= FrameLimit)) break;
-			if (FrameLimit > 0 && mFrames != frames) continue;
+			if (!form.IsHandleCreated || (FrameLimit > 0 && mFrames >= FrameLimit))
+				break;
+			if (FrameLimit > 0 && mFrames != frames)
+				continue;
 			let timeout = GetEventWaitTimeout();
-			if (timeout == 0) continue;
+			if (timeout == 0)
+				continue;
 			SDL.Event input = ?;
-			if (SDL.WaitEventTimeout(out input, timeout) != 0) ProcessEvents(input);
+			if (SDL.WaitEventTimeout(out input, timeout) != 0)
+				ProcessEvents(input);
 		}
 	}
 #endif
 
 	private int32 GetEventWaitTimeout()
 	{
-		if (Application.DispatcherCore.HasPending) return 0;
+		if (Application.DispatcherCore.HasPending)
+			return 0;
 		int32 timeout = TimerScheduler.GetNextTimeout();
 		for (let session in mSessions)
 		{
 			let next = session.GetRedrawTimeout();
-			if (next >= 0 && (timeout < 0 || next < timeout)) timeout = next;
+			if (next >= 0 && (timeout < 0 || next < timeout))
+				timeout = next;
 		}
 		return timeout;
 	}
 
 	public override void DoEvents()
 	{
-		if (mPumpingEvents || IsRendering) return;
+		if (mPumpingEvents || IsRendering)
+			return;
 		Application.DispatcherCore.VerifyAccess();
 		mPumpingEvents = true;
 		defer { mPumpingEvents = false; }
+
 		Application.DispatcherCore.ProcessPending();
 		TimerScheduler.Process();
 		ProcessEvents();
 		let capture = CapturePath != null && (FrameLimit == 0 || mFrames + 1 == FrameLimit);
-		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && FrameLimit > 0) mFrames++;
+		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && FrameLimit > 0)
+			mFrames++;
 	}
 
 	private bool IsRendering
 	{
-		get { for (let session in mSessions) if (session.Rendering) return true; return false; }
+		get
+		{
+			for (let session in mSessions)
+			{
+				if (session.Rendering)
+					return true;
+			}
+			return false;
+		}
 	}
 
 	private bool RenderIfNeeded(bool force = false, bool capture = false)
@@ -334,13 +384,17 @@ internal class SDLBackend : FormsBackend
 		// StopTextInput flushes SDL's global text queue. Capture pending events before
 		// callbacks can close a different window or change the active text editor.
 		let pending = scope List<SDL.Event>();
-		if (first.HasValue) pending.Add(first.Value);
+		if (first.HasValue)
+			pending.Add(first.Value);
 		SDL.Event input = ?;
 		while (true)
 		{
-			while (SDL.PollEvent(out input) != 0) pending.Add(input);
-			if (pending.IsEmpty) break;
-			for (var queued in pending) ProcessEvent(ref queued);
+			while (SDL.PollEvent(out input) != 0)
+				pending.Add(input);
+			if (pending.IsEmpty)
+				break;
+			for (var queued in pending)
+				ProcessEvent(ref queued);
 			pending.Clear();
 		}
 	}
@@ -349,13 +403,20 @@ internal class SDLBackend : FormsBackend
 	{
 		switch (input.type)
 		{
-		case .WindowEvent: return input.window.windowID;
-		case .KeyDown, .KeyUp: return input.key.windowID;
-		case .TextInput: return input.text.windowID;
-		case .MouseMotion: return input.motion.windowID;
-		case .MouseButtonDown, .MouseButtonUp: return input.button.windowID;
-		case .MouseWheel: return input.wheel.windowID;
-		default: return 0;
+		case .WindowEvent:
+			return input.window.windowID;
+		case .KeyDown, .KeyUp:
+			return input.key.windowID;
+		case .TextInput:
+			return input.text.windowID;
+		case .MouseMotion:
+			return input.motion.windowID;
+		case .MouseButtonDown, .MouseButtonUp:
+			return input.button.windowID;
+		case .MouseWheel:
+			return input.wheel.windowID;
+		default:
+			return 0;
 		}
 	}
 
@@ -372,14 +433,18 @@ internal class SDLBackend : FormsBackend
 			Application.Exit();
 			return;
 		}
-		if (!mWindows.TryGetValue(EventWindowID(input), let session)) return;
+		if (!mWindows.TryGetValue(EventWindowID(input), let session))
+			return;
 		using (session.Retain())
 		{
 			if (input.type == .WindowEvent && input.window.windowEvent == .FocusGained)
 			{
 				let sessions = ToScopedArray!(mSessions);
 				for (let other in sessions)
-					if (other != session) other.Deactivate();
+				{
+					if (other != session)
+						other.Deactivate();
+				}
 			}
 			session.ProcessEvent(ref input);
 		}
@@ -387,11 +452,14 @@ internal class SDLBackend : FormsBackend
 
 	private static int32 WatchWindowEvents(void* userData, SDL.Event* input)
 	{
-		if (input.type != .WindowEvent || input.window.windowEvent != .Exposed) return 0;
+		if (input.type != .WindowEvent || input.window.windowEvent != .Exposed)
+			return 0;
 		let backend = (SDLBackend)Internal.UnsafeCastToObject(userData);
 		// SDL may invoke watches from another thread or inside a modal resize loop.
-		if (Thread.CurrentThreadId != backend.mRenderThreadId || backend.IsRendering) return 0;
-		if (!backend.mWindows.TryGetValue(input.window.windowID, let session)) return 0;
+		if (Thread.CurrentThreadId != backend.mRenderThreadId || backend.IsRendering)
+			return 0;
+		if (!backend.mWindows.TryGetValue(input.window.windowID, let session))
+			return 0;
 		using (backend.UseContext(session))
 		{
 			session.HandleExposure(input.window.timestamp);

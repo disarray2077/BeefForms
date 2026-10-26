@@ -8,14 +8,25 @@ namespace System.Windows.Forms;
 
 internal enum InputEventKind
 {
-	MouseDown, MouseUp, MouseMove, MouseWheel, MouseDoubleClick, KeyDown, KeyUp, KeyPress, TextInput
+	MouseDown,
+	MouseUp,
+	MouseMove,
+	MouseWheel,
+	MouseDoubleClick,
+	KeyDown,
+	KeyUp,
+	KeyPress,
+	TextInput
 }
 
 extension Control
 {
 	public bool TabStop { get; set; }
 	public bool CanSelect => CanSelectCore();
-	protected virtual bool CanSelectCore() => !IsDisposingOrDisposed && Visible && Enabled;
+
+	protected virtual bool CanSelectCore()
+		=> !IsDisposingOrDisposed && Visible && Enabled;
+
 	public bool Focused => IsHandleCreated && Application.Backend.IsFocused(this);
 	public bool IsMouseOver { get; private set; }
 	public bool Capture
@@ -27,7 +38,9 @@ extension Control
 				Application.Backend.SetCapture(this, value);
 		}
 	}
-	public bool Focus() => IsHandleCreated && CanSelect && Application.Backend.FocusControl(this);
+
+	public bool Focus()
+		=> IsHandleCreated && CanSelect && Application.Backend.FocusControl(this);
 
 	public ref Event<MouseEventHandler> MouseDown { get; set; } ~ _.Dispose();
 	public ref Event<MouseEventHandler> MouseUp { get; set; } ~ _.Dispose();
@@ -45,63 +58,131 @@ extension Control
 	/// Runs before KeyPress. Handling this event cancels input; edits to Text are passed to KeyPress.
 	public ref Event<TextInputEventHandler> TextInput { get; set; } ~ _.Dispose();
 
-	protected virtual void OnMouseDown(MouseEventArgs args) => MouseDown.Invoke(this, args);
-	protected virtual void OnMouseUp(MouseEventArgs args) => MouseUp.Invoke(this, args);
-	protected virtual void OnMouseMove(MouseEventArgs args) => MouseMove.Invoke(this, args);
-	protected virtual void OnMouseWheel(MouseEventArgs args) => MouseWheel.Invoke(this, args);
-	protected virtual void OnMouseDoubleClick(MouseEventArgs args) => MouseDoubleClick.Invoke(this, args);
-	protected virtual void OnKeyDown(KeyEventArgs args) => KeyDown.Invoke(this, args);
-	protected virtual void OnKeyUp(KeyEventArgs args) => KeyUp.Invoke(this, args);
-	protected virtual void OnMouseEnter(EventArgs args) => MouseEnter.Invoke(this, args);
-	protected virtual void OnMouseLeave(EventArgs args) => MouseLeave.Invoke(this, args);
-	protected virtual void OnGotFocus(EventArgs args) => GotFocus.Invoke(this, args);
-	protected virtual void OnLostFocus(EventArgs args) => LostFocus.Invoke(this, args);
-	protected virtual void OnKeyPress(KeyPressEventArgs args) => KeyPress.Invoke(this, args);
-	protected virtual void OnTextInput(TextInputEventArgs args) => TextInput.Invoke(this, args);
+	protected virtual void OnMouseDown(MouseEventArgs args)
+	{
+		MouseDown.Invoke(this, args);
+	}
+
+	protected virtual void OnMouseUp(MouseEventArgs args)
+	{
+		MouseUp.Invoke(this, args);
+	}
+
+	protected virtual void OnMouseMove(MouseEventArgs args)
+	{
+		MouseMove.Invoke(this, args);
+	}
+
+	protected virtual void OnMouseWheel(MouseEventArgs args)
+	{
+		MouseWheel.Invoke(this, args);
+	}
+
+	protected virtual void OnMouseDoubleClick(MouseEventArgs args)
+	{
+		MouseDoubleClick.Invoke(this, args);
+	}
+
+	protected virtual void OnKeyDown(KeyEventArgs args)
+	{
+		KeyDown.Invoke(this, args);
+	}
+
+	protected virtual void OnKeyUp(KeyEventArgs args)
+	{
+		KeyUp.Invoke(this, args);
+	}
+
+	protected virtual void OnMouseEnter(EventArgs args)
+	{
+		MouseEnter.Invoke(this, args);
+	}
+
+	protected virtual void OnMouseLeave(EventArgs args)
+	{
+		MouseLeave.Invoke(this, args);
+	}
+
+	protected virtual void OnGotFocus(EventArgs args)
+	{
+		GotFocus.Invoke(this, args);
+	}
+
+	protected virtual void OnLostFocus(EventArgs args)
+	{
+		LostFocus.Invoke(this, args);
+	}
+
+	protected virtual void OnKeyPress(KeyPressEventArgs args)
+	{
+		KeyPress.Invoke(this, args);
+	}
+
+	protected virtual void OnTextInput(TextInputEventArgs args)
+	{
+		TextInput.Invoke(this, args);
+	}
 
 	internal void FilterTextInput(StringView text, String accepted)
 	{
 		let snapshot = HandleGeneration;
 		let args = scope TextInputEventArgs(text);
 		DispatchInput(.TextInput, args);
-		if (args.Handled || IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot)) return;
+		if (args.Handled || IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot))
+			return;
 		for (let character in args.Text.DecodedChars)
 		{
 			let press = scope KeyPressEventArgs(character);
 			DispatchInput(.KeyPress, press);
-			if (IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot)) return;
-			if (!press.Handled) accepted.Append(press.KeyChar);
+			if (IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot))
+				return;
+			if (!press.Handled)
+				accepted.Append(press.KeyChar);
 		}
 	}
 
 	internal void DispatchInput(InputEventKind kind, InputEventArgs args)
 	{
-		if (IsDisposingOrDisposed) return;
+		if (IsDisposingOrDisposed)
+			return;
 		let snapshot = HandleGeneration;
 		if (args.Source == null)
 			args.Source = this;
 		if (kind == .KeyDown || kind == .KeyUp || kind == .KeyPress)
 		{
 			var root = this;
-			while (root.Parent != null) root = root.Parent;
+			while (root.Parent != null)
+				root = root.Parent;
 			if (let form = root as Form)
+			{
 				if (form != this && form.KeyPreview)
 				{
 					form.DispatchInput(kind, args);
-					if (args.Handled || IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot)) return;
+					if (args.Handled || IsDisposingOrDisposed || !HandleGeneration.IsCurrent(snapshot))
+						return;
 				}
+			}
 		}
 		switch (kind)
 		{
-		case .MouseDown: OnMouseDown((MouseEventArgs)args);
-		case .MouseUp: OnMouseUp((MouseEventArgs)args);
-		case .MouseMove: OnMouseMove((MouseEventArgs)args);
-		case .MouseWheel: OnMouseWheel((MouseEventArgs)args);
-		case .MouseDoubleClick: OnMouseDoubleClick((MouseEventArgs)args);
-		case .KeyDown: OnKeyDown((KeyEventArgs)args);
-		case .KeyUp: OnKeyUp((KeyEventArgs)args);
-		case .KeyPress: OnKeyPress((KeyPressEventArgs)args);
-		case .TextInput: OnTextInput((TextInputEventArgs)args);
+		case .MouseDown:
+			OnMouseDown((MouseEventArgs)args);
+		case .MouseUp:
+			OnMouseUp((MouseEventArgs)args);
+		case .MouseMove:
+			OnMouseMove((MouseEventArgs)args);
+		case .MouseWheel:
+			OnMouseWheel((MouseEventArgs)args);
+		case .MouseDoubleClick:
+			OnMouseDoubleClick((MouseEventArgs)args);
+		case .KeyDown:
+			OnKeyDown((KeyEventArgs)args);
+		case .KeyUp:
+			OnKeyUp((KeyEventArgs)args);
+		case .KeyPress:
+			OnKeyPress((KeyPressEventArgs)args);
+		case .TextInput:
+			OnTextInput((TextInputEventArgs)args);
 		}
 	}
 
@@ -109,7 +190,8 @@ extension Control
 	internal void DispatchMouseWheel(MouseEventArgs args)
 	{
 		DispatchInput(.MouseWheel, args);
-		if (args.Handled || IsDisposingOrDisposed || Parent == null) return;
+		if (args.Handled || IsDisposingOrDisposed || Parent == null)
+			return;
 		let x = Location.x + BorderWidth - Parent.ContentOffset.x;
 		let y = Location.y + BorderWidth - Parent.ContentOffset.y;
 		args.X += x;
@@ -123,7 +205,8 @@ extension Control
 	{
 		let controls = scope List<Control>();
 		CollectTabControls(root, controls);
-		if (controls.IsEmpty) return null;
+		if (controls.IsEmpty)
+			return null;
 		let index = controls.IndexOf(focused);
 		let next = index < 0 ? (backward ? controls.Count - 1 : 0)
 			: (index + controls.Count + (backward ? -1 : 1)) % controls.Count;
@@ -132,9 +215,11 @@ extension Control
 
 	private static void CollectTabControls(Control parent, List<Control> controls)
 	{
-		if (parent.IsDisposingOrDisposed || !parent.Visible || !parent.Enabled) return;
+		if (parent.IsDisposingOrDisposed || !parent.Visible || !parent.Enabled)
+			return;
 		let children = scope List<Control>();
-		for (let child in parent.Controls) children.Add(child);
+		for (let child in parent.Controls)
+			children.Add(child);
 		children.Sort(scope (a, b) =>
 		{
 			let order = a.TabIndex <=> b.TabIndex;
@@ -143,16 +228,20 @@ extension Control
 		});
 		for (let child in children)
 		{
-			if (child.IsDisposingOrDisposed || !child.Visible || !child.Enabled) continue;
-			if (child.TabStop && child.TabIndex >= 0 && child.CanSelect) controls.Add(child);
+			if (child.IsDisposingOrDisposed || !child.Visible || !child.Enabled)
+				continue;
+			if (child.TabStop && child.TabIndex >= 0 && child.CanSelect)
+				controls.Add(child);
 			CollectTabControls(child, controls);
 		}
 	}
 
 	internal void NotifyFocus(bool focused)
 	{
-		if (focused) OnGotFocus(.Empty);
-		else OnLostFocus(.Empty);
+		if (focused)
+			OnGotFocus(.Empty);
+		else
+			OnLostFocus(.Empty);
 	}
 
 	internal static void UpdateMouseOver(Control previous, Control next)
@@ -160,14 +249,17 @@ extension Control
 		if (previous == next)
 			return;
 		for (var control = previous; control != null; control = control.Parent)
+		{
 			if (!IsAncestorOf(control, next))
 			{
 				control.IsMouseOver = false;
 				control.OnMouseLeave(.Empty);
 			}
+		}
 		for (var control = next; control != null; control = control.Parent)
 		{
-			if (control.IsDisposingOrDisposed) return;
+			if (control.IsDisposingOrDisposed)
+				return;
 			if (!IsAncestorOf(control, previous))
 			{
 				control.IsMouseOver = true;
@@ -179,8 +271,10 @@ extension Control
 	internal static bool IsAncestorOf(Control ancestor, Control control)
 	{
 		for (var current = control; current != null; current = current.Parent)
+		{
 			if (current == ancestor)
 				return true;
+		}
 		return false;
 	}
 }

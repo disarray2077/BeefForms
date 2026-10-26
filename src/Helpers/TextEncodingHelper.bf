@@ -37,8 +37,8 @@ internal static class TextEncodingHelper
 		}
 	}
 
-	public static int ToUtf16Offset(StringView text, int utf8Offset) =>
-		UTF16.GetEncodedLen(text.Substring(0, utf8Offset));
+	public static int ToUtf16Offset(StringView text, int utf8Offset)
+		=> UTF16.GetEncodedLen(text.Substring(0, utf8Offset));
 
 	public static int ToUtf8Offset(StringView text, int utf16Offset)
 	{
@@ -47,7 +47,8 @@ internal static class TextEncodingHelper
 		{
 			let length = UTF16.GetEncodedLength(character);
 			// Keep whole characters when an index falls between a surrogate pair.
-			if (units + length > utf16Offset) break;
+			if (units + length > utf16Offset)
+				break;
 			units += length;
 			bytes += UTF8.GetEncodedLength(character);
 		}

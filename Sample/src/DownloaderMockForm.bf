@@ -84,11 +84,15 @@ class DownloaderMockForm : Form
 		UpdateSummary();
 	}
 
-	public ~this() { Dispose(); }
+	public ~this()
+	{
+		Dispose();
+	}
 
 	protected override void Dispose(bool disposing)
 	{
-		if (disposing) mTimer.Stop();
+		if (disposing)
+			mTimer.Stop();
 		base.Dispose(disposing);
 	}
 
@@ -98,7 +102,10 @@ class DownloaderMockForm : Form
 		let elapsed = (now - mLastTick) / 1'000'000.0;
 		mLastTick = now;
 		for (let control in mDownloads.Controls)
-			if (let row = control as MockDownloadRow) row.Advance(elapsed);
+		{
+			if (let row = control as MockDownloadRow)
+				row.Advance(elapsed);
+		}
 		UpdateSummary();
 	}
 
@@ -120,12 +127,16 @@ class DownloaderMockForm : Form
 	private void OnClearFinished(Object sender, EventArgs args)
 	{
 		for (int i = mDownloads.Controls.Count - 1; i >= 0; i--)
+		{
 			if (let row = mDownloads.Controls[i] as MockDownloadRow)
+			{
 				if (row.IsFinished)
 				{
 					mDownloads.Controls.RemoveAt(i);
 					delete row;
 				}
+			}
+		}
 		LayoutRows();
 		UpdateSummary();
 	}
@@ -154,19 +165,28 @@ class DownloaderMockForm : Form
 	{
 		int active = 0, completed = 0, failed = 0, cancelled = 0;
 		for (let control in mDownloads.Controls)
+		{
 			if (let row = control as MockDownloadRow)
+			{
 				switch (row.State)
 				{
-				case .Downloading: active++;
-				case .Completed: completed++;
-				case .Failed: failed++;
-				case .Cancelled: cancelled++;
+				case .Downloading:
+					active++;
+				case .Completed:
+					completed++;
+				case .Failed:
+					failed++;
+				case .Cancelled:
+					cancelled++;
 				}
+			}
+		}
 		let summary = scope String();
 		summary.AppendF("{} active   |   {} completed   |   {} failed   |   {} cancelled", active, completed, failed, cancelled);
 		mSummary.Text = summary;
 		mClearFinished.Enabled = completed + failed + cancelled > 0;
-		if (active == 0) mTimer.Stop();
+		if (active == 0)
+			mTimer.Stop();
 		else if (Created && !mTimer.Enabled)
 		{
 			mLastTick = Stopwatch.GetTimestamp();
@@ -252,17 +272,20 @@ class MockDownloadRow : Panel
 		else
 			State = .Failed;
 		mCancel.Enabled = active;
-		if (active) Advance(0);
+		if (active)
+			Advance(0);
 	}
 
 	public void Advance(double elapsed)
 	{
 		var elapsed;
-		if (IsFinished) return;
+		if (IsFinished)
+			return;
 		if (mConnectingSeconds > 0)
 		{
 			mConnectingSeconds -= elapsed;
-			if (mConnectingSeconds > 0) return;
+			if (mConnectingSeconds > 0)
+				return;
 			elapsed = -mConnectingSeconds;
 			mProgress.Style = .Blocks;
 		}

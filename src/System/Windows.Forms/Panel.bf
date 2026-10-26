@@ -7,8 +7,11 @@ public class Panel : ScrollableControl
 		get => GetAutoSizeMode();
 		set => SetAutoSizeMode(value);
 	}
-	public override System.Drawing.Size GetPreferredSize(System.Drawing.Size proposedSize) => GetPreferredContainerSize();
+
+	public override System.Drawing.Size GetPreferredSize(System.Drawing.Size proposedSize)
+		=> GetPreferredContainerSize();
 	protected override bool CanSelectCore() => false;
+
 	protected internal override void NotifyPaint()
 	{
 		base.NotifyPaint();

@@ -4,5 +4,6 @@ namespace BeefForms.Backends;
 
 extension FormsBackendFactory
 {
-	public override FormsBackend CreateSDLBackend() => new SDLBackend();
+	public override FormsBackend CreateSDLBackend()
+		=> new SDLBackend();
 }

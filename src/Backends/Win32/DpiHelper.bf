@@ -70,8 +70,8 @@ static class DpiHelper
 	/// </summary>
 	public static int32 Unscale(int32 value)
 	{
-	    float scaleFactor = GetScaleFactor();
-	    return scaleFactor != 0 ? (int32)(value / scaleFactor) : 0;
+		float scaleFactor = GetScaleFactor();
+		return scaleFactor != 0 ? (int32)(value / scaleFactor) : 0;
 	}
 }
 #endif
