@@ -1,10 +1,9 @@
-<p align="center">
-  <img src="Resources/BeefForms.png" alt="BeefForms" width="112">
-</p>
+<h1 align="center">
+  <img src="Resources/BeefForms.png" alt="BeefForms" height="24">
+  BeefForms
+</h1>
 
-<h1 align="center">BeefForms</h1>
-
-A cross-platform [Beef](https://www.beeflang.org/) implementation of the Windows Forms API.
+A cross-platform [Beef](https://www.beeflang.org/) GUI framework, implementing the .NET Windows Forms API.
 
 ## Key Features
 
@@ -15,6 +14,36 @@ A cross-platform [Beef](https://www.beeflang.org/) implementation of the Windows
 
 > [!NOTE]
 > BeefForms is under development. WinForms API coverage and behavior are still \*very\* incomplete.
+
+## Component Support Table
+
+✅ **Complete:** No known gaps in the component's API or behavior.
+
+✅\* **Core supported:** The component's defining behavior works. Additional features and APIs are missing.
+
+⚠️ **Limited:** Usable, but a significant everyday use case is missing or restricted.
+
+❌ **Unimplemented:** The component's defining behavior is missing, even if inherited functionality works.
+
+| Component | Support | Implemented scope | Coverage gaps (not exhaustive) |
+| --- | :---: | --- | --- |
+| `Control` | ⚠️ | Lifecycle and child ownership, visibility, input and focus, anchoring, automatic sizing, and UI thread invocation. | Layout lacks docking, padding, and margins. Appearance lacks color and background image APIs. Custom drawing through a WinForms `Graphics` API is unavailable. |
+| `ScrollableControl` | ✅\* | Automatic overflow detection, scrollbars, wheel scrolling, and programmatic scroll positions. | No `AutoScrollMargin`, `ScrollControlIntoView`, or WinForms `HorizontalScroll` and `VerticalScroll` configuration objects. |
+| `ContainerControl` | ⚠️ | Child containment, inherited scrolling, and preferred size calculation. | Automatic scaling is not implemented despite exposing `AutoScaleMode` and `AutoScaleDimensions`. Active control management and validation APIs are missing. |
+| `Form` | ⚠️ | Modeless windows, client sizing, minimum size, screen centering, keyboard preview, and cancellable closing. | No modal dialogs or dialog results, owner and owned window APIs, or MDI support. Window configuration lacks `FormBorderStyle` and `WindowState`. |
+| `ButtonBase` | ✅\* | Shared click events, `PerformClick()`, and tab focus for button controls. | Image content, text and image alignment, and flat appearance APIs are missing. `UseVisualStyleBackColor` stores a value without applying it. |
+| `Button` | ✅\* | Text buttons with mouse and keyboard activation, `Click`, and `PerformClick()`. | No dialog result or default button integration. Image content and configurable button appearance are missing. |
+| `CheckBox` | ⚠️ | Checked and unchecked states, automatic toggling, `CheckedChanged`, and mouse and keyboard activation. | Cannot represent an indeterminate state. `ThreeState` and `CheckState` are missing, along with check alignment and button appearance options. |
+| `Label` | ✅\* | Text display, alignment, automatic sizing, and ellipsis. | Image content and image alignment are missing. No `UseMnemonic` API to configure mnemonic processing. |
+| `Panel` | ⚠️ | Child containment, anchoring, automatic sizing, borders, and scrolling. | Custom painting is restricted to notification because `PaintEventArgs` has no drawing context or clip rectangle. Background color and image APIs are missing. |
+| `GroupBox` | ✅\* | Captioned child grouping, automatic sizing, and anchored child layout. | No `FlatStyle` configuration. Custom caption and background colors are unavailable through the control API. |
+| `FlowLayoutPanel` | ❌ | Inherited panel functionality only. | Flow layout is not implemented. Flow direction, wrapping, and flow breaks are missing. |
+| `TextBoxBase` | ⚠️ | Plain text editing, selection by UTF16 code units, `ReadOnly` mode, and text and input events. | Public clipboard commands, undo APIs, and `SelectedText` are missing. SDL also lacks undo keyboard behavior. |
+| `TextBox` | ⚠️ | Single line and multiline input with inherited editing and selection. | Password masking and input length limits are missing. Text alignment, word wrapping, and scrollbar configuration APIs are unavailable. |
+| `RichTextBox` | ❌ | Inherited plain text editing with multiline input enabled by default. | Rich text is not implemented. RTF content, selection formatting, and embedded objects are missing. |
+| `ProgressBar` | ✅\* | Range and value updates, determinate styles, and marquee animation with configurable speed. | No `Step`, `PerformStep()`, or `Increment()` APIs. Color and right to left layout configuration are missing. |
+| `Timer` | ✅ | UI thread ticks, interval changes, start and stop, container registration, and disposal. | No known component specific gaps. |
+| `MessageBox` | ⚠️ | Desktop dialogs with standard button sets, results, icons, default buttons, and an optional owner. | Wasm only supports OK alerts and rejects other button sets. SDL maps the Question icon to Information. Help and advanced message box options are missing. |
 
 ## Dependencies
 
