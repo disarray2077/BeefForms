@@ -6,6 +6,11 @@ namespace System.Windows.Forms;
 
 public class Label : Control
 {
+	public this()
+	{
+		base.DoubleBuffered = true;
+	}
+
 	protected internal override bool SelfAutoSize => true;
 
 	public override Size GetPreferredSize(Size proposedSize)

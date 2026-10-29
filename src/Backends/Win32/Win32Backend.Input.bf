@@ -37,6 +37,15 @@ extension Win32Backend
 		if (backend.mControls.TryGetValue(window, let control))
 		{
 			let snapshot = control.HandleGeneration;
+			if (message == Win32.WM_SETTEXT && control is Label)
+			{
+				// STATIC draws synchronously on text updates, bypassing our WM_PAINT handler.
+				let result = Win32.DefWindowProc(window, message, wParam, lParam);
+				Win32.InvalidateRect(window, null, true);
+				return result;
+			}
+			if (message == Win32.WM_ERASEBKGND && control is Label && control.[Friend]DoubleBuffered)
+				return 1;
 			if (message == Win32.WM_PAINT && control is Label)
 			{
 				backend.PaintLabel((Label)control);

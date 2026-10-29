@@ -150,6 +150,7 @@ static class Win32
 	public const uint WM_CREATE = 0x0001;
 	public const uint WM_DRAWITEM = 0x002B;
 	public const uint WM_PAINT = 0x000F;
+	public const uint WM_DISPLAYCHANGE = 0x007E;
 	public const uint WM_ERASEBKGND = 0x0014;
 	public const uint WM_NCHITTEST = 0x0084;
 	public const uint WM_NCLBUTTONDOWN = 0x00A1;
@@ -266,6 +267,8 @@ static class Win32
 	public const uint RDW_UPDATENOW = 0x0100;
 
 	public const uint SRCCOPY = 0x00CC0020;
+	public const int32 BITSPIXEL = 12;
+	public const int32 PLANES = 14;
 
 	// Common Control Init flags
 	public const uint ICC_PROGRESS_CLASS = 0x00000001;
@@ -493,6 +496,8 @@ static class Win32
 	public static extern int ReleaseDC(void* hWnd, void* hDC);
 	[Import("gdi32.dll"), CLink]
 	public static extern void* CreateCompatibleDC(void* hdc);
+	[Import("gdi32.dll"), CLink]
+	public static extern int32 GetDeviceCaps(void* hdc, int32 index);
 	[Import("gdi32.dll"), CLink]
 	public static extern bool DeleteDC(void* hdc);
 	[Import("gdi32.dll"), CLink]

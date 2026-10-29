@@ -73,7 +73,7 @@ class DownloaderMockForm : Form
 		mDownloads.BorderStyle = .FixedSingle;
 		Controls.Add(mDownloads);
 
-		mTimer.Interval = 100;
+		mTimer.Interval = 16;
 		mTimer.Tick.Add(new => OnTick);
 
 		Load.Add(new (sender, args) => UpdateSummary());

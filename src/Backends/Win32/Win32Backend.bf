@@ -20,6 +20,8 @@ internal class Win32Backend : FormsBackend
 	private Control mHovered;
 	private bool mSuppressChars;
 
+	private append PaintBitmapCache mPaintBitmapCache = .();
+
 	public ~this()
 	{
 		if (mParkingWindow != null)
@@ -367,6 +369,8 @@ internal class Win32Backend : FormsBackend
 
 		switch (message)
 		{
+		case Win32.WM_DISPLAYCHANGE:
+			backend.mPaintBitmapCache.Invalidate();
 		case Win32.WM_COMMAND:
 			backend.HandleCommand(wParam, lParam);
 		case Win32.WM_SHOWWINDOW:

@@ -175,6 +175,7 @@ public class Control : System.ComponentModel.Component
 	private bool mLayoutDeferred;
 	private bool mEnabled = true;
 	private bool mAutoSize;
+	private bool mDoubleBuffered;
 	private BorderStyle mBorderStyle;
 	private bool mHandleCreated;
 	private bool mCreated;
@@ -268,6 +269,20 @@ public class Control : System.ComponentModel.Component
 		set => Size = .(value.width + BorderWidth * 2, value.height + BorderWidth * 2);
 	}
 	public bool IsEffectivelyEnabled => Enabled;
+
+	protected virtual bool DoubleBuffered
+	{
+		get => mDoubleBuffered;
+		// COMPILER-BUG: Beef may omit the out-of-line setter when only base-qualified constructor calls use it.
+		[Inline]
+		set
+		{
+			if (mDoubleBuffered == value)
+				return;
+			mDoubleBuffered = value;
+			Invalidate();
+		}
+	}
 
 	public virtual StringView Text
 	{

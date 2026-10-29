@@ -150,6 +150,11 @@ obvious.
 
 ### What to look for
 
+- **Formatting that reveals the work's phases.** Re-read each changed function against the
+  code readability and formatting rules above. Keep each cohesive operation together, including
+  its setup, checks, and deferred cleanup, and separate distinct phases with a blank line, as in
+  the `InitShader` example. Check comments as well: backend-specific implementation details belong
+  in that backend, not in common control code.
 - **Behavior living away from its data.** Look for helpers or backend/manager methods that mostly
   operate on another type's state. Consider moving them onto that type as an instance method,
   property, constructor, factory, or type extension when the resulting API makes ownership

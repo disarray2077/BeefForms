@@ -10,10 +10,47 @@ extension Win32Backend
 {
 	private void PaintLabel(Label label)
 	{
-		let context = Win32.BeginPaint(label.GetHandle(), var paint);
-		defer Win32.EndPaint(label.GetHandle(), ref paint);
+		let window = label.GetHandle();
+		let context = Win32.BeginPaint(window, var paint);
+		defer Win32.EndPaint(window, ref paint);
 
-		Win32.GetClientRect(label.GetHandle(), var bounds);
+		Win32.GetClientRect(window, var bounds);
+		if (!label.[Friend]DoubleBuffered || !PaintBufferedLabel(label, context, bounds))
+			DrawLabel(label, context, bounds);
+
+		label.NotifyPaint();
+	}
+
+	private bool PaintBufferedLabel(Label label, void* context, Win32.RECT bounds)
+	{
+		let width = bounds.right - bounds.left;
+		let height = bounds.bottom - bounds.top;
+		if (width <= 0 || height <= 0)
+			return false;
+
+		using (var lease = mPaintBitmapCache.Acquire(context, width, height))
+		{
+			if (lease.Bitmap == null)
+				return false;
+
+			let buffer = Win32.CreateCompatibleDC(context);
+			if (buffer == null)
+				return false;
+			defer Win32.DeleteDC(buffer);
+
+			let previous = Win32.SelectObject(buffer, lease.Bitmap);
+			if (previous == null)
+				return false;
+			defer Win32.SelectObject(buffer, previous);
+
+			DrawLabel(label, buffer, bounds);
+			return Win32.BitBlt(context, 0, 0, width, height, buffer, 0, 0, Win32.SRCCOPY);
+		}
+	}
+
+	private void DrawLabel(Label label, void* context, Win32.RECT clientBounds)
+	{
+		var bounds = clientBounds;
 		Win32.FillRect(context, ref bounds, (void*)(Win32.COLOR_BTNFACE + 1));
 
 		let font = (void*)Win32.SendMessage(label.GetHandle(), Win32.WM_GETFONT, null, null);
@@ -43,9 +80,8 @@ extension Win32Backend
 			bounds.top += remaining / 2;
 		if (label.TextAlign.Vertical == .Bottom)
 			bounds.top += remaining;
-		Win32.DrawText(context, text, -1, ref bounds, flags);
 
-		label.NotifyPaint();
+		Win32.DrawText(context, text, -1, ref bounds, flags);
 	}
 }
 #endif

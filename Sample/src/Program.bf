@@ -1,8 +1,8 @@
 using System;
 using System.Windows.Forms;
 using BeefForms.Backends;
-using internal System.Windows.Forms;
-using internal BeefForms.Backends;
+
+using internal BeefForms.Backends; // For SDLBackend
 
 namespace BeefForms.Sample
 {
@@ -17,8 +17,9 @@ namespace BeefForms.Sample
 				if (arg == "--sdl")
 					Application.UseBackend(.SDL2OpenGL);
 			}
+
 #if BF_DEPENDS_BEEFFORMS_SDL
-			if (let backend = Application.Backend as SDLBackend)
+			if (let backend = Application.[Friend]Backend as SDLBackend)
 			{
 				for (let arg in args)
 				{
