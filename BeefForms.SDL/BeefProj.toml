@@ -2,7 +2,6 @@ FileVersion = 1
 
 [Project]
 Name = "BeefForms.SDL"
-TargetType = "BeefLib"
 
 [Dependencies]
 corlib = "*"
@@ -11,9 +10,9 @@ SDL2 = "*"
 BeefGL = {Git = "https://github.com/disarray2077/BeefGL"}
 
 [Configs.Debug.wasm32]
-LinkDependencies = ["$(ProjectDir)/Resources/fonts/NotoSans-Regular.ttf", "$(ProjectDir)/Resources/fonts/OFL.txt"]
 OtherLinkFlags = "$(LinkFlags) -sUSE_SDL=2 -sUSE_SDL_TTF=2 -sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2 --preload-file \"$(ProjectDir)/Resources/fonts@/BeefForms/fonts\""
+LinkDependencies = ["$(ProjectDir)/Resources/fonts/NotoSans-Regular.ttf", "$(ProjectDir)/Resources/fonts/OFL.txt"]
 
 [Configs.Release.wasm32]
-LinkDependencies = ["$(ProjectDir)/Resources/fonts/NotoSans-Regular.ttf", "$(ProjectDir)/Resources/fonts/OFL.txt"]
 OtherLinkFlags = "$(LinkFlags) -sUSE_SDL=2 -sUSE_SDL_TTF=2 -sMIN_WEBGL_VERSION=2 -sMAX_WEBGL_VERSION=2 --preload-file \"$(ProjectDir)/Resources/fonts@/BeefForms/fonts\""
+LinkDependencies = ["$(ProjectDir)/Resources/fonts/NotoSans-Regular.ttf", "$(ProjectDir)/Resources/fonts/OFL.txt"]
