@@ -518,6 +518,7 @@ static class Win32
 	// UTF-16 class names
 	public static char16[?] FORM_CLASS = "BeefWinForm".ToConstNativeW();
 	public static char16[?] PROGRESS_CLASS = "msctls_progress32".ToConstNativeW();
+	public static char16[?] USERCONTROL_CLASS = "BeefFormsUserControl".ToConstNativeW();
 	public static char16[?] BUTTON_CLASS = "BUTTON".ToConstNativeW();
 	public static char16[?] STATIC_CLASS = "STATIC".ToConstNativeW();
 	public static char16[?] EDIT_CLASS = "EDIT".ToConstNativeW();

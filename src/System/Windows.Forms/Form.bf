@@ -80,6 +80,7 @@ public class Form : ContainerControl
 			UpdateBackend(.Constraints);
 		}
 	}
+	public ref Event<EventHandler> Load { get; set; } ~ _.Dispose();
 	public ref Event<FormClosingEventHandler> FormClosing { get; set; } ~ _.Dispose();
 	public ref Event<FormClosedEventHandler> FormClosed { get; set; } ~ _.Dispose();
 
@@ -107,7 +108,12 @@ public class Form : ContainerControl
 			return;
 		mLoaded = true;
 		Application.RegisterForm(this);
-		Load.Invoke(this, .Empty);
+		OnLoad(.Empty);
+	}
+
+	protected virtual void OnLoad(EventArgs args)
+	{
+		Load.Invoke(this, args);
 	}
 
 	public override System.Drawing.Size ClientSize

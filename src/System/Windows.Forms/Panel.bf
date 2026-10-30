@@ -11,12 +11,4 @@ public class Panel : ScrollableControl
 	public override System.Drawing.Size GetPreferredSize(System.Drawing.Size proposedSize)
 		=> GetPreferredContainerSize();
 	protected override bool CanSelectCore() => false;
-
-	protected internal override void NotifyPaint()
-	{
-		base.NotifyPaint();
-		Paint.Invoke(this, scope .());
-	}
-
-	public ref Event<PaintEventHandler> Paint { get; set; } ~ _.Dispose();
 }

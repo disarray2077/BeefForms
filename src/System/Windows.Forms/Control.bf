@@ -186,8 +186,8 @@ public class Control : System.ComponentModel.Component
 	public ref Event<EventHandler> LocationChanged { get; set; } ~ _.Dispose();
 	public ref Event<EventHandler> SizeChanged { get; set; } ~ _.Dispose();
 	public ref Event<EventHandler> Layout { get; set; } ~ _.Dispose();
-	public ref Event<EventHandler> Load { get; set; } ~ _.Dispose();
 	public ref Event<EventHandler> TextChanged { get; set; } ~ _.Dispose();
+	public ref Event<PaintEventHandler> Paint { get; set; } ~ _.Dispose();
 
 	public void* Handle
 	{
@@ -553,6 +553,12 @@ public class Control : System.ComponentModel.Component
 	protected internal virtual void NotifyPaint()
 	{
 		NeedsPaint = false;
+		OnPaint(scope .());
+	}
+
+	protected virtual void OnPaint(PaintEventArgs args)
+	{
+		Paint.Invoke(this, args);
 	}
 
 	internal void UpdateBackend(ControlChange change)

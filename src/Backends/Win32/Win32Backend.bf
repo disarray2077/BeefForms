@@ -44,6 +44,8 @@ internal class Win32Backend : FormsBackend
 	{
 		if (control is Form)
 			return (char16*)&Win32.FORM_CLASS;
+		if (control is UserControl)
+			return (char16*)&Win32.USERCONTROL_CLASS;
 		if (control is ButtonBase || control is GroupBox)
 			return (char16*)&Win32.BUTTON_CLASS;
 		if (control is TextBoxBase)
@@ -93,7 +95,7 @@ internal class Win32Backend : FormsBackend
 
 	private static uint GetWindowExtendedStyle(Control control)
 	{
-		uint style = (control is GroupBox) ? Win32.WS_EX_CONTROLPARENT : 0;
+		uint style = (control is GroupBox || control is UserControl) ? Win32.WS_EX_CONTROLPARENT : 0;
 		if (!(control is Form) && control.BorderStyle == .Fixed3D)
 			style |= Win32.WS_EX_CLIENTEDGE;
 		return style;
@@ -130,6 +132,11 @@ internal class Win32Backend : FormsBackend
 				sizeof(Win32.WNDCLASSEX), Win32.CS_DBLCLKS, => WindowProc, 0, 0, Win32.GetModuleHandle(null),
 				null, Win32.LoadCursor(null, (int*)(void*)Win32.IDC_ARROW), (void*)(Win32.COLOR_BTNFACE + 1), null, (char16*)&Win32.FORM_CLASS, null);
 			Win32.RegisterClassEx(definition);
+
+			definition.lpszClassName = (char16*)&Win32.USERCONTROL_CLASS;
+			definition.lpfnWndProc = => UserControlWindowProc;
+			Win32.RegisterClassEx(definition);
+
 			mRegistered = true;
 		}
 
@@ -348,6 +355,11 @@ internal class Win32Backend : FormsBackend
 			Win32.DispatchMessage(message);
 			Application.DispatcherCore.ProcessDeferredDeletes();
 		}
+	}
+
+	private static Win32.LRESULT UserControlWindowProc(void* window, uint32 message, uint32* wParam, int32* lParam)
+	{
+		return Win32.DefWindowProc(window, message, wParam, lParam);
 	}
 
 	private static Win32.LRESULT WindowProc(void* window, uint32 message, uint32* wParam, int32* lParam)
