@@ -629,21 +629,28 @@ public class Control : System.ComponentModel.Component
 			for (int pass < MaxLayoutPasses)
 			{
 				mLayoutDeferred = false;
-				let children = ToScopedArray!(Controls);
-				for (let child in children)
-				{
-					if (!Controls.Contains(child) || child.IsDisposingOrDisposed)
-						continue;
-					child.ApplyAnchoring(LayoutSize);
-					if (IsDisposingOrDisposed)
-						return;
-				}
+				LayoutChildren();
+				if (IsDisposingOrDisposed)
+					return;
 				if (!mLayoutDeferred)
 					break;
 			}
 		}
 		if (AutoSize)
 			Parent?.PerformLayout();
+	}
+
+	protected virtual void LayoutChildren()
+	{
+		let children = ToScopedArray!(Controls);
+		for (let child in children)
+		{
+			if (!Controls.Contains(child) || child.IsDisposingOrDisposed)
+				continue;
+			child.ApplyAnchoring(LayoutSize);
+			if (IsDisposingOrDisposed)
+				return;
+		}
 	}
 
 	internal void UpdateAnchorDistances()

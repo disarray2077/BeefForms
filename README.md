@@ -38,7 +38,7 @@ A cross-platform [Beef](https://www.beeflang.org/) GUI framework, implementing t
 | `Label` | ✅\* | Text display, alignment, automatic sizing, and ellipsis. | Image content and image alignment are missing. No `UseMnemonic` API to configure mnemonic processing. |
 | `Panel` | ⚠️ | Child containment, anchoring, automatic sizing, borders, and scrolling. | Custom painting is restricted to notification. Background color and image APIs are missing. |
 | `GroupBox` | ✅\* | Captioned child grouping, automatic sizing, and anchored child layout. | No `FlatStyle` configuration. Custom caption and background colors are unavailable through the control API. |
-| `FlowLayoutPanel` | ❌ | Inherited panel functionality only. | Flow layout is not implemented. Flow direction, wrapping, and flow breaks are missing. |
+| `FlowLayoutPanel` | ⚠️ | Horizontal and vertical flow in either direction, optional wrapping, and content sizing. | Flow breaks, margins, padding, and row or column anchor alignment are missing. |
 | `TextBoxBase` | ⚠️ | Plain text editing, selection by UTF16 code units, `ReadOnly` mode, and text and input events. | Public clipboard commands, undo APIs, and `SelectedText` are missing. SDL also lacks undo keyboard behavior. |
 | `TextBox` | ⚠️ | Single line and multiline input with inherited editing and selection. | Password masking and input length limits are missing. Text alignment, word wrapping, and scrollbar configuration APIs are unavailable. |
 | `RichTextBox` | ❌ | Inherited plain text editing with multiline input enabled by default. | Rich text is not implemented. RTF content, selection formatting, and embedded objects are missing. |

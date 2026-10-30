@@ -55,6 +55,14 @@ extension Control
 		return preferred;
 	}
 
+	internal Size MeasureForLayout(Size proposedSize)
+	{
+		var size = Size;
+		if (AutoSize && !SelfAutoSize)
+			size = GetAutoSize(proposedSize, mSpecifiedSize);
+		return size;
+	}
+
 	internal void ApplyAutoSize()
 	{
 		let preferred = GetAutoSize(default, mSpecifiedSize);
@@ -62,7 +70,7 @@ extension Control
 			SetLayoutBounds(Location, preferred);
 	}
 
-	protected void SetLayoutBounds(Point location, Size size, bool updateAnchors = false)
+	protected internal void SetLayoutBounds(Point location, Size size, bool updateAnchors = false)
 	{
 		let moved = location != mLocation;
 		let resized = size != mSize;
@@ -90,9 +98,7 @@ extension Control
 		{
 			if (!Controls.Contains(child) || child.IsDisposingOrDisposed || !child.LocallyVisible)
 				continue;
-			var size = child.Size;
-			if (child.AutoSize && !child.SelfAutoSize)
-				size = child.GetAutoSize(default, child.mSpecifiedSize);
+			let size = child.MeasureForLayout(default);
 			if (!Controls.Contains(child))
 				continue;
 			let right = child.Location.x + size.width;
