@@ -275,11 +275,10 @@ public class Control : System.ComponentModel.Component
 	}
 	public bool IsEffectivelyEnabled => Enabled;
 
-	protected virtual bool DoubleBuffered
+	protected /*virtual*/ bool DoubleBuffered
 	{
 		get => mDoubleBuffered;
 		// COMPILER-BUG: Beef may omit the out-of-line setter when only base-qualified constructor calls use it.
-		[Inline]
 		set
 		{
 			if (mDoubleBuffered == value)
