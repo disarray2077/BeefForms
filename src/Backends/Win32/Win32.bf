@@ -280,6 +280,7 @@ static class Win32
 	// GetWindowLongPtr constants
 	public const int GWLP_USERDATA = -21;
 	public const int GWLP_WNDPROC = -4;
+	public const int GWLP_HWNDPARENT = -8;
 	public const int GWL_STYLE = -16;
 	public const int GWL_EXSTYLE = -20;
 	public const int GCL_STYLE = -26;

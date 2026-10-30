@@ -116,8 +116,10 @@ internal class Win32Backend : FormsBackend
 	private void* GetParentHandle(Control control)
 	{
 		let parent = control.Parent?.GetHandle();
-		if (parent != null || control is Form)
+		if (parent != null)
 			return parent;
+		if (let form = control as Form)
+			return form.Owner?.Handle;
 		if (mParkingWindow == null)
 			mParkingWindow = Win32.CreateWindowEx(0, (char16*)&Win32.STATIC_CLASS, null, 0,
 				0, 0, 0, 0, null, null, Win32.GetModuleHandle(null), null);
@@ -325,6 +327,12 @@ internal class Win32Backend : FormsBackend
 	public override void Show(Form form)
 	{
 		Win32.ShowWindow(form.GetHandle(), Win32.SW_SHOW);
+	}
+
+	public override void SetOwner(Form form, Form owner)
+	{
+		if (form.Parent == null)
+			Win32.SetWindowLongPtr(form.GetHandle(), Win32.GWLP_HWNDPARENT, owner?.Handle);
 	}
 
 	public override void DoEvents()

@@ -196,9 +196,11 @@ public class Form : ContainerControl
 		defer { mClosing = false; }
 
 		let args = scope FormClosingEventArgs(.UserClosing);
+		NotifyOwnedClosing(args);
 		OnFormClosing(args);
 		if (args.Cancel || mClosed || IsDisposingOrDisposed)
 			return;
+		NotifyOwnedClosed();
 		CompleteClose(.UserClosing);
 		Dispose();
 	}
@@ -208,6 +210,7 @@ public class Form : ContainerControl
 		if (mClosed || IsDisposingOrDisposed)
 			return false;
 		let args = scope FormClosingEventArgs(.ApplicationExitCall);
+		NotifyOwnedClosing(args, true);
 		OnFormClosing(args);
 		return args.Cancel;
 	}
@@ -219,6 +222,7 @@ public class Form : ContainerControl
 		let closing = mClosing;
 		mClosing = true;
 		defer { mClosing = closing; }
+		NotifyOwnedClosed(true);
 		CompleteClose(.ApplicationExitCall);
 	}
 

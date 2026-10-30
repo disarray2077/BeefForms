@@ -232,6 +232,26 @@ internal class SDLBackend : FormsBackend
 		}
 	}
 
+	public override void SetOwner(Form form, Form owner)
+	{
+		form.VerifyThreadAccess();
+#if BF_PLATFORM_WINDOWS
+		if (form.Parent == null)
+			Win32.SetWindowLongPtr(GetNativeWindow(form), Win32.GWLP_HWNDPARENT, owner == null ? null : GetNativeWindow(owner));
+#endif
+	}
+
+#if BF_PLATFORM_WINDOWS
+	internal static void* GetNativeWindow(Form form)
+	{
+		SDL.SDL_SysWMinfo info = .();
+		SDL.GetVersion(out info.version);
+		if (SDL.GetWindowWMInfo((SDL.Window*)form.Handle, ref info) != .True || info.subsystem != .SDL_SYSWM_WINDOWS)
+			Runtime.FatalError("Could not obtain the SDL window's native Windows handle");
+		return (void*)(int)info.info.win.window;
+	}
+#endif
+
 	public override DialogResult ShowMessageBox(Control owner, StringView text, StringView caption,
 		MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton)
 		=> SDLMessageBox.Show(owner, text, caption, buttons, icon, defaultButton);

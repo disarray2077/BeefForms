@@ -15,6 +15,8 @@ public class FormCollection : IEnumerable<Form>
 
 	internal bool IsEmpty => mForms.IsEmpty;
 	internal Form Back => mForms.Back;
+	internal bool Contains(Form form)
+		=> mForms.Contains(form);
 
 	internal void Add(Form form)
 	{
