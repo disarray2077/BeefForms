@@ -81,6 +81,7 @@ public class Form : ContainerControl
 		}
 	}
 	public ref Event<EventHandler> Load { get; set; } ~ _.Dispose();
+	public ref Event<EventHandler> Shown { get; set; } ~ _.Dispose();
 	public ref Event<FormClosingEventHandler> FormClosing { get; set; } ~ _.Dispose();
 	public ref Event<FormClosedEventHandler> FormClosed { get; set; } ~ _.Dispose();
 
@@ -114,6 +115,13 @@ public class Form : ContainerControl
 	protected virtual void OnLoad(EventArgs args)
 	{
 		Load.Invoke(this, args);
+		if (IsHandleCreated)
+			BeginInvoke(new () => OnShown(.Empty));
+	}
+
+	protected virtual void OnShown(EventArgs args)
+	{
+		Shown.Invoke(this, args);
 	}
 
 	public override System.Drawing.Size ClientSize
