@@ -18,6 +18,7 @@ internal abstract class FormsBackend
 	public abstract Rectangle GetScreenWorkingArea();
 	public abstract void SetClientSize(Form form, Size size);
 	public abstract void Show(Form form);
+	public abstract void Activate(Form form);
 	public abstract void SetOwner(Form form, Form owner);
 	public abstract DialogResult ShowMessageBox(Control owner, StringView text, StringView caption,
 		MessageBoxButtons buttons, MessageBoxIcon icon, MessageBoxDefaultButton defaultButton);

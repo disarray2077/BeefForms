@@ -232,6 +232,17 @@ internal class SDLBackend : FormsBackend
 		}
 	}
 
+	public override void Activate(Form form)
+	{
+		let session = GetSession(form);
+		if (session == null)
+			return;
+		using (session.Retain())
+		{
+			session.Activate();
+		}
+	}
+
 	public override void SetOwner(Form form, Form owner)
 	{
 		form.VerifyThreadAccess();

@@ -12,6 +12,8 @@ static class Win32
 	[Import("user32.dll"), CLink]
 	public static extern void* GetActiveWindow();
 	[Import("user32.dll"), CLink]
+	public static extern bool SetForegroundWindow(void* window);
+	[Import("user32.dll"), CLink]
 	public static extern void* GetAncestor(void* window, uint32 flags);
 
 	public const uint32 GA_ROOT = 2;

@@ -315,6 +315,11 @@ internal class SDLWindowSession : RefCounted
 		RequestRedraw();
 	}
 
+	public void Activate()
+	{
+		SDL.RaiseWindow(mWindow);
+	}
+
 	private void RequestRedraw()
 	{
 		if (mRedrawRequested)

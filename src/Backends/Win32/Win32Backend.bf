@@ -329,6 +329,11 @@ internal class Win32Backend : FormsBackend
 		Win32.ShowWindow(form.GetHandle(), Win32.SW_SHOW);
 	}
 
+	public override void Activate(Form form)
+	{
+		Win32.SetForegroundWindow(form.GetHandle());
+	}
+
 	public override void SetOwner(Form form, Form owner)
 	{
 		if (form.Parent == null)

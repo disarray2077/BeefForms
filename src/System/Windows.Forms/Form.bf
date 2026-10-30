@@ -140,6 +140,15 @@ public class Form : ContainerControl
 		}
 	}
 
+	public void Activate()
+	{
+		if (Visible && IsHandleCreated)
+		{
+			VerifyThreadAccess();
+			Application.Backend.Activate(this);
+		}
+	}
+
 	public override void Show()
 	{
 		if (mClosed || IsDisposingOrDisposed)
