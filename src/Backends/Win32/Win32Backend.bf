@@ -340,11 +340,13 @@ internal class Win32Backend : FormsBackend
 	public override void Run(Form form)
 	{
 		Application.DispatcherCore.VerifyAccess();
+		Application.DispatcherCore.ProcessDeferredDeletes();
 		Win32.MSG message = ?;
 		while (form.IsHandleCreated && Win32.GetMessage(out message, null, 0, 0) > 0)
 		{
 			Win32.TranslateMessage(message);
 			Win32.DispatchMessage(message);
+			Application.DispatcherCore.ProcessDeferredDeletes();
 		}
 	}
 

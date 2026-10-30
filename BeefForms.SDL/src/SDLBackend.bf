@@ -302,21 +302,30 @@ internal class SDLBackend : FormsBackend
 
 		SDL.AddEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
 		defer SDL.DelEventWatch(=> WatchWindowEvents, Internal.UnsafeCastToPtr(this));
+		Application.DispatcherCore.ProcessDeferredDeletes();
 
 		while (form.IsHandleCreated)
 		{
 			let frames = mFrames;
+
 			DoEvents();
+			Application.DispatcherCore.ProcessDeferredDeletes();
+
 			if (!form.IsHandleCreated || (FrameLimit > 0 && mFrames >= FrameLimit))
 				break;
+
 			if (FrameLimit > 0 && mFrames != frames)
 				continue;
+
 			let timeout = GetEventWaitTimeout();
 			if (timeout == 0)
 				continue;
+
 			SDL.Event input = ?;
 			if (SDL.WaitEventTimeout(out input, timeout) != 0)
 				ProcessEvents(input);
+
+			Application.DispatcherCore.ProcessDeferredDeletes();
 		}
 	}
 #endif
@@ -339,13 +348,16 @@ internal class SDLBackend : FormsBackend
 	{
 		if (mPumpingEvents || IsRendering)
 			return;
+
 		Application.DispatcherCore.VerifyAccess();
+
 		mPumpingEvents = true;
 		defer { mPumpingEvents = false; }
 
 		Application.DispatcherCore.ProcessPending();
 		TimerScheduler.Process();
 		ProcessEvents();
+
 		let capture = CapturePath != null && (FrameLimit == 0 || mFrames + 1 == FrameLimit);
 		if (RenderIfNeeded(FrameLimit > 0 || capture, capture) && FrameLimit > 0)
 			mFrames++;
@@ -386,6 +398,7 @@ internal class SDLBackend : FormsBackend
 		let pending = scope List<SDL.Event>();
 		if (first.HasValue)
 			pending.Add(first.Value);
+
 		SDL.Event input = ?;
 		while (true)
 		{

@@ -30,6 +30,8 @@ public static class Application
 	}
 
 	private static Form sMainForm;
+	internal static bool OwnsMainForm(Control control)
+		=> sMainForm == control;
 	private static FormCollection sOpenForms = new .() ~ delete _;
 
 	/// A live, read-only collection of loaded forms, indexed by position or name.
@@ -64,11 +66,13 @@ public static class Application
 			Runtime.FatalError("Application.Run is already active");
 		sRunning = true;
 		sMainForm = mainForm;
+		DispatcherCore.BeginEventLoop();
 		mainForm.Show();
 	}
 
 	private static void ReleaseMainForm()
 	{
+		DispatcherCore.EndEventLoop();
 		let form = sMainForm;
 		sMainForm = null;
 		// Like WinForms thread teardown, dispose remaining windows after dispatch unwinds.
@@ -84,7 +88,9 @@ public static class Application
 	private static void RunFrame<F>(F stopMainLoop) where F : delegate void()
 	{
 		if (sMainForm == null || sProcessingEvents) return;
+		DispatcherCore.ProcessDeferredDeletes();
 		DoEvents();
+		DispatcherCore.ProcessDeferredDeletes();
 		if (!sMainForm.IsHandleCreated)
 		{
 			stopMainLoop();

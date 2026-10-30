@@ -100,6 +100,25 @@ class Program
 > [!WARNING]
 > On Wasm, `Application.Run()` registers Emscripten's main loop and returns immediately. Put work that depends on closure in a `FormClosed` handler.
 
+## Deferred deletion
+
+Under Beef's memory management model, parents own their child controls, so removing
+a control from its parent makes you responsible for deleting it. Since deleting a
+control from one of its own callbacks is unsafe, use `DeleteLater()` in that case
+to defer deletion until control returns to the main event loop:
+
+```beef
+private void OnDismiss(Object sender, EventArgs args)
+{
+	Parent?.Controls.Remove(this);
+	DeleteLater();
+	Dismissed.Invoke();
+}
+```
+
+> [!NOTE]
+> Calling `DeleteLater()` is thread-safe for UI-owned controls. Deletion runs on the UI thread.
+
 ## C# Designer Conversion
 
 The Python converter produces a Beef extension containing the designer's initialization code and control fields:

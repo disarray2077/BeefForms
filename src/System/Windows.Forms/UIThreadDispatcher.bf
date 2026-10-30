@@ -10,11 +10,29 @@ namespace System.Windows.Forms;
 /// Obtain Application.Dispatcher on the UI thread before sharing it with workers.
 public sealed class UIThreadDispatcher
 {
+	private enum DispatcherState
+	{
+		Inactive,
+		Accepting,
+		ShuttingDown
+	}
+
+	private enum EventLoopState
+	{
+		NotStarted,
+		Running,
+		Stopping,
+		Stopped
+	}
+
 	// Control validation, queue publication, and native wake ordering share this lock.
 	internal append Monitor SyncRoot = .();
 	private append InvocationQueue mPending = .();
+	private append LinkedList<Control> mDeferredDeletes = .();
+	private EventLoopState mEventLoopState;
+	private bool mDeletingControls;
 	private int mThreadId;
-	private bool mAccepting;
+	private DispatcherState mState;
 	private uint64 mNextTarget;
 	private int mExecuting;
 
@@ -40,21 +58,23 @@ public sealed class UIThreadDispatcher
 
 	internal void Initialize()
 	{
-		if (Interlocked.Load(ref mAccepting, .Acquire))
+		if (Interlocked.Load(ref mState, .Acquire) == .Accepting)
 			return;
 		using (SyncRoot.Enter())
 		{
+			if (Interlocked.Load(ref mState, .Relaxed) == .ShuttingDown)
+				return;
 			let threadId = Interlocked.Load(ref mThreadId, .Relaxed);
 			if (threadId != 0 && threadId != Thread.CurrentThreadId)
 				return;
-			if (Interlocked.Load(ref mAccepting, .Relaxed))
+			if (Interlocked.Load(ref mState, .Relaxed) == .Accepting)
 				return;
 			Interlocked.Store(ref mThreadId, Thread.CurrentThreadId, .Release);
 			Application.Backend.InitializeDispatcher();
 #if BF_PLATFORM_WINDOWS
 			Win32Dispatcher.Initialize();
 #endif
-			Interlocked.Store(ref mAccepting, true, .Release);
+			Interlocked.Store(ref mState, .Accepting, .Release);
 		}
 	}
 
@@ -79,7 +99,7 @@ public sealed class UIThreadDispatcher
 	internal void EnqueueLocked(InvocationState state, uint64 target = 0, bool error = false)
 	{
 		state.Target = target;
-		if (error || !Interlocked.Load(ref mAccepting, .Relaxed))
+		if (error || Interlocked.Load(ref mState, .Relaxed) != .Accepting)
 			state.Complete(.Err);
 		else
 		{
@@ -187,7 +207,13 @@ public sealed class UIThreadDispatcher
 	{
 		using (SyncRoot.Enter())
 		{
-			Interlocked.Store(ref mAccepting, false, .Release);
+			if (Interlocked.Load(ref mState, .Relaxed) == .ShuttingDown)
+				return;
+			Interlocked.Store(ref mState, .ShuttingDown, .Release);
+			defer
+			{
+				Interlocked.Store(ref mState, .Inactive, .Release);
+			}
 			CancelPendingLocked(0);
 #if BF_PLATFORM_WINDOWS
 			Win32Dispatcher.Shutdown();

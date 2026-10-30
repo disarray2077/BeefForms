@@ -424,6 +424,12 @@ public class Control : System.ComponentModel.Component
 
 	public ~this()
 	{
+		using (Application.DispatcherCore.SyncRoot.Enter())
+		{
+			mDeletionCommitted = true;
+			if (mDeferredDeleteNode != null)
+				Application.DispatcherCore.ForgetDeleteLocked(this);
+		}
 		if (!mDisposed)
 			Dispose();
 		// Disposal callbacks can reparent this control and even recreate its handle.
