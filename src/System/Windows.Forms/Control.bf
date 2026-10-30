@@ -193,6 +193,7 @@ public class Control : System.ComponentModel.Component
 	{
 		get
 		{
+			VerifyThreadAccess();
 			if (!IsHandleCreated)
 				CreateHandle();
 			return mHandle;
@@ -200,7 +201,11 @@ public class Control : System.ComponentModel.Component
 	}
 
 	/// Returns the current handle without creating one.
-	internal void* GetHandle() => mHandle;
+	internal void* GetHandle()
+	{
+		VerifyThreadAccess();
+		return mHandle;
+	}
 
 	public bool IsHandleCreated => mHandleCreated;
 	public bool Created => mCreated;

@@ -4,6 +4,14 @@ namespace System.Windows.Forms;
 
 extension Control
 {
+	public static bool CheckForIllegalCrossThreadCalls { get; set; } = System.Diagnostics.Debug.IsDebuggerPresent;
+
+	internal void VerifyThreadAccess()
+	{
+		if (CheckForIllegalCrossThreadCalls && InvokeRequired)
+			Runtime.FatalError(scope $"Cross-thread operation not valid: control '{Name}' accessed from a thread other than its owning UI thread.");
+	}
+
 	private uint64 mInvocationTarget;
 	private bool mRecreatingHandle;
 	private bool IsRecreatingHandle => mRecreatingHandle || Parent?.IsRecreatingHandle == true;

@@ -51,6 +51,7 @@ internal class SDLBackend : FormsBackend
 
 	internal SDLWindowSession GetSession(Control control)
 	{
+		control?.VerifyThreadAccess();
 		// Creation and teardown also need this lookup before/after IsHandleCreated is true.
 		let session = control?.FindForm()?.SDLSession;
 		return session?.Backend == this ? session : null;
