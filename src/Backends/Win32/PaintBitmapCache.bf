@@ -1,3 +1,4 @@
+#if BF_PLATFORM_WINDOWS
 using System;
 using System.Drawing;
 
@@ -87,3 +88,4 @@ internal class PaintBitmapCache
 		mInvalidateWhenFree = false;
 	}
 }
+#endif
