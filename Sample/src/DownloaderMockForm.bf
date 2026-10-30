@@ -181,8 +181,7 @@ class DownloaderMockForm : Form
 				}
 			}
 		}
-		let summary = scope String();
-		summary.AppendF("{} active   |   {} completed   |   {} failed   |   {} cancelled", active, completed, failed, cancelled);
+		let summary = scope $"{active} active   |   {completed} completed   |   {failed} failed   |   {cancelled} cancelled";
 		mSummary.Text = summary;
 		mClearFinished.Enabled = completed + failed + cancelled > 0;
 		if (active == 0)
@@ -252,8 +251,7 @@ class MockDownloadRow : Panel
 
 	public void SetDownload(int id, StringView url, StringView status, StringView destination, int progress, bool active)
 	{
-		let title = scope String();
-		title.AppendF("#{}  {}", id, url);
+		let title = scope $"#{id}  {url}";
 		mTitle.Text = title;
 		mStatus.Text = status;
 		mDestination.Text = destination;
