@@ -3,12 +3,12 @@ Unlocked = ["corlib", "SDL2"]
 ExtraPlatforms = ["wasm32"]
 
 [Workspace]
-StartupProject = "BeefForms.WasmRunTests"
+StartupProject = "BeefForms.WasmTests"
 
 [Projects]
 BeefForms = {Path = "../.."}
 "BeefForms.SDL" = {Path = "../../BeefForms.SDL"}
-"BeefForms.WasmRunTests" = {Path = "."}
+"BeefForms.WasmTests" = {Path = "."}
 
 [Configs.Debug.wasm32]
 Toolset = "GNU"

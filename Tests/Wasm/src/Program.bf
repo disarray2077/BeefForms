@@ -1,7 +1,7 @@
 using System;
 using System.Windows.Forms;
 
-namespace BeefForms.WasmRunTests;
+namespace BeefForms.WasmTests;
 
 // Smoke test for Emscripten scheduling and cancellation. Lifecycle cases live in Tests/src.
 class Program
@@ -19,18 +19,25 @@ class Program
 			ClientSize = .(240, 100);
 			let panel = new Panel();
 			panel.Size = .(200, 80);
-			panel.Paint.Add(new (sender, args) => { sPaints++; });
+			panel.Paint.Add(new (sender, args) => sPaints++);
 			Controls.Add(panel);
 		}
-		public ~this() { sLiveForm = null; }
+		public ~this()
+		{
+			sLiveForm = null;
+		}
 	}
 
 	private static void Check(bool condition)
 	{
-		if (!condition) Runtime.FatalError("Emscripten main-loop smoke test failed");
+		if (!condition)
+			Runtime.FatalError("Emscripten main-loop smoke test failed");
 	}
 
-	public static void Main() => StartRun();
+	public static void Main()
+	{
+		StartRun();
+	}
 
 	private static void StartRun()
 	{
@@ -54,6 +61,9 @@ class Program
 		if (++sRuns == 1)
 			StartRun(); // A second registration verifies cancellation of the previous loop.
 		else
+		{
 			Console.WriteLine("PASS: Emscripten main-loop scheduling, cancellation, and restart");
+			ExtractedEditorTests.Run();
+		}
 	}
 }

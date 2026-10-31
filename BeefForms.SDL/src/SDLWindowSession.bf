@@ -71,6 +71,11 @@ internal class SDLWindowSession : RefCounted
 	private uint32? mHandledExposureTimestamp;
 	private bool mRedrawRequested, mShowPending;
 	private uint64 mFrameTicks, mNextAnimationTick = uint64.MaxValue;
+#if BF_PLATFORM_WASM
+	private TextBoxBase mExtractedEditor;
+	private append String mExtractedOriginal = .();
+	private Generation mExtractedHandle;
+#endif
 
 	public ~this()
 	{
@@ -129,12 +134,18 @@ internal class SDLWindowSession : RefCounted
 		SetFormLocation(control.Location);
 		control.NotifyMove(GetFormLocation());
 		ApplyMinimumSize(mForm);
+#if BF_PLATFORM_WASM
+		InstallExtractedEditor();
+#endif
 	}
 
 	private void DestroyWindow()
 	{
 		if (mWindow == null)
 			return;
+#if BF_PLATFORM_WASM
+		UninstallExtractedEditor();
+#endif
 		mWindowGeneration.Advance();
 		if (mActive)
 			SDL.StopTextInput();
@@ -159,6 +170,10 @@ internal class SDLWindowSession : RefCounted
 
 	public void DestroyControl(Control control)
 	{
+#if BF_PLATFORM_WASM
+		if (Control.IsAncestorOf(control, mExtractedEditor))
+			CancelExtractedEditor();
+#endif
 		let generation = control.HandleGeneration;
 		RequestRedraw();
 		if (Control.IsAncestorOf(control, mFocused))
@@ -181,6 +196,12 @@ internal class SDLWindowSession : RefCounted
 
 	public void UpdateControl(Control control, ControlChange change)
 	{
+#if BF_PLATFORM_WASM
+		if (mExtractedEditor != null && Control.IsAncestorOf(control, mExtractedEditor) &&
+			(!mExtractedEditor.IsEffectivelyVisible || !mExtractedEditor.IsEffectivelyEnabled ||
+			(control == mExtractedEditor && (change == .Text || change == .ReadOnly || change == .Multiline || change == .Parent))))
+			CancelExtractedEditor();
+#endif
 		RequestRedraw();
 		if (change == .Appearance || change == .All)
 		{

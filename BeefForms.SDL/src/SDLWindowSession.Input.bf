@@ -73,6 +73,10 @@ extension SDLWindowSession
 
 	private void Focus(Control control)
 	{
+#if BF_PLATFORM_WASM
+		if (mExtractedEditor != null && mExtractedEditor != control)
+			CancelExtractedEditor();
+#endif
 		if (mFocused == control)
 			return;
 		let snapshot = mWindowGeneration;
@@ -178,6 +182,10 @@ extension SDLWindowSession
 
 	internal void ProcessEvent(ref SDL.Event input)
 	{
+#if BF_PLATFORM_WASM
+		if (mExtractedEditor != null && input.type != .WindowEvent && input.type != .Quit)
+			return;
+#endif
 		let snapshot = mWindowGeneration;
 		if (!IsCurrentWindow(snapshot))
 			return;
