@@ -9,6 +9,7 @@ class TableLayoutTests
 	private static Control Add(TableLayoutPanel table, Size size)
 	{
 		let child = new Control();
+		child.Margin = .Empty;
 		child.Size = size;
 		child.Anchor = .Top | .Left | .Right;
 		table.Controls.Add(child);
@@ -26,7 +27,9 @@ class TableLayoutTests
 		table.ColumnStyles.Add(.(.Absolute, 50));
 		table.RowStyles.Add(.(.Absolute, 30));
 		let first = new Control();
+		first.Margin = .Empty;
 		let second = new Control();
+		second.Margin = .Empty;
 		table.SetCellPosition(first, .(0, 0));
 		table.SetCellPosition(second, .(0, 0));
 		table.Controls.Add(first);
@@ -67,6 +70,7 @@ class TableLayoutTests
 		table.Size = .(200, 100);
 		table.ColumnCount = 2;
 		let wide = new Control();
+		wide.Margin = .Empty;
 		wide.Size = .(20, 20);
 		wide.Anchor = .Top | .Left | .Right;
 		table.SetCellPosition(wide, .(0, 0));
@@ -81,6 +85,7 @@ class TableLayoutTests
 		sideways.RowCount = 2;
 		sideways.GrowStyle = .AddColumns;
 		let tall = new Control();
+		tall.Margin = .Empty;
 		tall.Size = .(20, 20);
 		tall.Anchor = .Top | .Bottom | .Left;
 		sideways.SetCellPosition(tall, .(0, 0));
@@ -124,6 +129,7 @@ class TableLayoutTests
 			table.ColumnStyles.Add(.(.Percent, firstWeight));
 			table.ColumnStyles.Add(.(.Percent, 100 - firstWeight));
 			let child = new Control();
+			child.Margin = .Empty;
 			child.Size = .(200, 20);
 			table.SetColumnSpan(child, 2);
 			table.Controls.Add(child);
@@ -139,6 +145,7 @@ class TableLayoutTests
 		table.RowStyles.Add(.(.Percent, 50));
 		table.RowStyles.Add(.(.Percent, 50));
 		let child = new Control();
+		child.Margin = .Empty;
 		child.Size = .(20, 200);
 		table.SetRowSpan(child, 2);
 		table.Controls.Add(child);
@@ -157,6 +164,7 @@ class TableLayoutTests
 		table.Anchor = .Top | .Left | .Right;
 		host.Controls.Add(table);
 		let child = new WrappingControl();
+		child.Margin = .Empty;
 		child.AutoSizeMode = .GrowAndShrink;
 		child.AutoSize = true;
 		table.Controls.Add(child);
@@ -173,6 +181,7 @@ class TableLayoutTests
 		table.RowCount = 1;
 		table.GrowStyle = .FixedSize;
 		let child = new Control();
+		child.Margin = .Empty;
 		table.SetCellPosition(child, position);
 		table.SetColumnSpan(child, columnSpan);
 		table.SetRowSpan(child, rowSpan);
@@ -206,6 +215,7 @@ class TableLayoutTests
 		let first = scope TableLayoutPanel();
 		let second = scope TableLayoutPanel();
 		let child = new Control();
+		child.Margin = .Empty;
 		first.SetCellPosition(child, .(1, 2));
 		first.SetColumnSpan(child, 2);
 		first.SetRowSpan(child, 3);
@@ -215,6 +225,7 @@ class TableLayoutTests
 		Test.Assert(second.GetCellPosition(child) == .(1, 2));
 		Test.Assert(second.GetColumnSpan(child) == 2 && second.GetRowSpan(child) == 3);
 		let other = new Control();
+		other.Margin = .Empty;
 		second.Controls.Add(other);
 		Test.Assert(second.GetCellPosition(other) == .(-1, -1));
 		Test.Assert(second.GetColumnSpan(other) == 1 && second.GetRowSpan(other) == 1);
@@ -251,6 +262,7 @@ class TableLayoutTests
 		let first = Add(table, .(30, 20));
 		let second = Add(table, .(60, 40));
 		let wide = new Control();
+		wide.Margin = .Empty;
 		wide.Size = .(200, 30);
 		wide.Anchor = .Top | .Left | .Right;
 		table.SetCellPosition(wide, .(0, 1));
@@ -274,6 +286,7 @@ class TableLayoutTests
 		table.RowStyles.Add(.(.Absolute, 30));
 		table.RowStyles.Add(.(.Percent, 100));
 		let tall = new Control();
+		tall.Margin = .Empty;
 		tall.Size = .(50, 120);
 		tall.Anchor = .Top | .Bottom | .Left | .Right;
 		table.SetCellPosition(tall, .(0, 0));
@@ -325,6 +338,7 @@ class TableLayoutTests
 		table.Size = .(100, 100);
 		table.ColumnStyles.Add(.(.Percent, 100));
 		let child = new WrappingControl();
+		child.Margin = .Empty;
 		child.AutoSizeMode = .GrowAndShrink;
 		child.AutoSize = true;
 		child.Anchor = .Top | .Left | .Right;

@@ -61,8 +61,10 @@ extension Win32Backend
 		Win32.SetTextColor(context, Win32.GetSysColor(label.Enabled ? Win32.COLOR_BTNTEXT : Win32.COLOR_GRAYTEXT));
 
 		let padding = (GetNativeFont(label).Height + 5) / 6;
-		bounds.left += padding;
-		bounds.right = Math.Max(bounds.left, bounds.right - padding);
+		bounds.left += padding + label.Padding.Left;
+		bounds.top += label.Padding.Top;
+		bounds.bottom = Math.Max(bounds.top, bounds.bottom - label.Padding.Bottom);
+		bounds.right = Math.Max(bounds.left, bounds.right - padding - label.Padding.Right);
 
 		uint flags = Win32.DT_NOPREFIX;
 		flags |= (label.AutoEllipsis && !label.AutoSize) ? Win32.DT_SINGLELINE | Win32.DT_END_ELLIPSIS : Win32.DT_WORDBREAK;
@@ -75,7 +77,7 @@ extension Win32Backend
 		var measured = bounds;
 		Win32.DrawText(context, text, -1, ref measured, flags | Win32.DT_CALCRECT);
 
-		let remaining = Math.Max(0, bounds.bottom - (measured.bottom - measured.top));
+		let remaining = Math.Max(0, bounds.bottom - bounds.top - (measured.bottom - measured.top));
 		if (label.TextAlign.Vertical == .Middle)
 			bounds.top += remaining / 2;
 		if (label.TextAlign.Vertical == .Bottom)

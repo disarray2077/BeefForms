@@ -66,6 +66,16 @@ public class ScrollableControl : Control
 		}
 	}
 
+	public override Rectangle DisplayRectangle
+	{
+		get
+		{
+			let viewport = ViewportSize;
+			let size = Padding.SubtractFrom(.(Math.Max(viewport.width, mContentSize.width), Math.Max(viewport.height, mContentSize.height)));
+			return .(Padding.Left - mScrollPosition.x, Padding.Top - mScrollPosition.y, size.width, size.height);
+		}
+	}
+
 	public override void PerformLayout()
 	{
 		base.PerformLayout();
@@ -93,8 +103,9 @@ public class ScrollableControl : Control
 			{
 				if (!child.LocallyVisible)
 					continue;
-				mContentSize.width = Math.Max(mContentSize.width, child.Location.x + child.Size.width);
-				mContentSize.height = Math.Max(mContentSize.height, child.Location.y + child.Size.height);
+				// WinForms excludes child margins from scroll extents under its default anchoring layout.
+				mContentSize.width = Math.Max(mContentSize.width, child.Location.x + child.Size.width + Padding.Right + (SupportsChildAnchoring ? 0 : child.Margin.Right));
+				mContentSize.height = Math.Max(mContentSize.height, child.Location.y + child.Size.height + Padding.Bottom + (SupportsChildAnchoring ? 0 : child.Margin.Bottom));
 			}
 		}
 		mHorizontalScroll = false;

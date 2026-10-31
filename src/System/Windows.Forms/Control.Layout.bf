@@ -22,6 +22,59 @@ extension Control
 	internal Object mLayoutData ~ delete _;
 	internal Size SpecifiedSize => mSpecifiedSize;
 	protected internal virtual bool SupportsChildAnchoring => true;
+	private Padding mPadding;
+	private Padding mMargin = .(3);
+	public ref Event<EventHandler> PaddingChanged { get; set; } ~ _.Dispose();
+	public ref Event<EventHandler> MarginChanged { get; set; } ~ _.Dispose();
+
+	public Padding Padding
+	{
+		get => mPadding;
+		set
+		{
+			let padding = value.NonNegative;
+			if (mPadding == padding)
+				return;
+			mPadding = padding;
+			PerformLayout();
+			UpdateAutoSize();
+			UpdateBackend(.Appearance);
+			OnPaddingChanged(.Empty);
+		}
+	}
+	public Padding Margin
+	{
+		get => mMargin;
+		set
+		{
+			let margin = value.NonNegative;
+			if (mMargin == margin)
+				return;
+			mMargin = margin;
+			Parent?.PerformLayout();
+			OnMarginChanged(.Empty);
+		}
+	}
+
+	protected virtual void OnPaddingChanged(EventArgs args)
+	{
+		PaddingChanged.Invoke(this, args);
+	}
+
+	protected virtual void OnMarginChanged(EventArgs args)
+	{
+		MarginChanged.Invoke(this, args);
+	}
+
+	public virtual Rectangle DisplayRectangle
+	{
+		get
+		{
+			let size = Padding.SubtractFrom(ViewportSize);
+			return .(Padding.Left, Padding.Top, size.width, size.height);
+		}
+	}
+
 	public Size PreferredSize => GetPreferredSize(default);
 
 	public virtual Size GetPreferredSize(Size proposedSize) => mSpecifiedSize;
@@ -93,7 +146,7 @@ extension Control
 
 	protected Size GetPreferredContainerSize()
 	{
-		Size preferred = default;
+		Size preferred = Padding.Size;
 		if (IsDisposingOrDisposed)
 			return Size;
 		let children = ToScopedArray!(Controls);
@@ -107,13 +160,13 @@ extension Control
 			let right = child.Location.x + size.width;
 			let bottom = child.Location.y + size.height;
 			if (child.Anchor.HasFlag(.Right))
-				preferred.width = Math.Max(preferred.width, right + child.mAnchorInfo.Right);
+				preferred.width = Math.Max(preferred.width, right + child.mAnchorInfo.Right + Padding.Right);
 			else if (child.Anchor.HasFlag(.Left))
-				preferred.width = Math.Max(preferred.width, right);
+				preferred.width = Math.Max(preferred.width, right + child.Margin.Right + Padding.Right);
 			if (child.Anchor.HasFlag(.Bottom))
-				preferred.height = Math.Max(preferred.height, bottom + child.mAnchorInfo.Bottom);
+				preferred.height = Math.Max(preferred.height, bottom + child.mAnchorInfo.Bottom + Padding.Bottom);
 			else
-				preferred.height = Math.Max(preferred.height, bottom);
+				preferred.height = Math.Max(preferred.height, bottom + child.Margin.Bottom + Padding.Bottom);
 		}
 		return .(preferred.width + BorderWidth * 2, preferred.height + BorderWidth * 2);
 	}

@@ -37,8 +37,8 @@ class AutoSizeReviewTests
 
 	private static void VerifySibling(Control parent)
 	{
-		let first = new TextSizedControl(); first.AutoSize = true; first.Text = "abc";
-		let second = new TextSizedControl(); second.AutoSize = true; second.Text = "b"; second.Location = .(0, 60);
+		let first = new TextSizedControl(); first.Margin = .Empty; first.AutoSize = true; first.Text = "abc";
+		let second = new TextSizedControl(); second.Margin = .Empty; second.AutoSize = true; second.Text = "b"; second.Location = .(0, 60);
 		parent.Controls.Add(first); parent.Controls.Add(second);
 		second.SizeChanged.Add(new (sender, args) => first.Text = "abcdefgh");
 		second.Text = "bb";
@@ -79,8 +79,8 @@ class AutoSizeReviewTests
 	public static void OscillatingSizeChangedCallbacksYieldAndCanRecover()
 	{
 		let host = scope Panel();
-		let panel = new Panel(); panel.AutoSize = true; panel.AutoSizeMode = .GrowAndShrink;
-		let child = new Control(); child.Size = .(80, 30); panel.Controls.Add(child); host.Controls.Add(panel);
+		let panel = new Panel(); panel.Margin = .Empty; panel.AutoSize = true; panel.AutoSizeMode = .GrowAndShrink;
+		let child = new Control(); child.Margin = .Empty; child.Size = .(80, 30); panel.Controls.Add(child); host.Controls.Add(panel);
 		bool oscillate = true; int changes = 0;
 		panel.SizeChanged.Add(new [&] (sender, args) =>
 		{
@@ -112,7 +112,7 @@ class AutoSizeReviewTests
 	{
 		Application.UseBackend(backend);
 		let parent = scope Panel(); parent.Size = .(500, 300);
-		let label = new Label(); label.Location = .(100, 100); label.Text = "Short"; label.AutoSize = true;
+		let label = new Label(); label.Margin = .Empty; label.Location = .(100, 100); label.Text = "Short"; label.AutoSize = true;
 		label.Anchor = .Right | .Bottom; parent.Controls.Add(label);
 		let before = label.Size;
 		label.Text = "A much longer label";
@@ -137,7 +137,7 @@ class AutoSizeReviewTests
 		Test.Assert(group.PreferredSize == .(0, height) && group.Size == group.PreferredSize);
 		group.Text = "A much longer caption does not impose a preferred width in WinForms";
 		Test.Assert(group.PreferredSize == .(0, height));
-		let child = new Control(); child.Location = .(10, 15); child.Size = .(40, 20); group.Controls.Add(child);
+		let child = new Control(); child.Margin = .Empty; child.Location = .(10, 15); child.Size = .(40, 20); group.Controls.Add(child);
 		Test.Assert(group.PreferredSize == .(50, 35 + height) && group.Size == group.PreferredSize);
 		group.Font = new Font("Segoe UI", 24);
 		Test.Assert(group.Size.height > 35 + height && group.Size == group.PreferredSize);

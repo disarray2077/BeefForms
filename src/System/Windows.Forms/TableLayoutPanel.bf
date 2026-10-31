@@ -162,7 +162,7 @@ public class TableLayoutPanel : Panel
 
 	protected override void LayoutChildren()
 	{
-		LayoutTable(ViewportSize, true);
+		LayoutTable(Padding.SubtractFrom(ViewportSize), true);
 	}
 
 	public override Size GetPreferredSize(Size proposedSize)
@@ -170,8 +170,8 @@ public class TableLayoutPanel : Panel
 		if (IsDisposingOrDisposed)
 			return Size;
 		let border = BorderWidth * 2;
-		let content = LayoutTable(.(Math.Max(0, proposedSize.width - border), Math.Max(0, proposedSize.height - border)), false);
-		return .(content.width + border, content.height + border);
+		let content = LayoutTable(.(Math.Max(0, proposedSize.width - border - Padding.Horizontal), Math.Max(0, proposedSize.height - border - Padding.Vertical)), false);
+		return .(content.width + border + Padding.Horizontal, content.height + border + Padding.Vertical);
 	}
 
 	private static LayoutInfo GetLayoutInfo(Control child)
@@ -463,7 +463,7 @@ public class TableLayoutPanel : Panel
 				let size = GetElementSize(cell.Child, default);
 				if (IsDisposingOrDisposed)
 					return default;
-				RequireSpace(columns, cell.Column, cell.Columns, size.width);
+				RequireSpace(columns, cell.Column, cell.Columns, size.width + cell.Child.Margin.Horizontal);
 			}
 		}
 		let honorsAnchors = Parent != null && Parent.SupportsChildAnchoring;
@@ -475,10 +475,10 @@ public class TableLayoutPanel : Panel
 			{
 				if ((cell.Rows == 1) != (pass == 0) || !Controls.Contains(cell.Child) || cell.Child.IsDisposingOrDisposed)
 					continue;
-				let size = GetElementSize(cell.Child, .(TrackExtent(columns, cell.Column, cell.Columns), 0));
+				let size = GetElementSize(cell.Child, .(Math.Max(0, TrackExtent(columns, cell.Column, cell.Columns) - cell.Child.Margin.Horizontal), 0));
 				if (IsDisposingOrDisposed)
 					return default;
-				RequireSpace(rows, cell.Row, cell.Rows, size.height);
+				RequireSpace(rows, cell.Row, cell.Rows, size.height + cell.Child.Margin.Vertical);
 			}
 		}
 		let constrainHeight = arrange || (honorsAnchors && available.height > 0 && Anchor.HasFlag(.Top | .Bottom));
@@ -490,7 +490,8 @@ public class TableLayoutPanel : Panel
 				let child = cell.Child;
 				if (!Controls.Contains(child) || child.IsDisposingOrDisposed)
 					continue;
-				let cellSize = Size(TrackExtent(columns, cell.Column, cell.Columns), TrackExtent(rows, cell.Row, cell.Rows));
+				let margin = child.Margin;
+				let cellSize = margin.SubtractFrom(.(TrackExtent(columns, cell.Column, cell.Columns), TrackExtent(rows, cell.Row, cell.Rows)));
 				var size = GetElementSize(child, cellSize);
 				if (IsDisposingOrDisposed)
 					return default;
@@ -498,7 +499,7 @@ public class TableLayoutPanel : Panel
 					continue;
 				size.width = child.Anchor.HasFlag(.Left | .Right) ? cellSize.width : Math.Min(size.width, cellSize.width);
 				size.height = child.Anchor.HasFlag(.Top | .Bottom) ? cellSize.height : Math.Min(size.height, cellSize.height);
-				var location = Point(columns[cell.Column].Offset, rows[cell.Row].Offset);
+				var location = Point(Padding.Left + columns[cell.Column].Offset + margin.Left, Padding.Top + rows[cell.Row].Offset + margin.Top);
 				if (!child.Anchor.HasFlag(.Left))
 					location.x += (cellSize.width - size.width) / (child.Anchor.HasFlag(.Right) ? 1 : 2);
 				if (!child.Anchor.HasFlag(.Top))

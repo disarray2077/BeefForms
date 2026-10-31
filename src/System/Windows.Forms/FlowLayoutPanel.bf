@@ -78,7 +78,7 @@ public class FlowLayoutPanel : Panel
 
 	protected override void LayoutChildren()
 	{
-		LayoutFlow(ViewportSize, true);
+		LayoutFlow(Padding.SubtractFrom(ViewportSize), true);
 	}
 
 	public override Size GetPreferredSize(Size proposedSize)
@@ -86,8 +86,8 @@ public class FlowLayoutPanel : Panel
 		if (IsDisposingOrDisposed)
 			return Size;
 		let border = BorderWidth * 2;
-		let content = LayoutFlow(.(Math.Max(0, proposedSize.width - border), Math.Max(0, proposedSize.height - border)), false);
-		return .(content.width + border, content.height + border);
+		let content = LayoutFlow(.(Math.Max(0, proposedSize.width - border - Padding.Horizontal), Math.Max(0, proposedSize.height - border - Padding.Vertical)), false);
+		return .(content.width + border + Padding.Horizontal, content.height + border + Padding.Vertical);
 	}
 
 	private Size LayoutFlow(Size available, bool arrange)
@@ -108,8 +108,9 @@ public class FlowLayoutPanel : Panel
 				return default;
 			if (!Controls.Contains(child) || child.IsDisposingOrDisposed || !child.LocallyVisible)
 				continue;
-			let length = Math.Max(0, vertical ? size.height : size.width);
-			let thickness = Math.Max(0, vertical ? size.width : size.height);
+			let margin = child.Margin;
+			let length = Math.Max(0, vertical ? size.height + margin.Vertical : size.width + margin.Horizontal);
+			let thickness = Math.Max(0, vertical ? size.width + margin.Horizontal : size.height + margin.Vertical);
 			if (wrap && hasItems && position + length > limit)
 			{
 				lineOffset += lineSize;
@@ -120,7 +121,9 @@ public class FlowLayoutPanel : Panel
 			if (arrange)
 			{
 				let coordinate = reverse ? limit - position - length : position;
-				let location = vertical ? Point(lineOffset, coordinate) : Point(coordinate, lineOffset);
+				let location = vertical
+					? Point(Padding.Left + lineOffset + margin.Left, Padding.Top + coordinate + margin.Top)
+					: Point(Padding.Left + coordinate + margin.Left, Padding.Top + lineOffset + margin.Top);
 				child.SetLayoutBounds(location, size, true);
 				if (IsDisposingOrDisposed)
 					return default;

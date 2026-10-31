@@ -143,6 +143,12 @@ internal class SDLControlRenderer
 
 	private void PaintLabel(Label label, Rectangle bounds)
 	{
+		var bounds;
+		bounds.X += label.Padding.Left;
+		bounds.Y += label.Padding.Top;
+		bounds.Width = Math.Max(0, bounds.Width - label.Padding.Horizontal);
+		bounds.Height = Math.Max(0, bounds.Height - label.Padding.Vertical);
+
 		let size = mTextService.MeasureText(label);
 		int32 x = bounds.X + mTextService.LabelPadding(label), y = bounds.Y;
 		if (label.TextAlign.Horizontal == .Center)

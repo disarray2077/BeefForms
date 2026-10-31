@@ -657,8 +657,9 @@ public class Control : System.ComponentModel.Component
 		if (mParent == null)
 			return;
 		let size = mParent.LayoutSize;
-		mAnchorInfo = .(mLocation.x, mLocation.y,
-			size.width - mLocation.x - mSize.width, size.height - mLocation.y - mSize.height);
+		let padding = mParent.Padding;
+		mAnchorInfo = .(mLocation.x - padding.Left, mLocation.y - padding.Top,
+			size.width - padding.Right - mLocation.x - mSize.width, size.height - padding.Bottom - mLocation.y - mSize.height);
 	}
 
 	internal void ApplyAnchoring(Size parentSize)
@@ -666,19 +667,24 @@ public class Control : System.ComponentModel.Component
 		let parent = Parent;
 		var location = mLocation;
 		var size = mSize;
+		let padding = parent.Padding;
+		if (Anchor.HasFlag(.Left))
+			location.x = padding.Left + mAnchorInfo.Left;
+		if (Anchor.HasFlag(.Top))
+			location.y = padding.Top + mAnchorInfo.Top;
 		if (Anchor.HasFlag(.Right))
 		{
 			if (Anchor.HasFlag(.Left))
-				size.width = Math.Max(0, parentSize.width - mAnchorInfo.Left - mAnchorInfo.Right);
+				size.width = Math.Max(0, parentSize.width - padding.Horizontal - mAnchorInfo.Left - mAnchorInfo.Right);
 			else
-				location.x = parentSize.width - size.width - mAnchorInfo.Right;
+				location.x = parentSize.width - padding.Right - size.width - mAnchorInfo.Right;
 		}
 		if (Anchor.HasFlag(.Bottom))
 		{
 			if (Anchor.HasFlag(.Top))
-				size.height = Math.Max(0, parentSize.height - mAnchorInfo.Top - mAnchorInfo.Bottom);
+				size.height = Math.Max(0, parentSize.height - padding.Vertical - mAnchorInfo.Top - mAnchorInfo.Bottom);
 			else
-				location.y = parentSize.height - size.height - mAnchorInfo.Bottom;
+				location.y = parentSize.height - padding.Bottom - size.height - mAnchorInfo.Bottom;
 		}
 		if (AutoSize && !SelfAutoSize && LocallyVisible)
 		{

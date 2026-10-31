@@ -28,7 +28,7 @@ class PreferredSizingTests
 	public static void BaseControlsPreferTheirExplicitSizeAndDoNotCreateHandles()
 	{
 		let control = scope Control(); control.Size = .(90, 40);
-		let child = new Control(); child.Location = .(100, 80); child.Size = .(50, 30); control.Controls.Add(child);
+		let child = new Control(); child.Margin = .Empty; child.Location = .(100, 80); child.Size = .(50, 30); control.Controls.Add(child);
 		Test.Assert(control.PreferredSize == .(90, 40) && control.GetPreferredSize(.(20, 10)) == .(90, 40));
 		Test.Assert(!control.IsHandleCreated && !child.IsHandleCreated);
 	}
@@ -37,7 +37,7 @@ class PreferredSizingTests
 	public static void PanelPreferredSizeIncludesVisibleChildrenAndBordersWithoutChangingBounds()
 	{
 		let panel = scope Panel(); panel.Size = .(200, 100); panel.BorderStyle = .FixedSingle;
-		let child = new Control(); child.Location = .(10, 15); child.Size = .(40, 20); panel.Controls.Add(child);
+		let child = new Control(); child.Margin = .Empty; child.Location = .(10, 15); child.Size = .(40, 20); panel.Controls.Add(child);
 		Test.Assert(panel.PreferredSize == .(52, 37) && panel.GetPreferredSize(.(20, 10)) == .(52, 37));
 		Test.Assert(panel.Size == .(200, 100) && child.Location == .(10, 15) && child.Size == .(40, 20));
 		child.Hide(); Test.Assert(panel.PreferredSize == .(2, 2));
@@ -47,8 +47,8 @@ class PreferredSizingTests
 	private static void VerifyMode(AutoSizeMode mode)
 	{
 		let host = scope Control(); host.Size = .(1000, 800);
-		let panel = new Panel(); panel.Size = .(200, 100); panel.AutoSizeMode = mode; panel.AutoSize = true;
-		let child = new Control(); child.Location = .(10, 15); child.Size = .(40, 20); panel.Controls.Add(child);
+		let panel = new Panel(); panel.Margin = .Empty; panel.Size = .(200, 100); panel.AutoSizeMode = mode; panel.AutoSize = true;
+		let child = new Control(); child.Margin = .Empty; child.Location = .(10, 15); child.Size = .(40, 20); panel.Controls.Add(child);
 		Test.Assert(panel.Size == .(200, 100));
 		host.Controls.Add(panel);
 		let small = mode == .GrowOnly ? Size(200, 100) : Size(50, 35);
@@ -69,9 +69,9 @@ class PreferredSizingTests
 	public static void NestedAutoSizeContainersFollowGrowthRemovalAndVisibility()
 	{
 		let host = scope Control();
-		let outer = new Panel(); outer.AutoSizeMode = .GrowAndShrink; outer.AutoSize = true;
-		let inner = new Panel(); inner.Location = .(5, 8); inner.AutoSizeMode = .GrowAndShrink; inner.AutoSize = true;
-		let child = new Control(); child.Location = .(10, 15); child.Size = .(40, 20);
+		let outer = new Panel(); outer.Margin = .Empty; outer.AutoSizeMode = .GrowAndShrink; outer.AutoSize = true;
+		let inner = new Panel(); inner.Margin = .Empty; inner.Location = .(5, 8); inner.AutoSizeMode = .GrowAndShrink; inner.AutoSize = true;
+		let child = new Control(); child.Margin = .Empty; child.Location = .(10, 15); child.Size = .(40, 20);
 		inner.Controls.Add(child); outer.Controls.Add(inner); host.Controls.Add(outer);
 		Test.Assert(inner.Size == .(50, 35) && outer.Size == .(55, 43));
 		child.Size = .(90, 50); Test.Assert(inner.Size == .(100, 65) && outer.Size == .(105, 73));
@@ -84,7 +84,7 @@ class PreferredSizingTests
 	public static void ContainerMeasurementRespectsRightAndBottomAnchorDistances()
 	{
 		let panel = scope Panel(); panel.Size = .(200, 100);
-		let child = new Control(); child.Location = .(10, 15); child.Size = .(40, 20); panel.Controls.Add(child);
+		let child = new Control(); child.Margin = .Empty; child.Location = .(10, 15); child.Size = .(40, 20); panel.Controls.Add(child);
 		child.Anchor = .Top | .Right; Test.Assert(panel.PreferredSize == .(200, 35));
 		child.Anchor = .Bottom | .Left; Test.Assert(panel.PreferredSize == .(50, 100));
 		child.Anchor = .Top | .Left | .Right; Test.Assert(panel.PreferredSize == .(200, 35));
@@ -95,8 +95,8 @@ class PreferredSizingTests
 	public static void VirtualPreferredSizeDrivesLayoutAndTextChangesPropagate()
 	{
 		let host = scope Control(); host.Size = .(500, 200);
-		let panel = new Panel(); panel.AutoSizeMode = .GrowAndShrink; panel.AutoSize = true; host.Controls.Add(panel);
-		let child = new TextSizedControl(); child.AutoSize = true; child.Text = "abc"; child.Location = .(5, 7);
+		let panel = new Panel(); panel.Margin = .Empty; panel.AutoSizeMode = .GrowAndShrink; panel.AutoSize = true; host.Controls.Add(panel);
+		let child = new TextSizedControl(); child.Margin = .Empty; child.AutoSize = true; child.Text = "abc"; child.Location = .(5, 7);
 		panel.Controls.Add(child);
 		Test.Assert(child.Size == .(30, 30) && panel.Size == .(35, 37));
 		child.Text = "abcdefgh"; Test.Assert(child.Size == .(80, 30) && panel.Size == .(85, 37));
@@ -110,7 +110,7 @@ class PreferredSizingTests
 		for (let mode in scope AutoSizeMode[](.GrowOnly, .GrowAndShrink))
 		{
 			let host = scope Panel(); host.Size = .(300, 200);
-			let child = new PreferredPanel(); child.Size = .(40, 20); child.Location = .(100, 50);
+			let child = new PreferredPanel(); child.Margin = .Empty; child.Size = .(40, 20); child.Location = .(100, 50);
 			child.AutoSizeMode = mode; child.AutoSize = true; child.Anchor = .Top | .Right; host.Controls.Add(child);
 			Test.Assert(child.Size == .(80, 30) && child.Location == .(60, 50));
 			host.Size = .(400, 300); Test.Assert(child.Location == .(160, 50));
@@ -125,8 +125,8 @@ class PreferredSizingTests
 	public static void SizeChangedCallbacksCanChangeTheContentAgain()
 	{
 		let host = scope Control();
-		let panel = new Panel(); panel.AutoSizeMode = .GrowAndShrink; panel.AutoSize = true; host.Controls.Add(panel);
-		let child = new Control(); child.Size = .(40, 20); panel.Controls.Add(child);
+		let panel = new Panel(); panel.Margin = .Empty; panel.AutoSizeMode = .GrowAndShrink; panel.AutoSize = true; host.Controls.Add(panel);
+		let child = new Control(); child.Margin = .Empty; child.Size = .(40, 20); panel.Controls.Add(child);
 		int changes = 0;
 		panel.SizeChanged.Add(new [&] (sender, args) => { if (++changes == 1) child.Size = .(140, 120); });
 		child.Size = .(80, 60);
@@ -137,8 +137,8 @@ class PreferredSizingTests
 	public static void ParentSuspensionDefersAutoSizeAndResumeFalseKeepsItDeferred()
 	{
 		let host = scope Control();
-		let panel = new Panel(); panel.AutoSize = true; panel.AutoSizeMode = .GrowAndShrink; host.Controls.Add(panel);
-		let child = new Control(); child.Size = .(40, 20); panel.Controls.Add(child);
+		let panel = new Panel(); panel.Margin = .Empty; panel.AutoSize = true; panel.AutoSizeMode = .GrowAndShrink; host.Controls.Add(panel);
+		let child = new Control(); child.Margin = .Empty; child.Size = .(40, 20); panel.Controls.Add(child);
 		host.SuspendLayout(); child.Size = .(80, 60); host.ResumeLayout(false);
 		Test.Assert(panel.Size == .(40, 20));
 		host.PerformLayout(); Test.Assert(panel.Size == .(80, 60));
@@ -167,8 +167,8 @@ class PreferredSizingTests
 	{
 		Application.UseBackend(backend);
 		let form = scope Form(); form.ClientSize = .(500, 300);
-		let panel = new Panel(); panel.AutoSizeMode = .GrowAndShrink; panel.AutoSize = true; panel.BorderStyle = .FixedSingle;
-		let label = new Label(); label.AutoSize = true; label.Text = "Short"; label.Location = .(5, 7);
+		let panel = new Panel(); panel.Margin = .Empty; panel.AutoSizeMode = .GrowAndShrink; panel.AutoSize = true; panel.BorderStyle = .FixedSingle;
+		let label = new Label(); label.Margin = .Empty; label.AutoSize = true; label.Text = "Short"; label.Location = .(5, 7);
 		panel.Controls.Add(label); form.Controls.Add(panel); form.Show();
 		Test.Assert(panel.Size == .(label.Size.width + 7, label.Size.height + 9));
 		let previous = panel.Size;
@@ -190,13 +190,13 @@ class PreferredSizingTests
 	{
 		Application.UseBackend(backend);
 		let form = scope Form(); form.ClientSize = .(200, 100); form.AutoSizeMode = .GrowAndShrink; form.AutoSize = true;
-		let child = new Control(); child.Location = .(10, 15); child.Size = .(160, 80); form.Controls.Add(child);
+		let child = new Control(); child.Margin = .Empty; child.Location = .(10, 15); child.Size = .(160, 80); form.Controls.Add(child);
 		form.Show();
 		Test.Assert(form.ClientSize.width >= 170 && form.ClientSize.height >= 95);
 		let previous = form.Size;
 		child.Size = .(360, 180); Test.Assert(form.Size.width > previous.width && form.Size.height > previous.height);
 		child.Size = .(160, 80); Test.Assert(form.Size == previous);
-		let pinned = new Control(); pinned.Size = .(40, 20);
+		let pinned = new Control(); pinned.Margin = .Empty; pinned.Size = .(40, 20);
 		pinned.Location = .(form.LayoutSize.width - 50, form.LayoutSize.height - 30); pinned.Anchor = .Right | .Bottom;
 		form.Controls.Add(pinned);
 		child.Size = .(500, 300);

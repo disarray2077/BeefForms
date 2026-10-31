@@ -16,10 +16,10 @@ public class Label : Control
 	public override Size GetPreferredSize(Size proposedSize)
 	{
 		let border = BorderWidth * 2;
-		Size constraints = .(proposedSize.width > border ? proposedSize.width - border : 0,
-			proposedSize.height > border ? proposedSize.height - border : 0);
+		Size constraints = .(proposedSize.width > 0 ? Math.Max(1, proposedSize.width - border - Padding.Horizontal) : 0,
+			proposedSize.height > 0 ? Math.Max(1, proposedSize.height - border - Padding.Vertical) : 0);
 		let text = Application.Backend.MeasureText(this, constraints);
-		return .(text.width + border, text.height + border);
+		return .(text.width + border + Padding.Horizontal, text.height + border + Padding.Vertical);
 	}
 
 	protected override void UpdateAutoSize()

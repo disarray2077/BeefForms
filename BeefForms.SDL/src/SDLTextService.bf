@@ -86,7 +86,7 @@ internal class SDLTextService
 	{
 		if (control is Label && !control.AutoSize)
 		{
-			let width = control.ClientSize.width - LabelPadding(control) * 2;
+			let width = control.ClientSize.width - control.Padding.Horizontal - LabelPadding(control) * 2;
 			return Math.Max(1, width);
 		}
 		return 0;
@@ -118,7 +118,7 @@ internal class SDLTextService
 		NormalizeEditorText(control, display);
 		if (!applyEllipsis || !HasEllipsis(control))
 			return;
-		let width = control.ClientSize.width - LabelPadding(control) * 2;
+		let width = control.ClientSize.width - control.Padding.Horizontal - LabelPadding(control) * 2;
 		if (Measure(control, display) <= width)
 			return;
 		let available = width - Measure(control, "...");

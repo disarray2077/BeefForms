@@ -14,10 +14,12 @@ class FlowLayoutTests
 	private static FlowLayoutPanel CreatePanel()
 	{
 		let panel = new FlowLayoutPanel();
+		panel.Margin = .Empty;
 		panel.Size = .(100, 45);
 		for (let size in scope Size[](.(60, 20), .(50, 30), .(40, 10)))
 		{
 			let child = new Control();
+			child.Margin = .Empty;
 			child.Size = size;
 			panel.Controls.Add(child);
 		}
@@ -122,16 +124,20 @@ class FlowLayoutTests
 		outer.FlowDirection = .TopDown;
 		outer.WrapContents = false;
 		let inner = new FlowLayoutPanel();
+		inner.Margin = .Empty;
 		inner.AutoSizeMode = .GrowAndShrink;
 		inner.AutoSize = true;
 		let first = new Control();
+		first.Margin = .Empty;
 		first.Size = .(20, 10);
 		let second = new Control();
+		second.Margin = .Empty;
 		second.Size = .(30, 15);
 		inner.Controls.Add(first);
 		inner.Controls.Add(second);
 		outer.Controls.Add(inner);
 		let next = new Control();
+		next.Margin = .Empty;
 		next.Size = .(20, 20);
 		outer.Controls.Add(next);
 		Test.Assert(inner.Size == .(50, 15) && second.Location == .(20, 0) && next.Location == .(0, 15));
@@ -147,6 +153,7 @@ class FlowLayoutTests
 		let form = scope Form();
 		form.ClientSize = .(300, 200);
 		let panel = new FlowLayoutPanel();
+		panel.Margin = .Empty;
 		panel.Size = .(100, 60);
 		panel.FlowDirection = .TopDown;
 		panel.WrapContents = false;
@@ -154,6 +161,7 @@ class FlowLayoutTests
 		for (int i < 3)
 		{
 			let child = new Control();
+			child.Margin = .Empty;
 			child.Size = .(60, 40);
 			panel.Controls.Add(child);
 		}
@@ -172,6 +180,7 @@ class FlowLayoutTests
 		for (let size in scope Size[](.(60, 20), .(50, 30), .(40, 10)))
 		{
 			let child = new Control();
+			child.Margin = .Empty;
 			child.Size = size;
 			panel.Controls.Add(child);
 		}

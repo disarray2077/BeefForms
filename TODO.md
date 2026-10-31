@@ -41,13 +41,13 @@ or a complete WinForms API inventory.
   its argument does not select a text-rendering mode.
   [Source](src/System/Windows.Forms/Application.bf)
 
-## Missing supporting APIs
-
-- [ ] **Layout spacing**: general `Control.Margin` and `Padding` APIs are absent.
-  Account for these when flow layout or other container layout is implemented.
-  [Source](src/System/Windows.Forms/Control.bf)
-
 ## Explicitly deferred
+
+- [ ] **Button and CheckBox content padding**: `Padding` is stored but does not
+  inset their content on either backend. Keep the existing rendering paths for
+  now; margins remain supported by container layout.
+  [Win32 rendering](src/Backends/Win32/Win32Backend.bf),
+  [SDL rendering](BeefForms.SDL/src/SDLControlRenderer.bf)
 
 - [ ] **SDL font-family resolution**: SDL uses one configured or fallback font
   file rather than resolving `Font.FamilyName`. Win32 already uses the requested

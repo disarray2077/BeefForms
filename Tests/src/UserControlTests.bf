@@ -82,6 +82,7 @@ class UserControlTests
 		host.Size = .(600, 400);
 		let control = new UserControl();
 		let child = new Control();
+		child.Margin = .Empty;
 		child.Location = .(10, 15);
 		child.Size = .(40, 20);
 		control.Controls.Add(child);
