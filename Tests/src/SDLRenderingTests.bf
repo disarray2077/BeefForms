@@ -13,6 +13,44 @@ namespace BeefForms.Tests;
 class SDLRenderingTests
 {
 	[Test]
+	public static void NonRenderingModeKeepsInputAndPaintWithoutCreatingGLResources()
+	{
+		Application.UseBackend(.SDL2OpenGL);
+		let backend = (SDLBackend)Application.Backend;
+		Test.Assert(!backend.RenderingEnabled);
+		let form = scope Form();
+		form.ClientSize = .(240, 120);
+		let editor = new TextBox();
+		editor.Size = .(180, 25);
+		form.Controls.Add(editor);
+		int paints = 0;
+		editor.Paint.Add(new [&] (sender, args) => paints++);
+		form.Show();
+		let session = backend.GetSession(form);
+		Test.Assert(session.mWindow != null && session.mContext == default);
+		Test.Assert((SDL.GetWindowFlags(session.mWindow) & (uint32)SDL.WindowFlags.OpenGL) == 0);
+		Test.Assert(session.[Friend]mCanvas == null && session.[Friend]mTextRenderer == null && session.[Friend]mControlRenderer == null);
+		SDLTestInput.Activate(backend);
+		Test.Assert((SDL.GetWindowFlags(session.mWindow) & (uint32)SDL.WindowFlags.Hidden) == 0);
+		Test.Assert(!session.[Friend]mShowPending && session.mContext == default);
+		Test.Assert(editor.Focus());
+		SDLTestInput.TypeText(backend, "abc");
+		Test.Assert(editor.Text == "abc" && paints > 0);
+		form.Close();
+		backend.Run(form);
+	}
+
+	[Test]
+	public static void SelectingTheSameBackendRestoresTheDefaultTestMode()
+	{
+		Application.UseBackend(.SDL2OpenGL, render: true);
+		let backend = (SDLBackend)Application.Backend;
+		Test.Assert(backend.RenderingEnabled);
+		Application.UseBackend(.SDL2OpenGL);
+		Test.Assert(Application.Backend == backend && !backend.RenderingEnabled);
+	}
+
+	[Test]
 	public static void ExposureWatchSkipsIdleFramesAndPreservesPaintInvalidation()
 	{
 		Application.UseBackend(.SDL2OpenGL);
@@ -144,7 +182,7 @@ class SDLRenderingTests
 	[Test]
 	public static void MarqueesStartedAtDifferentTimesHaveIndependentPhases()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form();
 		form.ClientSize = .(240, 120);
 		let older = new ProgressBar();

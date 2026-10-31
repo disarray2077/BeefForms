@@ -144,7 +144,6 @@ class SDLBackendTests
 			SDL.GetWindowPosition((SDL.Window*)form.Handle, var actualX, var actualY);
 			SDL.GetWindowBordersSize((SDL.Window*)form.Handle, var top, var left, var bottom, var right);
 			Test.Assert(form.Location.x == actualX - left && form.Location.y == actualY - top);
-			SDLTestInput.AssertNoGLError(form);
 		}
 #if BF_PLATFORM_WINDOWS
 		Application.UseBackend(.Win32);

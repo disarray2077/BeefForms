@@ -145,7 +145,18 @@ class MultilineTextBoxTests
 		Key(backend, .END, .CTRL | .SHIFT); Test.Assert(editor.SelectionStart == 0 && editor.SelectionLength == 8);
 		editor.Select(3, 0); Key(backend, .DELETE);
 		Test.Assert(editor.Text == "abcdef" && editor.SelectionStart == 3);
-		SDL.SetClipboardText("x\r\ny"); Key(backend, .V, .CTRL);
+		let deadline = SDL.GetTicks64() + 1000;
+		// Other applications can briefly hold the system clipboard. SDL 2.26
+		// reports an empty read in that case, so retry only an unchanged edit.
+		repeat
+		{
+			if (SDL.SetClipboardText("x\r\ny") == 0)
+				Key(backend, .V, .CTRL);
+			if (editor.Text != "abcdef")
+				break;
+			SDL.Delay(1);
+		}
+		while (SDL.GetTicks64() < deadline);
 		Test.Assert(editor.Text == "abcx\r\nydef");
 		editor.ReadOnly = true; Key(backend, .RETURN); Test.Assert(editor.Text == "abcx\r\nydef");
 		editor.ReadOnly = false;
@@ -179,7 +190,7 @@ class MultilineTextBoxTests
 	[Test]
 	public static void SDLModeChangesLeaveAnotherWindowsTexturesIntact()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let first = scope Form(); first.ClientSize = .(240, 140);
 		let second = scope Form(); second.ClientSize = first.ClientSize;
 		let editor = new TextBox(); editor.Multiline = true; editor.Size = .(200, 100); editor.Text = "first\r\nsecond";
@@ -203,7 +214,7 @@ class MultilineTextBoxTests
 	[Test]
 	public static void SDLMultilineMeasurementHitTestingAndScrollingUseTheSameLines()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form(); form.ClientSize = .(320, 180);
 		let editor = new TextBox(); editor.Multiline = true; editor.Size = .(120, 40); editor.Text = "abc\r\ndef\r\n";
 		form.Controls.Add(editor); form.Show();

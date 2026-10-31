@@ -37,6 +37,20 @@ internal class SDLBackend : FormsBackend
 
 	public int FrameLimit;
 	public String CapturePath;
+	private bool mRenderingEnabled = true;
+
+	internal bool RenderingEnabled
+	{
+		get => mRenderingEnabled;
+		set
+		{
+			if (mRenderingEnabled == value)
+				return;
+			if (!mSessions.IsEmpty)
+				Runtime.FatalError("Rendering mode must be selected before creating windows");
+			mRenderingEnabled = value;
+		}
+	}
 
 	public ~this()
 	{

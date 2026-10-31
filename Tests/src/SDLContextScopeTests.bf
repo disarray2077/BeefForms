@@ -13,7 +13,7 @@ class SDLContextScopeTests
 	[Test]
 	public static void NonRenderingOperationsPreserveTheCallersContext()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let caller = scope Form(); let target = scope Form();
 		caller.ClientSize = target.ClientSize = .(240, 120);
 		let first = new TextBox(); let second = new TextBox();
@@ -65,7 +65,7 @@ class SDLContextScopeTests
 	[Test]
 	public static void UpdatingAControlRetainsItsSessionAcrossDisposalCallbacks()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form(); form.ClientSize = .(240, 120);
 		let editor = new TextBox(); editor.Size = .(120, 25); form.Controls.Add(editor);
 		form.Show();
@@ -87,7 +87,7 @@ class SDLContextScopeTests
 	[Test]
 	public static void InputDispatchRetainsItsSessionAcrossDisposalCallbacks()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form(); form.ClientSize = .(240, 120);
 		let panel = new Panel(); panel.Size = .(120, 80); form.Controls.Add(panel);
 		form.Show();

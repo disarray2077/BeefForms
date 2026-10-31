@@ -15,6 +15,12 @@ class FormActivationTests
 #if BF_DEPENDS_BEEFFORMS_SDL
 		if (Application.Backend is SDLBackend)
 		{
+			let deadline = SDL2.SDL.GetTicks64() + 1000;
+			while (SDL2.SDL.GetKeyboardFocus() != (SDL2.SDL.Window*)form.Handle && SDL2.SDL.GetTicks64() < deadline)
+			{
+				Application.DoEvents();
+				SDL2.SDL.Delay(1);
+			}
 			Test.Assert(SDL2.SDL.GetKeyboardFocus() == (SDL2.SDL.Window*)form.Handle);
 			return;
 		}
@@ -80,6 +86,7 @@ class FormActivationTests
 		Test.Assert(button.Focus());
 		child.Activate();
 		Application.DoEvents();
+		AssertActive(child);
 		Test.Assert(button.Focused);
 		Test.Assert(owner.Handle == ownerHandle && child.Handle == childHandle);
 		Test.Assert(owner.Visible && child.Visible && child.Owner == owner && child.Parent == null);

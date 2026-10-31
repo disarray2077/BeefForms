@@ -59,7 +59,7 @@ class MultiWindowFollowupTests
 	[Test]
 	public static void FormRecreationFromLostFocusKeepsItsNewNativeWindow()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form(); form.ClientSize = .(200, 100); form.Show();
 		let backend = (SDLBackend)Application.Backend;
 		Activate(backend, form); form.Focus();
@@ -77,7 +77,7 @@ class MultiWindowFollowupTests
 	[Test]
 	public static void MakeCurrentRebindsTheSessionWindowWhenItsContextWasBorrowed()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form(); form.ClientSize = .(200, 100);
 		let panel = new Panel(); panel.Size = .(180, 80); form.Controls.Add(panel); form.Show();
 		let backend = (SDLBackend)Application.Backend;

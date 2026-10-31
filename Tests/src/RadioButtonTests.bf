@@ -130,8 +130,8 @@ class RadioButtonTests
 			SDL.Event input = .();
 			input.type = .KeyDown;
 			input.key.keysym.sym = key == .Space ? .SPACE : .RIGHT;
-			SDLTestInput.PushEvent(ref input, radio.FindForm());
-			backend.ProcessEvents();
+			SDLTestInput.SetWindow(ref input, radio.FindForm());
+			backend.[Friend]ProcessEvent(ref input);
 		}
 #if BF_PLATFORM_WINDOWS
 		else
@@ -199,12 +199,6 @@ class RadioButtonTests
 		second.PerformClick();
 		Test.Assert(first.Checked && second.Checked);
 		AssertNativeCheck(second);
-		if (let sdl = Application.Backend as SDLBackend)
-		{
-			sdl.FrameLimit = 1;
-			sdl.Run(form);
-			SDLTestInput.AssertNoGLError(form);
-		}
 		form.Close();
 		Application.Backend.Run(form);
 	}
@@ -265,9 +259,32 @@ class RadioButtonTests
 	}
 
 	[Test]
-	public static void SDLRadioKeyboardAndRendering()
+	public static void SDLRadioKeyboardAndCheckedState()
 	{
 		VerifyInput(.SDL2OpenGL);
+	}
+
+	[Test]
+	public static void SDLRadioStatesRenderWithoutGLErrors()
+	{
+		Application.UseBackend(.SDL2OpenGL, render: true);
+		let form = scope Form();
+		form.ClientSize = .(240, 100);
+		let radio = new RadioButton();
+		radio.Text = "Radio option";
+		form.Controls.Add(radio);
+		form.Show();
+		let backend = (SDLBackend)Application.Backend;
+		for (let checkedState in scope bool[](false, true))
+		{
+			radio.Checked = checkedState;
+			for (let enabled in scope bool[](false, true))
+			{
+				radio.Enabled = enabled;
+				Test.Assert(backend.[Friend]RenderIfNeeded(true));
+				SDLTestInput.AssertNoGLError(form);
+			}
+		}
 	}
 #endif
 }

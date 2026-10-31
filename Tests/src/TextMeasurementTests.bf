@@ -61,7 +61,7 @@ class TextMeasurementTests
 	[Test]
 	public static void SDLMeasurementDoesNotPopulateTheTextureCacheOrTouchGLBindings()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form(); form.ClientSize = .(320, 160);
 		let label = new Label(); label.Text = "CPU-only measurement"; label.Size = .(200, 100); form.Controls.Add(label);
 		form.Show();
@@ -86,7 +86,7 @@ class TextMeasurementTests
 	[Test]
 	public static void SDLMeasuredBoundsMatchRenderedTextForWrappingAlignmentAndEllipsis()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form(); form.ClientSize = .(320, 160);
 		let label = new Label(); label.AutoSize = false; form.Controls.Add(label); form.Show();
 		let backend = (SDLBackend)Application.Backend;

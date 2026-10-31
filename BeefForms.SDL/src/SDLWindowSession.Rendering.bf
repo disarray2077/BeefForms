@@ -50,6 +50,8 @@ extension SDLWindowSession
 
 	internal bool RenderIfNeeded(bool force = false, bool capture = false)
 	{
+		if (capture && mCanvas == null)
+			Runtime.FatalError("Frame capture requires rendering to be enabled");
 		if (mRendering || !CanRender || (!force && GetRedrawTimeout() != 0))
 			return false;
 		RenderFrame(capture);
@@ -70,7 +72,7 @@ extension SDLWindowSession
 		mForm.NotifyResize(GetFormSize());
 		if (!IsCurrentWindow(snapshot))
 			return;
-		mCanvas.Begin(mWindow);
+		mCanvas?.Begin(mWindow);
 		let size = GetClientSize(mForm);
 		RenderControl(mForm, .(0, 0, size.width, size.height), .(0, 0, size.width, size.height), snapshot);
 		if (!IsCurrentWindow(snapshot))
@@ -80,7 +82,8 @@ extension SDLWindowSession
 			mCanvas.Capture(mBackend.CapturePath);
 			mBackend.CapturePath = null;
 		}
-		SDL.GL_SwapWindow(mWindow);
+		if (mContext != default)
+			SDL.GL_SwapWindow(mWindow);
 		if (mShowPending && mForm.IsEffectivelyVisible)
 		{
 			mShowPending = false;
@@ -120,7 +123,7 @@ extension SDLWindowSession
 			if (progress.IsMarqueeRunning && bounds.Width > 2 && bounds.Height > 2)
 				mNextAnimationTick = Math.Min(mNextAnimationTick, progress.GetNextMarqueeTick(mFrameTicks));
 		}
-		mControlRenderer.PaintControl(control, bounds, clip, .(focused, control == mHovered, control == mPressed, mFrameTicks));
+		mControlRenderer?.PaintControl(control, bounds, clip, .(focused, control == mHovered, control == mPressed, mFrameTicks));
 
 		if (control.NeedsPaint)
 			control.NotifyPaint();
@@ -143,6 +146,6 @@ extension SDLWindowSession
 			if (!IsCurrentControl(control, snapshot))
 				return;
 		}
-		mControlRenderer.PaintScrollbars(control, bounds, clip);
+		mControlRenderer?.PaintScrollbars(control, bounds, clip);
 	}
 }

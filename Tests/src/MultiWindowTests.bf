@@ -193,7 +193,7 @@ class MultiWindowTests
 	[Test]
 	public static void SDLReparentingBetweenWindowsUpdatesInputAndRenderingOwnership()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let first = scope Form(); let second = scope Form();
 		first.ClientSize = second.ClientSize = .(200, 100);
 		let editor = new TextBox(); editor.Size = .(150, 25); first.Controls.Add(editor);
@@ -210,7 +210,7 @@ class MultiWindowTests
 	[Test]
 	public static void SDLClosingAnotherWindowDuringPaintRestoresTheRenderingContext()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let first = scope Form(); let second = scope Form();
 		first.ClientSize = second.ClientSize = .(200, 100);
 		let a = new Panel(); let b = new Panel();
@@ -238,7 +238,7 @@ class MultiWindowTests
 	[Test]
 	public static void SDLClosingTheFirstWindowDuringPaintStillRendersTheSecond()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let first = scope Form(); let second = scope Form();
 		first.ClientSize = second.ClientSize = .(200, 100);
 		let a = new Panel(); let b = new Panel();
@@ -258,7 +258,7 @@ class MultiWindowTests
 	[Test]
 	public static void SDLCreatingAndClosingAWindowDuringPaintPreservesTheOriginalFrame()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let first = scope Form(); let second = scope Form();
 		first.ClientSize = second.ClientSize = .(200, 100);
 		let panel = new Panel(); panel.Size = .(180, 80); first.Controls.Add(panel);

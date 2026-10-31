@@ -10,7 +10,7 @@ class LabelTests
 {
 	private static void VerifyLayout(ApplicationBackend backend)
 	{
-		Application.UseBackend(backend);
+		Application.UseBackend(backend, render: true);
 		let form = scope Form();
 		form.ClientSize = .(300, 180);
 		let message = new Label();

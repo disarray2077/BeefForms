@@ -92,7 +92,7 @@ class SDLTextReviewTests
 
 	private static void VerifyRasterScale(float scale)
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form(); form.ClientSize = .(240, 160);
 		let label = new Label(); label.Size = .(70, 100); label.Text = "AVATAR words wrap\n\nlast line";
 		form.Controls.Add(label); form.Show();

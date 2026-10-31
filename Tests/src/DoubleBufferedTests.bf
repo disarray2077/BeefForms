@@ -42,7 +42,7 @@ class DoubleBufferedTests
 	[Test]
 	public static void SDLKeepsSharedBufferingWhenThePropertyChanges()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form();
 		form.ClientSize = .(240, 100);
 		let label = new Label();

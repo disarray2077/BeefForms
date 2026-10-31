@@ -48,13 +48,12 @@ class SDLSessionAssociationTests
 		editor.Capture = true;
 		Test.Assert(!editor.Focus() && !editor.Focused && !editor.Capture && other.Capture);
 		other.Capture = false;
-		SDLTestInput.AssertNoGLError(form);
 	}
 
 	[Test]
 	public static void MovingAndDetachingASubtreeUpdatesItsSession()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let first = scope Form(); let second = scope Form();
 		first.ClientSize = second.ClientSize = .(240, 120);
 		let subtree = new Panel(); subtree.Size = .(200, 100);
@@ -97,6 +96,6 @@ class SDLSessionAssociationTests
 		form.Hide();
 		form.Show();
 		Test.Assert(form.IsHandleCreated && form.SDLSession != null && form.SDLSession == backend.GetSession(form));
-		Application.DoEvents(); SDLTestInput.AssertNoGLError(form);
+		Application.DoEvents();
 	}
 }

@@ -60,7 +60,6 @@ class SDLEditorRenderingTests
 		backend.[Friend]RenderIfNeeded(true);
 		Test.Assert(editor.ScrollX > 0 && editor.ScrollY > 0);
 		test(editor, other, backend);
-		SDLTestInput.AssertNoGLError(form);
 	}
 
 	[Test]

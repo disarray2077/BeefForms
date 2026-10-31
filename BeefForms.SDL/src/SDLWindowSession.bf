@@ -98,17 +98,22 @@ internal class SDLWindowSession : RefCounted
 		mForm = (Form)control;
 		mWindowGeneration.Advance();
 		let size = mForm.HasInitialClientSize ? mForm.InitialClientSize : control.Size;
-		SDL.GL_SetAttribute(.GL_CONTEXT_MAJOR_VERSION, 3);
+		SDL.WindowFlags flags = .Resizable | .AllowHighDPI | .Hidden;
+		if (mBackend.RenderingEnabled)
+		{
+			flags |= .OpenGL;
+			SDL.GL_SetAttribute(.GL_CONTEXT_MAJOR_VERSION, 3);
 #if BF_PLATFORM_WASM
-		SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 0);
-		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_ES);
+			SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 0);
+			SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_ES);
 #else
-		SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 3);
-		SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_CORE);
+			SDL.GL_SetAttribute(.GL_CONTEXT_MINOR_VERSION, 3);
+			SDL.GL_SetAttribute(.GL_CONTEXT_PROFILE_MASK, .GL_CONTEXT_PROFILE_CORE);
 #endif
-		SDL.GL_SetAttribute(.GL_DOUBLEBUFFER, 1);
+			SDL.GL_SetAttribute(.GL_DOUBLEBUFFER, 1);
+		}
 		mWindow = SDL.CreateWindow(control.Text.ToScopeCStr!(), (.)control.Location.x, (.)control.Location.y,
-			Math.Max(1, size.width), Math.Max(1, size.height), .OpenGL | .Resizable | .AllowHighDPI | .Hidden);
+			Math.Max(1, size.width), Math.Max(1, size.height), flags);
 		if (mWindow == null)
 			Runtime.FatalError(scope $"Could not create SDL window: {StringView(SDL.GetError())}");
 #if !BF_PLATFORM_WASM
@@ -117,16 +122,19 @@ internal class SDLWindowSession : RefCounted
 		SDL.SetWindowIcon(mWindow, icon);
 		SDL.FreeSurface(icon);
 #endif
-		mContext = SDL.GL_CreateContext(mWindow);
-		if (mContext == default)
-			Runtime.FatalError(scope $"Could not create OpenGL context: {StringView(SDL.GetError())}");
-		GL.Init(scope (name) => SDL.GL_GetProcAddress(name));
+		if (mBackend.RenderingEnabled)
+		{
+			mContext = SDL.GL_CreateContext(mWindow);
+			if (mContext == default)
+				Runtime.FatalError(scope $"Could not create OpenGL context: {StringView(SDL.GetError())}");
+			GL.Init(scope (name) => SDL.GL_GetProcAddress(name));
 #if !BF_PLATFORM_WASM
-		SDL.GL_SetSwapInterval(1);
+			SDL.GL_SetSwapInterval(1);
 #endif
-		mCanvas = new .();
-		mTextRenderer = new .(mCanvas, mBackend.TextService);
-		mControlRenderer = new .(mCanvas, mTextRenderer, mBackend.TextService);
+			mCanvas = new .();
+			mTextRenderer = new .(mCanvas, mBackend.TextService);
+			mControlRenderer = new .(mCanvas, mTextRenderer, mBackend.TextService);
+		}
 		control.SetNativeHandle(mWindow);
 		if (!mForm.HasInitialClientSize)
 			SetFormSize(mForm, size);
@@ -156,7 +164,8 @@ internal class SDLWindowSession : RefCounted
 		mTextRenderer = null;
 		delete mCanvas;
 		mCanvas = null;
-		SDL.GL_DeleteContext(mContext);
+		if (mContext != default)
+			SDL.GL_DeleteContext(mContext);
 		mContext = default;
 		SDL.DestroyWindow(mWindow);
 		mWindow = null;
@@ -352,7 +361,7 @@ internal class SDLWindowSession : RefCounted
 
 	internal void MakeCurrent()
 	{
-		if (mWindow != null && (SDL.GL_GetCurrentContext() != mContext || SDL.GL_GetCurrentWindow() != mWindow))
+		if (mContext != default && mWindow != null && (SDL.GL_GetCurrentContext() != mContext || SDL.GL_GetCurrentWindow() != mWindow))
 		{
 			if (SDL.GL_MakeCurrent(mWindow, mContext) != 0)
 				Runtime.FatalError("Could not activate the window's OpenGL context");

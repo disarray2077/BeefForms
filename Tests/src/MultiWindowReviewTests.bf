@@ -38,7 +38,7 @@ class MultiWindowReviewTests
 
 	private static void VerifyContext(ContextOperation operation, bool external)
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let owner = scope ExternalContext();
 		let form = scope Form();
 		form.ClientSize = .(200, 100);
@@ -90,7 +90,7 @@ class MultiWindowReviewTests
 
 	private static void VerifyDestroyedContext(bool duringPaint)
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let previous = scope Form(); let target = scope Form();
 		previous.ClientSize = target.ClientSize = .(200, 100);
 		let panel = new Panel(); panel.Size = .(180, 80); target.Controls.Add(panel);

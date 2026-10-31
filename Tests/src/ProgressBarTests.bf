@@ -27,7 +27,7 @@ class ProgressBarTests
 	[Test]
 	public static void SDLProgressSwitchesFromMarqueeToDeterminate()
 	{
-		Application.UseBackend(.SDL2OpenGL);
+		Application.UseBackend(.SDL2OpenGL, render: true);
 		let form = scope Form();
 		form.ClientSize = .(240, 120);
 		let progress = new ProgressBar();
