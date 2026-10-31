@@ -54,8 +54,19 @@ async function main() {
     assert.equal(await input.inputValue(), '345');
     await input.fill('999');
     await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    const box = await canvas.boundingBox();
+    const size = await canvas.evaluate(element => ({ width: element.width, height: element.height }));
+    await page.mouse.dblclick(box.x + box.width * 30 / size.width, box.y + box.height * 23 / size.height);
+    await page.waitForTimeout(100);
+    await canvas.evaluate(element => {
+      element.addEventListener('pointerdown', event => {
+        document.body.setPointerCapture(event.pointerId);
+      }, { once: true });
+    });
     await tap(30, 23);
+    assert.equal(await page.locator('dialog').count(), 1, 'A touch release captured outside the canvas must reopen the editor after Cancel.');
     assert.equal(await input.inputValue(), '345');
+    assert.deepEqual(await input.evaluate(element => [element.selectionStart, element.selectionEnd]), [0, 3]);
     await input.fill('');
     await page.getByRole('button', { name: 'Done', exact: true }).click();
     await tap(30, 23);

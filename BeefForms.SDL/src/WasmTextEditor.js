@@ -17,9 +17,7 @@ mergeInto(LibraryManager.library, {
   BeefForms_InstallTextEditor: function(context, open, done, cancel) {
     var canvas = Module['canvas'];
     if (BeefFormsTextEditor.binding) {
-      canvas.removeEventListener('pointerdown', BeefFormsTextEditor.binding.down, true);
-      canvas.removeEventListener('pointerup', BeefFormsTextEditor.binding.up, true);
-      canvas.removeEventListener('pointercancel', BeefFormsTextEditor.binding.cancelPointer, true);
+      BeefFormsTextEditor.binding.detach();
       BeefFormsTextEditor.close();
     }
     var binding = { context: context, done: done, cancel: cancel, pointer: null };
@@ -27,13 +25,14 @@ mergeInto(LibraryManager.library, {
       if (!event.isPrimary || event.pointerType !== 'touch') return;
       binding.pointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
     };
-    binding.cancelPointer = function() {
-      binding.pointer = null;
+    binding.cancelPointer = function(event) {
+      if (binding.pointer && binding.pointer.id === event.pointerId) binding.pointer = null;
     };
     binding.up = function(event) {
       var pointer = binding.pointer;
+      if (!pointer || pointer.id !== event.pointerId) return;
       binding.pointer = null;
-      if (!pointer || pointer.id !== event.pointerId || !event.isTrusted ||
+      if (!event.isTrusted ||
           Math.hypot(event.clientX - pointer.x, event.clientY - pointer.y) > 12) return;
       var rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
@@ -41,19 +40,22 @@ mergeInto(LibraryManager.library, {
       {{{ makeDynCall('viff', 'open') }}}(context,
         (event.clientX - rect.left) / rect.width, (event.clientY - rect.top) / rect.height);
     };
+    binding.detach = function() {
+      canvas.removeEventListener('pointerdown', binding.down, true);
+      document.removeEventListener('pointerup', binding.up, true);
+      document.removeEventListener('pointercancel', binding.cancelPointer, true);
+    };
     BeefFormsTextEditor.binding = binding;
     canvas.addEventListener('pointerdown', binding.down, true);
-    canvas.addEventListener('pointerup', binding.up, true);
-    canvas.addEventListener('pointercancel', binding.cancelPointer, true);
+    // Capture and selection can redirect the release away from its original canvas.
+    document.addEventListener('pointerup', binding.up, true);
+    document.addEventListener('pointercancel', binding.cancelPointer, true);
   },
   BeefForms_UninstallTextEditor__deps: ['$BeefFormsTextEditor'],
   BeefForms_UninstallTextEditor: function(context) {
     var binding = BeefFormsTextEditor.binding;
     if (!binding || binding.context !== context) return;
-    var canvas = Module['canvas'];
-    canvas.removeEventListener('pointerdown', binding.down, true);
-    canvas.removeEventListener('pointerup', binding.up, true);
-    canvas.removeEventListener('pointercancel', binding.cancelPointer, true);
+    binding.detach();
     BeefFormsTextEditor.close();
     BeefFormsTextEditor.binding = null;
   },
