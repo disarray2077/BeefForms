@@ -226,6 +226,22 @@ internal class SDLCanvas
 		Quad(rect, mWhiteTexture, r, g, b);
 	}
 
+	public void FillEllipse(Rectangle rect, float r, float g, float b)
+	{
+		if (rect.Width <= 0 || rect.Height <= 0)
+			return;
+		let radiusX = rect.Width / 2f;
+		let radiusY = rect.Height / 2f;
+		for (int32 y < rect.Height)
+		{
+			let offset = (y + 0.5f - radiusY) / radiusY;
+			let extent = radiusX * Math.Sqrt(Math.Max(0f, 1f - offset * offset));
+			let left = (int32)Math.Ceiling(radiusX - extent - 0.5f);
+			let right = (int32)Math.Floor(radiusX + extent - 0.5f);
+			Fill(.(rect.X + left, rect.Y + y, right - left + 1, 1), r, g, b);
+		}
+	}
+
 	public void RoundedFill(Rectangle rect, float r, float g, float b)
 	{
 		Fill(.(rect.X + 2, rect.Y, rect.Width - 4, 1), r, g, b);

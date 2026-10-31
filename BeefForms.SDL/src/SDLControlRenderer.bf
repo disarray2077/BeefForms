@@ -54,6 +54,19 @@ internal class SDLControlRenderer
 			if (state.Focused)
 				mCanvas.Border(bounds, 0.35f, 0.5f, 0.7f);
 		}
+		else if (let radio = control as RadioButton)
+		{
+			int32 side = Math.Min(13, Math.Max(0, bounds.Height));
+			let indicator = Rectangle(bounds.X, bounds.Y + (bounds.Height - side) / 2, side, side);
+			let shade = enabled ? 0.45f : 0.7f;
+			mCanvas.FillEllipse(indicator, shade, shade, shade);
+			mCanvas.FillEllipse(.(indicator.X + 1, indicator.Y + 1, side - 2, side - 2), 1, 1, 1);
+			if (radio.Checked)
+				mCanvas.FillEllipse(.(indicator.X + 4, indicator.Y + 4, side - 8, side - 8), shade, shade, shade);
+			Text(control, bounds.X + side + 4, bounds.Y + (bounds.Height - lineHeight) / 2);
+			if (state.Focused)
+				mCanvas.Border(bounds, 0.35f, 0.5f, 0.7f);
+		}
 		else if (control is Button)
 		{
 			let shade = state.Pressed && state.Hovered ? 0.9f : enabled && state.Hovered ? 0.96f : 253f / 255;

@@ -208,6 +208,7 @@ static class Win32
 	public const uint BS_DEFPUSHBUTTON = 0x00000001;
 	public const uint BM_SETSTYLE = 0x00F4;
 	public const uint BS_CHECKBOX = 0x00000002;
+	public const uint BS_RADIOBUTTON = 0x00000004;
 	public const uint BM_GETCHECK = 0x00F0;
 	public const uint BM_SETCHECK = 0x00F1;
 	public const uint BS_GROUPBOX = 0x00000007;

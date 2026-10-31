@@ -68,6 +68,8 @@ internal class Win32Backend : FormsBackend
 			style |= Win32.BS_GROUPBOX | Win32.WS_GROUP;
 		if (control is CheckBox)
 			style |= Win32.BS_CHECKBOX;
+		if (control is RadioButton)
+			style |= Win32.BS_RADIOBUTTON;
 		if (let progress = control as ProgressBar)
 		{
 			if (progress.Style == .Continuous)
@@ -282,6 +284,8 @@ internal class Win32Backend : FormsBackend
 		{
 			if (let checkBox = control as CheckBox)
 				Win32.SendMessage(control.GetHandle(), Win32.BM_SETCHECK, (uint*)(void*)(checkBox.Checked ? 1 : 0), null);
+			if (let radio = control as RadioButton)
+				Win32.SendMessage(control.GetHandle(), Win32.BM_SETCHECK, (uint*)(void*)(radio.Checked ? 1 : 0), null);
 		}
 		if (let editor = control as TextBoxBase)
 		{

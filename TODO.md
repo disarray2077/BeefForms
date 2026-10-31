@@ -43,6 +43,17 @@ or a complete WinForms API inventory.
 
 ## Explicitly deferred
 
+- [ ] **ContextMenuStrip**: add the shared ToolStrip/menu-item foundation,
+  `Control.ContextMenuStrip`, popup presentation for Win32, SDL, and Wasm,
+  submenus, keyboard navigation, and touch long-press activation coordinated
+  with the extracted editor. Validate event ordering, focus, sharing, and
+  disposal behavior against .NET WinForms before implementation.
+- [ ] **ListBox**: item collections, selection modes and events, scrolling,
+  and keyboard navigation across backends.
+- [ ] **ListView**: items, columns, subitems, view modes, selection events,
+  and keyboard navigation across backends.
+- [ ] **Drop-down selection (ComboBox)**: item collections, editable and
+  selection-only styles, popup interaction, and selection events across backends.
 - [ ] **Button and CheckBox content padding**: `Padding` is stored but does not
   inset their content on either backend. Keep the existing rendering paths for
   now; margins remain supported by container layout.
