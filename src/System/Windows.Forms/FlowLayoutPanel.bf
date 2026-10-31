@@ -16,6 +16,7 @@ public enum FlowDirection
 
 public class FlowLayoutPanel : Panel
 {
+	protected internal override bool SupportsChildAnchoring => false;
 	private FlowDirection mFlowDirection;
 	private bool mWrapContents = true;
 	private bool mArranging, mLayoutRequested;

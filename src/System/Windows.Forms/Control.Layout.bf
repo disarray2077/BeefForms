@@ -19,6 +19,9 @@ extension Control
 	// Automatic layout must preserve the caller's requested size as the GrowOnly floor.
 	private Size mSpecifiedSize;
 	private AutoSizeMode mAutoSizeMode = .GrowOnly;
+	internal Object mLayoutData ~ delete _;
+	internal Size SpecifiedSize => mSpecifiedSize;
+	protected internal virtual bool SupportsChildAnchoring => true;
 	public Size PreferredSize => GetPreferredSize(default);
 
 	public virtual Size GetPreferredSize(Size proposedSize) => mSpecifiedSize;
@@ -47,7 +50,7 @@ extension Control
 		SetLayoutBounds(Location, mSpecifiedSize, true);
 	}
 
-	private Size GetAutoSize(Size proposedSize, Size minimum)
+	internal Size GetAutoSize(Size proposedSize, Size minimum)
 	{
 		var preferred = GetPreferredSize(proposedSize);
 		if (mAutoSizeMode == .GrowOnly)
