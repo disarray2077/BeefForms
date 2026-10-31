@@ -1,0 +1,136 @@
+name: Sample CI and GitHub Pages
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sample-pages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'push' || github.ref == 'refs/heads/master'
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up pinned Beef compiler
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = Join-Path $env:RUNNER_TEMP 'BeefSetup.exe'
+          $beefRoot = Join-Path $env:RUNNER_TEMP 'Beef'
+          # Beef commit 301192e1fc518bbd36bf9c114f89e0525e04e7d1.
+          Invoke-WebRequest 'https://nightly.beeflang.org/BeefSetup_0_43_6__10_23_2026.exe' -OutFile $setup
+          & 7z x $setup "-o$beefRoot" -y
+          if ($LASTEXITCODE) { throw 'Cannot extract Beef nightly.' }
+          Copy-Item "$beefRoot/__user/*" $beefRoot -Recurse -Force
+          "BEEF_ROOT=$beefRoot" >> $env:GITHUB_ENV
+
+      - name: Fetch Beef's Emscripten SDK
+        shell: cmd
+        working-directory: ${{ runner.temp }}/Beef/wasm
+        run: call fetch_wasm.bat
+
+      - name: Configure Emscripten
+        run: |
+          $sdk = "$env:BEEF_ROOT/wasm/emsdk".Replace('\', '/')
+          @"
+          FileVersion = 1
+          [Wasm]
+          EmscriptenPath = "$sdk"
+          "@ | Set-Content "$env:BEEF_ROOT/bin/BeefSettings.toml" -Encoding utf8
+
+      - name: Build sample
+        shell: cmd
+        run: |
+          call "%BEEF_ROOT%\wasm\emsdk\emsdk_env.bat"
+          if errorlevel 1 exit /b 1
+          "%BEEF_ROOT%\bin\BeefBuild.exe" -config=Release -platform=wasm32
+          if errorlevel 1 exit /b 1
+
+      - name: Prepare site
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $output = 'build/Release_wasm32/BeefForms.Sample'
+          $site = Join-Path $env:RUNNER_TEMP 'sample-pages'
+          New-Item -ItemType Directory -Force $site | Out-Null
+          Copy-Item "$output/BeefForms.html" "$site/index.html"
+          foreach ($extension in @('js', 'wasm', 'data')) {
+            Copy-Item "$output/BeefForms.$extension" $site
+          }
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/sample-pages
+
+  deploy:
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy site
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  format:
+    runs-on: windows-latest
+    continue-on-error: true
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download latest BeefFormat release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $release = Invoke-RestMethod 'https://api.github.com/repos/disarray2077/BeefFormat/releases/latest' -Headers $headers
+          $asset = $release.assets | Where-Object name -eq 'BeefFormat.exe'
+          if (!$asset) { throw 'The latest BeefFormat release has no BeefFormat.exe asset.' }
+          $formatter = Join-Path $env:RUNNER_TEMP 'BeefFormat.exe'
+          Invoke-WebRequest $asset.browser_download_url -OutFile $formatter
+          "BEEF_FORMAT=$formatter" >> $env:GITHUB_ENV
+          "Using BeefFormat $($release.tag_name)." >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Check formatting
+        id: check
+        run: |
+          & $env:BEEF_FORMAT --check . 2>&1 |
+            Tee-Object -FilePath formatting.log
+          exit $LASTEXITCODE
+
+      - name: Report advisory result
+        if: ${{ always() && failure() }}
+        run: |
+          Write-Output '::warning::The advisory formatting check failed. See the formatting log or setup step for details.'
+          'Formatting is advisory and does not block sample builds or deployment.' >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Upload formatting log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: formatting-log
+          path: formatting.log
+          if-no-files-found: ignore

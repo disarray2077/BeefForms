@@ -194,7 +194,13 @@ class DownloaderMockForm : Form
 	}
 }
 
-enum MockDownloadState { Downloading, Completed, Failed, Cancelled }
+enum MockDownloadState
+{
+	Downloading,
+	Completed,
+	Failed,
+	Cancelled
+}
 
 class MockDownloadRow : Panel
 {

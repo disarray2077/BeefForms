@@ -19,6 +19,7 @@ public struct TableLayoutPanelCellPosition : this(int32 Column, int32 Row);
 public class TableLayoutPanel : Panel
 {
 	protected internal override bool SupportsChildAnchoring => false;
+
 	private class LayoutInfo
 	{
 		public TableLayoutPanelCellPosition Position = .(-1, -1);

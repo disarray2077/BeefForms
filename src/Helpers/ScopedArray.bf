@@ -23,6 +23,13 @@ static
 		items
 	}
 
+	[NoShow]
+	private static void ReleaseAll<T>(T[] source) where T : RefCounted
+	{
+		for (let item in source)
+			item.ReleaseRef();
+	}
+
 	internal static mixin ToScopedArray<T, TCollection>(TCollection source)
 		where TCollection : IEnumerable<T>
 		where TCollection : var
@@ -42,7 +49,6 @@ static
 			item.AddRef();
 			items[index++] = item;
 		}
-		static void ReleaseAll<T>(T[] source) where T : RefCounted { for (let item in source) item.ReleaseRef(); }
 		defer:mixin ReleaseAll<T>(items);
 		items
 	}
